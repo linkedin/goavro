@@ -13,7 +13,7 @@ streams. Goavro fully adheres to
 * [Avro](http://avro.apache.org/)
 * [Avro CLI Examples](https://github.com/miguno/avro-cli-examples)
 * [JavaScript Object Notation, JSON](http://www.json.org/)
-* [Kafka](http://kafka.apache.org])
+* [Kafka](http://kafka.apache.org)
 
 ## Usage
 
