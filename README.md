@@ -13,7 +13,7 @@ streams. Goavro fully adheres to
 * [Avro](http://avro.apache.org/)
 * [Avro CLI Examples](https://github.com/miguno/avro-cli-examples)
 * [JavaScript Object Notation, JSON](http://www.json.org/)
-* [http://kafka.apache.org](Kafka)
+* [Kafka](http://kafka.apache.org])
 
 ## Usage
 
@@ -158,11 +158,11 @@ specification.
 
 Goavro can decode binary encoded Avro data, and encode data into
 Avro's binary encoding. Goavro does not presently handle
-[http://avro.apache.org/docs/1.7.7/spec.html#Object+Container+Files](Avro
-Object Container Files). The Avro Object Container Files format is a
-file encoding schema that sits on top of the Avro Data Serialization
-format. This has been implemented but removed until a future release
-once the API can be improved.
+[Avro Object Container Files](http://avro.apache.org/docs/1.7.7/spec.html#Object+Container+Files).
+The Avro Object Container Files format is a file encoding schema that
+sits on top of the Avro Data Serialization format. This has been
+implemented but removed until a future release once the API can be
+improved.
 
 Recall that Avro Data Serialization allows for two encodings: binary
 and JSON. Avro Object Container Files is a higher layer of abstraction
@@ -173,7 +173,7 @@ Files support is reintegrated.
 
 ### Kafka Streams
 
-[http://kafka.apache.org](Kafka) is the reason goavro was
+[Kakfa](http://kafka.apache.org) is the reason goavro was
 written. Similar to Avro Object Container Files being a layer of
 abstraction above Avro Data Serialization format, Kafka's use of Avro
 is a layer of abstraction that also sits above Avro Data Serialization
