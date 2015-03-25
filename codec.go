@@ -487,8 +487,7 @@ func (st symtab) makeRecordCodec(enclosingNamespace string, schema interface{}) 
 	c := &codec{
 		nm: recordTemplate.n,
 		df: func(r io.Reader) (interface{}, error) {
-			sr := *recordTemplate
-			someRecord := &sr
+			someRecord, _ := NewRecord(RecordSchema(schema), RecordEnclosingNamespace(enclosingNamespace))
 			for idx, codec := range fieldCodecs {
 				value, err := codec.Decode(r)
 				if err != nil {

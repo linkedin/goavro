@@ -533,6 +533,65 @@ func TestCodecDecoderArray(t *testing.T) {
 	}
 }
 
+func TestCodecDecoderArrayOfRecords(t *testing.T) {
+	schema := `
+{
+  "type": "array",
+  "items": {
+    "type": "record",
+    "name": "someRecord",
+    "fields": [
+      {
+        "name": "someString",
+        "type": "string"
+      },
+      {
+        "name": "someInt",
+        "type": "int"
+      }
+    ]
+  }
+}
+`
+	decoder, err := NewCodec(schema)
+	checkErrorFatal(t, err, nil)
+
+	encoded := []byte("\x04\x0aHello\x1a\x0aWorld\x54\x00")
+	bb := bytes.NewBuffer(encoded)
+	actual, err := decoder.Decode(bb)
+	checkError(t, err, nil)
+
+	someArray, ok := actual.([]interface{})
+	if !ok {
+		t.Errorf("Actual: %#v; Expected: %#v", ok, true)
+	}
+	if len(someArray) != 2 {
+		t.Errorf("Actual: %#v; Expected: %#v", len(someArray), 2)
+	}
+	// first element
+	actualString := someArray[0].(*Record).Fields[0].Datum
+	expectedString := "Hello"
+	if actualString != expectedString {
+		t.Errorf("Actual: %#v; Expected: %#v", actualString, expectedString)
+	}
+	actualInt := someArray[0].(*Record).Fields[1].Datum
+	expectedInt := int32(13)
+	if actualInt != expectedInt {
+		t.Errorf("Actual: %#v; Expected: %#v", actualInt, expectedInt)
+	}
+	// second element
+	actualString = someArray[1].(*Record).Fields[0].Datum
+	expectedString = "World"
+	if actualString != expectedString {
+		t.Errorf("Actual: %#v; Expected: %#v", actualString, expectedString)
+	}
+	actualInt = someArray[1].(*Record).Fields[1].Datum
+	expectedInt = int32(42)
+	if actualInt != expectedInt {
+		t.Errorf("Actual: %#v; Expected: %#v", actualInt, expectedInt)
+	}
+}
+
 func TestCodecDecoderArrayMultipleBlocks(t *testing.T) {
 	schema := `{"type":"array","items":"int"}`
 	decoder, err := NewCodec(schema)
