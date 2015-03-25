@@ -49,8 +49,8 @@ func (r Record) String() string {
 	return fmt.Sprintf("{%s: [%v]}", r.Name, strings.Join(fields, ", "))
 }
 
-// NewRecord will create a Record corresponding to the specified
-// schema.
+// NewRecord will create a Record instance corresponding to the
+// specified schema.
 func NewRecord(setters ...RecordSetter) (*Record, error) {
 	record := &Record{n: &name{}}
 	for _, setter := range setters {
