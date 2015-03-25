@@ -135,3 +135,50 @@ func TestRecordFieldUnion(t *testing.T) {
 	_, err := NewRecord(RecordSchemaJson(someJsonSchema))
 	checkError(t, err, nil)
 }
+
+func TestRecordGetFieldSchema(t *testing.T) {
+	outerSchema := `
+{
+  "type": "record",
+  "name": "TestRecord",
+  "fields": [
+    {
+      "name": "value",
+      "type": "int"
+    },
+    {
+      "name": "rec",
+      "type": {
+        "type": "array",
+        "items": {
+          "type": "record",
+          "name": "TestRecord2",
+          "fields": [
+            {
+              "name": "stringValue",
+              "type": "string"
+            },
+            {
+              "name": "intValue",
+              "type": "int"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
+`
+	outerRecord, err := NewRecord(RecordSchemaJson(outerSchema))
+	checkErrorFatal(t, err, nil)
+	// make sure it bails when no such schema
+	schema, err := outerRecord.GetFieldSchema("no-such-field")
+	checkError(t, err, "no such field: no-such-field")
+	// get the inner schema
+	schema, err = outerRecord.GetFieldSchema("rec")
+	checkErrorFatal(t, err, nil)
+	_, ok := schema.(map[string]interface{})
+	if !ok {
+		t.Errorf("Actual: %#v; Expected: %#v", ok, true)
+	}
+}
