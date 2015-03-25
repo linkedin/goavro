@@ -26,7 +26,31 @@ import (
 )
 
 func main() {
-	recordSchemaJson := `{"type":"record","name":"comments","namespace":"com.example","fields":[{"name":"username","type":"string","doc":"Name of user"},{"name":"comment","type":"string","doc":"The content of the user's message"},{"name":"timestamp","type":"long","doc":"Unix epoch time in milliseconds"}],"doc:":"A basic schema for storing blog comments"}`
+	recordSchemaJson := `
+{
+  "type": "record",
+  "name": "comments",
+  "doc:": "A basic schema for storing blog comments",
+  "namespace": "com.example",
+  "fields": [
+    {
+      "doc": "Name of user",
+      "type": "string",
+      "name": "username"
+    },
+    {
+      "doc": "The content of the user's message",
+      "type": "string",
+      "name": "comment"
+    },
+    {
+      "doc": "Unix epoch time in milliseconds",
+      "type": "long",
+      "name": "timestamp"
+    }
+  ]
+}
+`
 	codec, err := goavro.NewCodec(recordSchemaJson)
 	if err != nil {
 		log.Fatal(err)
