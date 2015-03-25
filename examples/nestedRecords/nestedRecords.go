@@ -95,7 +95,8 @@ func main() {
 	outerRecord.Fields[2].Datum = int64(1427255074)
 
 	// Create a codec that encodes and decodes according to the
-	// outerSchema.
+	// outerSchema, which includes the innerSchema as the first
+	// field.
 	codec, err := goavro.NewCodec(outerSchema)
 	if err != nil {
 		log.Fatal(err)
@@ -120,4 +121,11 @@ func main() {
 	// using goavro.Record's String() method.
 	decoded, err := codec.Decode(bytes.NewReader(actual))
 	fmt.Println(decoded)
+	// we only need to perform type assertion if we want to access inside
+	record := decoded.(*goavro.Record)
+	fmt.Println("Record Name:", record.Name)
+	fmt.Println("Record Fields:")
+	for i, field := range record.Fields {
+		fmt.Println(" field", i, field.Name, ":", field.Datum)
+	}
 }
