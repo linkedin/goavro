@@ -467,7 +467,7 @@ func (st symtab) makeRecordCodec(enclosingNamespace string, schema interface{}) 
 	cannotCreate := makeErrorReporter("cannot create record (%s): ", errorNamespace)
 
 	// delegate schema checks to NewRecord()
-	recordTemplate, err := NewRecord(schema, recordEnclosingNamespace(enclosingNamespace))
+	recordTemplate, err := NewRecord(RecordSchema(schema), RecordEnclosingNamespace(enclosingNamespace))
 	if err != nil {
 		return nil, cannotCreate("%v", err)
 	}

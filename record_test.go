@@ -19,19 +19,18 @@
 package goavro
 
 import (
-	"encoding/json"
 	"fmt"
 	"testing"
 )
 
+func TestRecordRequiresSchema(t *testing.T) {
+	_, err := NewRecord()
+	checkErrorFatal(t, err, "cannot create Record: no schema defined")
+}
+
 func TestRecordFieldNames(t *testing.T) {
 	someJsonSchema := `{"type":"record","name":"org.foo.Y","fields":[{"type":"int","name":"X"},{"type":"string","name":"W"}]}`
-	var schema interface{}
-	err := json.Unmarshal([]byte(someJsonSchema), &schema)
-	if err != nil {
-		t.Fatal(err)
-	}
-	someRecord, err := NewRecord(schema)
+	someRecord, err := NewRecord(RecordSchemaJson(someJsonSchema))
 	checkErrorFatal(t, err, nil)
 	if someRecord.Name != "org.foo.Y" {
 		t.Errorf("Actual: %#v; Expected: %#v", someRecord.Name, "org.foo.Y")
@@ -101,11 +100,11 @@ func TestRecordBailsWithoutName(t *testing.T) {
 	schema["fields"] = recordFields
 
 	schema["name"] = 5
-	_, err := NewRecord(schema)
+	_, err := NewRecord(RecordSchema(schema))
 	checkErrorFatal(t, err, "ought to be non-empty string")
 
 	schema["name"] = ""
-	_, err = NewRecord(schema)
+	_, err = NewRecord(RecordSchema(schema))
 	checkError(t, err, "ought to be non-empty string")
 }
 
@@ -113,31 +112,26 @@ func TestRecordBailsWithoutFields(t *testing.T) {
 	schema := make(map[string]interface{})
 
 	schema["name"] = "someRecord"
-	_, err := NewRecord(schema)
+	_, err := NewRecord(RecordSchema(schema))
 	checkError(t, err, fmt.Errorf("record requires fields"))
 
 	schema["fields"] = 5
-	_, err = NewRecord(schema)
+	_, err = NewRecord(RecordSchema(schema))
 	checkError(t, err, fmt.Errorf("record fields ought to be non-empty array"))
 
 	schema["fields"] = make([]interface{}, 0)
-	_, err = NewRecord(schema)
+	_, err = NewRecord(RecordSchema(schema))
 	checkError(t, err, fmt.Errorf("record fields ought to be non-empty array"))
 
 	fields := make([]interface{}, 0)
 	fields = append(fields, "int")
 	schema["fields"] = fields
-	_, err = NewRecord(schema)
+	_, err = NewRecord(RecordSchema(schema))
 	checkError(t, err, fmt.Errorf("expected: map[string]interface{}; actual: string"))
 }
 
 func TestRecordFieldUnion(t *testing.T) {
 	someJsonSchema := `{"type":"record","name":"Foo","fields":[{"type":["null","string"],"name":"field1"}]}`
-	var schema interface{}
-	err := json.Unmarshal([]byte(someJsonSchema), &schema)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = NewRecord(schema)
+	_, err := NewRecord(RecordSchemaJson(someJsonSchema))
 	checkError(t, err, nil)
 }

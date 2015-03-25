@@ -364,11 +364,7 @@ func TestCodecEncoderUnionMap(t *testing.T) {
 func TestCodecEncoderUnionRecord(t *testing.T) {
 	recordSchemaJson := `{"type":"record","name":"record1","fields":[{"type":"int","name":"field1"},{"type":"string","name":"field2"}]}`
 
-	var recordSchema interface{}
-	err := json.Unmarshal([]byte(recordSchemaJson), &recordSchema)
-	checkErrorFatal(t, err, nil)
-
-	someRecord, err := NewRecord(recordSchema)
+	someRecord, err := NewRecord(RecordSchemaJson(recordSchemaJson))
 	checkErrorFatal(t, err, nil)
 
 	someRecord.Fields[0].Datum = int32(13)
@@ -464,11 +460,7 @@ func TestCodecRecordFieldChecksDefaultType(t *testing.T) {
 	codec, err := NewCodec(recordSchemaJson)
 	checkErrorFatal(t, err, nil)
 
-	var schema interface{}
-	err = json.Unmarshal([]byte(recordSchemaJson), &schema)
-	checkErrorFatal(t, err, nil)
-
-	someRecord, err := NewRecord(schema)
+	someRecord, err := NewRecord(RecordSchemaJson(recordSchemaJson))
 	checkErrorFatal(t, err, nil)
 
 	bb := new(bytes.Buffer)
@@ -737,10 +729,7 @@ func TestCodecDecoderRecord(t *testing.T) {
 
 func TestCodecEncoderRecord(t *testing.T) {
 	recordSchemaJson := `{"type":"record","name":"comments","namespace":"com.example","fields":[{"name":"username","type":"string","doc":"Name of user"},{"name":"comment","type":"string","doc":"The content of the user's message"},{"name":"timestamp","type":"long","doc":"Unix epoch time in milliseconds"}],"doc:":"A basic schema for storing blog comments"}`
-	var recordSchema interface{}
-	err := json.Unmarshal([]byte(recordSchemaJson), &recordSchema)
-	checkErrorFatal(t, err, nil)
-	someRecord, err := NewRecord(recordSchema)
+	someRecord, err := NewRecord(RecordSchemaJson(recordSchemaJson))
 	checkErrorFatal(t, err, nil)
 
 	someRecord.Fields[0].Datum = "Aquaman"
@@ -753,10 +742,7 @@ func TestCodecEncoderRecord(t *testing.T) {
 
 func TestCodecEncoderRecordWithFieldDefaultValue(t *testing.T) {
 	recordSchemaJson := `{"type":"record","name":"Foo","fields":[{"name":"field1","type":"int"},{"name":"field2","type":"string","default":"happy"}]}`
-	var recordSchema interface{}
-	err := json.Unmarshal([]byte(recordSchemaJson), &recordSchema)
-	checkErrorFatal(t, err, nil)
-	someRecord, err := NewRecord(recordSchema)
+	someRecord, err := NewRecord(RecordSchemaJson(recordSchemaJson))
 	checkErrorFatal(t, err, nil)
 
 	someRecord.Fields[0].Datum = int32(64)

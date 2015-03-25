@@ -19,6 +19,7 @@
 package goavro
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 )
@@ -30,12 +31,13 @@ import (
 // Encode to convert data to an Avro record, it is necessary to create
 // and send a Record instance to the Encoder method.
 type Record struct {
-	Name    string
-	Fields  []*recordField
-	aliases []string
-	doc     string
-	n       *name
-	ens     string
+	Name      string
+	Fields    []*recordField
+	aliases   []string
+	doc       string
+	n         *name
+	ens       string
+	schemaMap map[string]interface{}
 }
 
 // String returns a string representation of the Record.
@@ -49,29 +51,26 @@ func (r Record) String() string {
 
 // NewRecord will create a Record corresponding to the specified
 // schema.
-func NewRecord(schema interface{}, setters ...RecordSetter) (*Record, error) {
-	schemaMap, ok := schema.(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("cannot create Record: expected: map[string]interface{}; actual: %T", schema)
-	}
-
-	newRecord := &Record{n: &name{}}
+func NewRecord(setters ...RecordSetter) (*Record, error) {
+	record := &Record{n: &name{}}
 	for _, setter := range setters {
-		err := setter(newRecord)
+		err := setter(record)
 		if err != nil {
 			return nil, err
 		}
 	}
-
+	if record.schemaMap == nil {
+		return nil, fmt.Errorf("cannot create Record: no schema defined")
+	}
 	var err error
-	newRecord.n, err = newName(nameSchema(schemaMap), nameEnclosingNamespace(newRecord.ens))
+	record.n, err = newName(nameSchema(record.schemaMap), nameEnclosingNamespace(record.ens))
 	if err != nil {
 		return nil, fmt.Errorf("cannot create Record: %v", err)
 	}
-	newRecord.Name = newRecord.n.n
-	ns := newRecord.n.namespace()
+	record.Name = record.n.n
+	ns := record.n.namespace()
 
-	val, ok := schemaMap["fields"]
+	val, ok := record.schemaMap["fields"]
 	if !ok {
 		return nil, fmt.Errorf("cannot create Record: record requires fields")
 	}
@@ -80,38 +79,73 @@ func NewRecord(schema interface{}, setters ...RecordSetter) (*Record, error) {
 		return nil, fmt.Errorf("cannot create Record: record fields ought to be non-empty array")
 	}
 
-	newRecord.Fields = make([]*recordField, len(fields))
+	record.Fields = make([]*recordField, len(fields))
 	for i, field := range fields {
 		rf, err := newRecordField(field, recordFieldEnclosingNamespace(ns))
 		if err != nil {
 			return nil, fmt.Errorf("cannot create Record: %v", err)
 		}
-		newRecord.Fields[i] = rf
+		record.Fields[i] = rf
 	}
 
 	// fields optional to the avro spec
 
-	if val, ok = schemaMap["doc"]; ok {
-		newRecord.doc, ok = val.(string)
+	if val, ok = record.schemaMap["doc"]; ok {
+		record.doc, ok = val.(string)
 		if !ok {
 			return nil, fmt.Errorf("record doc ought to be string")
 		}
 	}
-	if val, ok = schemaMap["aliases"]; ok {
-		newRecord.aliases, ok = val.([]string)
+	if val, ok = record.schemaMap["aliases"]; ok {
+		record.aliases, ok = val.([]string)
 		if !ok {
 			return nil, fmt.Errorf("record aliases ought to be array of strings")
 		}
 	}
-
-	return newRecord, nil
+	record.schemaMap = nil
+	return record, nil
 }
 
 // RecordSetter functions are those those which are used to
 // instantiate a new Record.
 type RecordSetter func(*Record) error
 
-func recordEnclosingNamespace(someNamespace string) RecordSetter {
+// RecordSchema specifies the schema of the record to create. Schema
+// must be `map[string]interface{}`.
+func RecordSchema(schema interface{}) RecordSetter {
+	return func(r *Record) error {
+		var ok bool
+		r.schemaMap, ok = schema.(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("cannot create Record: expected: map[string]interface{}; actual: %T", schema)
+		}
+		return nil
+	}
+}
+
+// RecordSchemaJson specifies the schema of the record to
+// create. Schema must be a JSON string.
+func RecordSchemaJson(recordSchemaJson string) RecordSetter {
+	return func(r *Record) error {
+		var schema interface{}
+		err := json.Unmarshal([]byte(recordSchemaJson), &schema)
+		if err != nil {
+			return fmt.Errorf("cannot create Record: %v", err)
+		}
+		var ok bool
+		r.schemaMap, ok = schema.(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("cannot create Record: expected: map[string]interface{}; actual: %T", schema)
+		}
+		return nil
+	}
+}
+
+// RecordEnclosingNamespace specifies the enclosing namespace of the
+// record to create. For instance, if the enclosing namespace is
+// `com.example`, and the record name is `Foo`, then the full record
+// name will be `com.example.Foo`.
+func RecordEnclosingNamespace(someNamespace string) RecordSetter {
 	return func(r *Record) error {
 		r.ens = someNamespace
 		return nil
