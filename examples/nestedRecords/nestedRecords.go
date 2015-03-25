@@ -110,7 +110,7 @@ func main() {
 	expected := []byte(
 		"\x0eAquaman" + // account
 			"\x88\x88\x88\x88\x08" + // creationDate
-			"\x50" + // string is 40 characters long
+			"\x50" + // 50 hex == 80 dec variable length integer encoded == 40 -> string is 40 characters long
 			"The Atlantic is oddly cold this morning!" + // comment
 			"\xc4\xbc\x91\xd1\x0a") // timestamp
 	if bytes.Compare(actual, expected) != 0 {
