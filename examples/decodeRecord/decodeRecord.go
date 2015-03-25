@@ -16,5 +16,14 @@ func main() {
 	encoded := []byte("\x0eAquamanPThe Atlantic is oddly cold this morning!\x88\x88\x88\x88\x08")
 	bb := bytes.NewBuffer(encoded)
 	decoded, err := codec.Decode(bb)
-	fmt.Println(decoded)
+
+	fmt.Println(decoded) // default String() representation is JSON
+
+	// but direct access to data is provided
+	record := decoded.(*goavro.Record)
+	fmt.Println("Record Name:", record.Name)
+	fmt.Println("Record Fields:")
+	for i, field := range record.Fields {
+		fmt.Println(" field", i, field.Name, ":", field.Datum)
+	}
 }
