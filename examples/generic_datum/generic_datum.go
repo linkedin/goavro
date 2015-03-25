@@ -66,47 +66,40 @@ func init() {
 `, innerSchema)
 }
 
-func makeOuterRecord() (*goavro.Record, error) {
+func main() {
 	innerRecords := make([]interface{}, 0)
+	// make first inner record
 	innerRecord, err := goavro.NewRecord(goavro.RecordSchemaJson(innerSchema))
 	if err != nil {
-		return nil, err
+		panic(fmt.Errorf("cannot create innerRecord: %v", err))
 	}
-	innerRecord.Set("stringValue", "Hello")
-	innerRecord.Set("intValue", int32(1))
+	if err = innerRecord.Set("stringValue", "Hello"); err != nil {
+		panic(err)
+	}
+	if err = innerRecord.Set("intValue", int32(1)); err != nil {
+		panic(err)
+	}
 	innerRecords = append(innerRecords, innerRecord)
-
-	innerRecord, err = goavro.NewRecord(goavro.RecordSchemaJson(innerSchema))
-	if err != nil {
-		return nil, err
-	}
+	// make another inner record
+	innerRecord, _ = goavro.NewRecord(goavro.RecordSchemaJson(innerSchema))
 	innerRecord.Set("stringValue", "World")
 	innerRecord.Set("intValue", int32(2))
 	innerRecords = append(innerRecords, innerRecord)
-
+	// make outer record
 	outerRecord, err := goavro.NewRecord(goavro.RecordSchemaJson(outerSchema))
 	if err != nil {
-		return nil, err
+		panic(fmt.Errorf("cannot create outerRecord: %v", err))
 	}
 	outerRecord.Set("value", int32(3))
 	outerRecord.Set("rec", innerRecords)
-	return outerRecord, nil
-}
-
-func main() {
 	// make a codec
 	c, err := goavro.NewCodec(outerSchema)
 	if err != nil {
 		panic(fmt.Errorf("cannot create codec: %v", err))
 	}
-	// make a record
-	originalRecord, err := makeOuterRecord()
-	if err != nil {
-		panic(fmt.Errorf("cannot make outer record: %v", err))
-	}
-	// encode record
+	// encode outerRecord to io.Writer (here, a bytes.Buffer)
 	bb := new(bytes.Buffer)
-	err = c.Encode(bb, originalRecord)
+	err = c.Encode(bb, outerRecord)
 	if err != nil {
 		panic(fmt.Errorf("cannot encode record: %v", err))
 	}
@@ -117,7 +110,7 @@ func main() {
 	}
 	decodedRecord, ok := decoded.(*goavro.Record)
 	if !ok {
-		panic("expected *goavro.Record")
+		panic(fmt.Errorf("expected *goavro.Record; actual: %T", decoded))
 	}
 	decodedValue, err := decodedRecord.Get("value")
 	if err != nil {
