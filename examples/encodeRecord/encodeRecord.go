@@ -57,7 +57,7 @@ func main() {
 	// identify field name to set datum for
 	someRecord.Set("username", "Aquaman")
 	someRecord.Set("comment", "The Atlantic is oddly cold this morning!")
-	// you can fully qualified field name
+	// you can fully qualify the field name
 	someRecord.Set("com.example.timestamp", int64(1082196484))
 
 	codec, err := goavro.NewCodec(recordSchemaJson)
