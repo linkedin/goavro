@@ -22,7 +22,6 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/linkedin/goavro"
-	"io"
 )
 
 var (
@@ -69,74 +68,84 @@ func init() {
 
 func makeOuterRecord() (*goavro.Record, error) {
 	innerRecords := make([]interface{}, 0)
-	innerRecord1, err := goavro.NewRecord(goavro.RecordSchemaJson(innerSchema))
+	innerRecord, err := goavro.NewRecord(goavro.RecordSchemaJson(innerSchema))
 	if err != nil {
 		return nil, err
 	}
-	innerRecord1.Fields[0].Datum = "Hello"
-	innerRecord1.Fields[1].Datum = int32(1)
-	innerRecords = append(innerRecords, innerRecord1)
+	innerRecord.Set("stringValue", "Hello")
+	innerRecord.Set("intValue", int32(1))
+	innerRecords = append(innerRecords, innerRecord)
 
-	innerRecord2, err := goavro.NewRecord(goavro.RecordSchemaJson(innerSchema))
+	innerRecord, err = goavro.NewRecord(goavro.RecordSchemaJson(innerSchema))
 	if err != nil {
 		return nil, err
 	}
-	innerRecord2.Fields[0].Datum = "World"
-	innerRecord2.Fields[1].Datum = int32(2)
-	innerRecords = append(innerRecords, innerRecord2)
+	innerRecord.Set("stringValue", "World")
+	innerRecord.Set("intValue", int32(2))
+	innerRecords = append(innerRecords, innerRecord)
 
 	outerRecord, err := goavro.NewRecord(goavro.RecordSchemaJson(outerSchema))
 	if err != nil {
 		return nil, err
 	}
-	outerRecord.Fields[0].Datum = int32(3)
-	outerRecord.Fields[1].Datum = innerRecords
+	outerRecord.Set("value", int32(3))
+	outerRecord.Set("rec", innerRecords)
 	return outerRecord, nil
 }
 
-func encodeSomeRecord(c goavro.Codec, someRecord *goavro.Record) (*bytes.Buffer, error) {
-	bb := new(bytes.Buffer)
-	err := c.Encode(bb, someRecord)
-	return bb, err
-}
-
-func decodeSomeRecord(c goavro.Codec, r io.Reader) (*goavro.Record, error) {
-	something, err := c.Decode(r)
-	if err != nil {
-		return nil, err
-	}
-	return something.(*goavro.Record), nil
-}
-
 func main() {
+	// make a codec
 	c, err := goavro.NewCodec(outerSchema)
 	if err != nil {
 		panic(fmt.Errorf("cannot create codec: %v", err))
 	}
+	// make a record
 	originalRecord, err := makeOuterRecord()
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("cannot make outer record: %v", err))
 	}
-	buf, err := encodeSomeRecord(c, originalRecord)
+	// encode record
+	bb := new(bytes.Buffer)
+	err = c.Encode(bb, originalRecord)
+	if err != nil {
+		panic(fmt.Errorf("cannot encode record: %v", err))
+	}
+	// decode bytes
+	decoded, err := c.Decode(bytes.NewReader(bb.Bytes()))
+	if err != nil {
+		panic(fmt.Errorf("cannot decode record: %v", err))
+	}
+	decodedRecord, ok := decoded.(*goavro.Record)
+	if !ok {
+		panic("expected *goavro.Record")
+	}
+	decodedValue, err := decodedRecord.Get("value")
 	if err != nil {
 		panic(err)
 	}
-	decodedRecord, err := decodeSomeRecord(c, bytes.NewReader(buf.Bytes()))
-	if err != nil {
-		panic(err)
-	}
-	decodedValue := decodedRecord.Fields[0].Datum
 	if decodedValue != int32(3) {
 		fmt.Printf("Actual: %#v; Expected: %#v\n", decodedValue, int32(3))
 	}
 	fmt.Printf("Read a value: %d\n", decodedValue)
-	decodedArray := decodedRecord.Fields[1].Datum.([]interface{})
+	rec, err := decodedRecord.Get("rec")
+	if err != nil {
+		panic(err)
+	}
+	decodedArray := rec.([]interface{})
 	if len(decodedArray) != 2 {
 		fmt.Printf("Actual: %#v; Expected: %#v\n", len(decodedArray), 2)
 	}
 	for index, decodedSubRecord := range decodedArray {
 		r := decodedSubRecord.(*goavro.Record)
-		fmt.Printf("Read a subrecord %d string value: %s\n", index, r.Fields[0].Datum)
-		fmt.Printf("Read a subrecord %d int value: %d\n", index, r.Fields[1].Datum)
+		sv, err := r.Get("stringValue")
+		if err != nil {
+			panic(err)
+		}
+		iv, err := r.Get("intValue")
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("Read a subrecord %d string value: %s\n", index, sv)
+		fmt.Printf("Read a subrecord %d int value: %d\n", index, iv)
 	}
 }

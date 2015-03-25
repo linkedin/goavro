@@ -367,8 +367,8 @@ func TestCodecEncoderUnionRecord(t *testing.T) {
 	someRecord, err := NewRecord(RecordSchemaJson(recordSchemaJson))
 	checkErrorFatal(t, err, nil)
 
-	someRecord.Fields[0].Datum = int32(13)
-	someRecord.Fields[1].Datum = "Superman"
+	someRecord.Set("field1", int32(13))
+	someRecord.Set("field2", "Superman")
 
 	bits := []byte("\x02\x1a\x10Superman")
 	checkCodecEncoderResult(t, `["null",`+recordSchemaJson+`]`, someRecord, bits)
@@ -569,23 +569,27 @@ func TestCodecDecoderArrayOfRecords(t *testing.T) {
 		t.Errorf("Actual: %#v; Expected: %#v", len(someArray), 2)
 	}
 	// first element
-	actualString := someArray[0].(*Record).Fields[0].Datum
+	actualString, err := someArray[0].(*Record).Get("someString")
+	checkError(t, err, nil)
 	expectedString := "Hello"
 	if actualString != expectedString {
 		t.Errorf("Actual: %#v; Expected: %#v", actualString, expectedString)
 	}
-	actualInt := someArray[0].(*Record).Fields[1].Datum
+	actualInt, err := someArray[0].(*Record).Get("someInt")
+	checkError(t, err, nil)
 	expectedInt := int32(13)
 	if actualInt != expectedInt {
 		t.Errorf("Actual: %#v; Expected: %#v", actualInt, expectedInt)
 	}
 	// second element
-	actualString = someArray[1].(*Record).Fields[0].Datum
+	actualString, err = someArray[1].(*Record).Get("someString")
+	checkError(t, err, nil)
 	expectedString = "World"
 	if actualString != expectedString {
 		t.Errorf("Actual: %#v; Expected: %#v", actualString, expectedString)
 	}
-	actualInt = someArray[1].(*Record).Fields[1].Datum
+	actualInt, err = someArray[1].(*Record).Get("someInt")
+	checkError(t, err, nil)
 	expectedInt = int32(42)
 	if actualInt != expectedInt {
 		t.Errorf("Actual: %#v; Expected: %#v", actualInt, expectedInt)
@@ -791,9 +795,9 @@ func TestCodecEncoderRecord(t *testing.T) {
 	someRecord, err := NewRecord(RecordSchemaJson(recordSchemaJson))
 	checkErrorFatal(t, err, nil)
 
-	someRecord.Fields[0].Datum = "Aquaman"
-	someRecord.Fields[1].Datum = "The Atlantic is oddly cold this morning!"
-	someRecord.Fields[2].Datum = int64(1082196484)
+	someRecord.Set("username", "Aquaman")
+	someRecord.Set("comment", "The Atlantic is oddly cold this morning!")
+	someRecord.Set("timestamp", int64(1082196484))
 
 	bits := []byte("\x0eAquamanPThe Atlantic is oddly cold this morning!\x88\x88\x88\x88\x08")
 	checkCodecEncoderResult(t, recordSchemaJson, someRecord, bits)
@@ -804,7 +808,7 @@ func TestCodecEncoderRecordWithFieldDefaultValue(t *testing.T) {
 	someRecord, err := NewRecord(RecordSchemaJson(recordSchemaJson))
 	checkErrorFatal(t, err, nil)
 
-	someRecord.Fields[0].Datum = int32(64)
+	someRecord.Set("field1", int32(64))
 
 	bits := []byte("\x80\x01\x0ahappy")
 	checkCodecEncoderResult(t, recordSchemaJson, someRecord, bits)

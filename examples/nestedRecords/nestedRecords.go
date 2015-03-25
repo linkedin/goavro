@@ -78,8 +78,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	innerRecord.Fields[0].Datum = "Aquaman"
-	innerRecord.Fields[1].Datum = int64(1082196484)
+	innerRecord.Set("account", "Aquaman")
+	innerRecord.Set("creationDate", int64(1082196484))
 
 	// We create both an innerRecord and an outerRecord.
 	outerRecord, err := goavro.NewRecord(goavro.RecordSchemaJson(outerSchema))
@@ -89,10 +89,10 @@ func main() {
 	// innerRecord is a completely seperate record instance from
 	// outerRecord. Once we have an innerRecord instance it can be
 	// assigned to the appropriate Datum item of the outerRecord.
-	outerRecord.Fields[0].Datum = innerRecord
+	outerRecord.Set("user", innerRecord)
 	// Other fields are set on the outerRecord.
-	outerRecord.Fields[1].Datum = "The Atlantic is oddly cold this morning!"
-	outerRecord.Fields[2].Datum = int64(1427255074)
+	outerRecord.Set("comment", "The Atlantic is oddly cold this morning!")
+	outerRecord.Set("timestamp", int64(1427255074))
 
 	// Create a codec that encodes and decodes according to the
 	// outerSchema, which includes the innerSchema as the first

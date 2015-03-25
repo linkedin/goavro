@@ -40,6 +40,35 @@ type Record struct {
 	schemaMap map[string]interface{}
 }
 
+// Get returns the datum of the specified Record field.
+func (r Record) Get(fieldName string) (interface{}, error) {
+	// qualify fieldName searches based on record namespace
+	fn, _ := newName(nameName(fieldName), nameNamespace(r.n.ns))
+	searchName := fn.n
+
+	for _, field := range r.Fields {
+		if field.Name == searchName {
+			return field.Datum, nil
+		}
+	}
+	return nil, fmt.Errorf("no such field: %s", fieldName)
+}
+
+// Set updates the datum of the specified Record field.
+func (r Record) Set(fieldName string, value interface{}) error {
+	// qualify fieldName searches based on record namespace
+	fn, _ := newName(nameName(fieldName), nameNamespace(r.n.ns))
+	searchName := fn.n
+
+	for _, field := range r.Fields {
+		if field.Name == searchName {
+			field.Datum = value
+			return nil
+		}
+	}
+	return fmt.Errorf("no such field: %s", fieldName)
+}
+
 // String returns a string representation of the Record.
 func (r Record) String() string {
 	fields := make([]string, len(r.Fields))
