@@ -69,7 +69,8 @@ multiple times on multiple `io.Reader`s, `io.Writer`s, concurrently if
 desired.
 
 ```Go
-    codec, err := goavro.NewCodec(someJsonSchema)
+    someRecordSchemaJson := `{"type":"record","name":"Foo","fields":[{"name":"field1","type":"int"},{"name":"field2","type":"string","default":"happy"}]}`
+    codec, err := goavro.NewCodec(someRecordSchemaJson)
     if err != nil {
         return nil, err
     }
