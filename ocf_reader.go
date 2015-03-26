@@ -89,30 +89,30 @@ type Reader struct {
 // NewReader returns a object to read data from an io.Reader using the
 // Avro Object Container Files format.
 //
-// func main() {
-// 	conn, err := net.Dial("tcp", "127.0.0.1:8080")
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-// 	fr, err := goavro.NewReader(goavro.FromReader(conn))
-// 	if err != nil {
-// 		log.Fatal("cannot create Reader: ", err)
-// 	}
-// 	defer func() {
-// 		if err := fr.Close(); err != nil {
-// 			log.Fatal(err)
-// 		}
-// 	}()
+//     func main() {
+//         conn, err := net.Dial("tcp", "127.0.0.1:8080")
+//         if err != nil {
+//             log.Fatal(err)
+//         }
+//         fr, err := goavro.NewReader(goavro.FromReader(conn))
+//         if err != nil {
+//             log.Fatal("cannot create Reader: ", err)
+//         }
+//         defer func() {
+//             if err := fr.Close(); err != nil {
+//                 log.Fatal(err)
+//             }
+//         }()
 //
-// 	for fr.Scan() {
-// 		datum, err := fr.Read()
-// 		if err != nil {
-// 			log.Println("cannot read datum: ", err)
-// 			continue
-// 		}
-// 		fmt.Println("RECORD: ", datum)
-// 	}
-// }
+//         for fr.Scan() {
+//             datum, err := fr.Read()
+//             if err != nil {
+//                 log.Println("cannot read datum: ", err)
+//                 continue
+//             }
+//             fmt.Println("RECORD: ", datum)
+//         }
+//     }
 func NewReader(setters ...ReaderSetter) (*Reader, error) {
 	var err error
 	fr := &Reader{}
