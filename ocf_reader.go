@@ -153,8 +153,8 @@ func (fr *Reader) Scan() bool {
 }
 
 // Read returns the next element from the Reader.
-func (fr *Reader) Read() Datum {
-	return fr.datum
+func (fr *Reader) Read() (interface{}, error) {
+	return fr.datum.Value, fr.datum.Err
 }
 
 func decodeHeaderMetadata(r io.Reader) (map[string]interface{}, error) {

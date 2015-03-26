@@ -42,11 +42,11 @@ func main() {
 	}()
 
 	for fr.Scan() {
-		datum := fr.Read()
-		if datum.Err != nil {
-			log.Println("cannot read datum: ", datum.Err)
+		datum, err := fr.Read()
+		if err != nil {
+			log.Println("cannot read datum: ", err)
 			continue
 		}
-		fmt.Println("RECORD: ", datum.Value)
+		fmt.Println("RECORD: ", datum)
 	}
 }
