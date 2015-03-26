@@ -49,9 +49,6 @@ func TestNewWriterBailsMissingWriterSchema(t *testing.T) {
 
 	_, err = NewWriter(ToWriter(new(bytes.Buffer)), Compression(CompressionDeflate))
 	checkError(t, err, "missing schema")
-
-	_, err = NewWriter(ToWriter(new(bytes.Buffer)), Compression(CompressionSnappy))
-	checkError(t, err, "missing schema")
 }
 
 func TestNewWriterBailsInvalidWriterSchema(t *testing.T) {

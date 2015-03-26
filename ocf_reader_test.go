@@ -75,13 +75,13 @@ func TestFileRead(t *testing.T) {
 	}()
 	var count int
 	for fr.Scan() {
-		datum := fr.Read()
-		if datum.Err != nil {
-			t.Errorf("Actual: %#v; Expected: %#v", datum.Err, nil)
+		datum, err := fr.Read()
+		if err != nil {
+			t.Errorf("Actual: %#v; Expected: %#v", err, nil)
 		}
-		_, ok := datum.Value.(*Record)
+		_, ok := datum.(*Record)
 		if !ok {
-			t.Errorf("Actual: %T; Expected: *Record", datum.Value)
+			t.Errorf("Actual: %T; Expected: *Record", datum)
 		}
 		count++
 	}

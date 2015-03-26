@@ -68,7 +68,6 @@ func serveClient(conn net.Conn) {
 	fw, err := goavro.NewWriter(
 		goavro.BlockSize(2),
 		goavro.Compression(goavro.CompressionDeflate),
-		// goavro.Compression(goavro.CompressionSnappy),
 		goavro.WriterSchema(recordSchema),
 		goavro.ToWriter(conn))
 	if err != nil {
