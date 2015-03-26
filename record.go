@@ -150,9 +150,9 @@ func NewRecord(setters ...RecordSetter) (*Record, error) {
 // instantiate a new Record.
 type RecordSetter func(*Record) error
 
-// RecordSchema specifies the schema of the record to create. Schema
+// recordSchemaRaw specifies the schema of the record to create. Schema
 // must be `map[string]interface{}`.
-func RecordSchema(schema interface{}) RecordSetter {
+func recordSchemaRaw(schema interface{}) RecordSetter {
 	return func(r *Record) error {
 		var ok bool
 		r.schemaMap, ok = schema.(map[string]interface{})
@@ -163,9 +163,9 @@ func RecordSchema(schema interface{}) RecordSetter {
 	}
 }
 
-// RecordSchemaJson specifies the schema of the record to
+// RecordSchema specifies the schema of the record to
 // create. Schema must be a JSON string.
-func RecordSchemaJson(recordSchemaJson string) RecordSetter {
+func RecordSchema(recordSchemaJson string) RecordSetter {
 	return func(r *Record) error {
 		var schema interface{}
 		err := json.Unmarshal([]byte(recordSchemaJson), &schema)

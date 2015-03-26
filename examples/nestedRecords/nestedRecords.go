@@ -74,7 +74,7 @@ func main() {
 	//
 	// NewRecord will create a goavro.Record instance
 	// corresponding to the specified schema.
-	innerRecord, err := goavro.NewRecord(goavro.RecordSchemaJson(innerSchema))
+	innerRecord, err := goavro.NewRecord(goavro.RecordSchema(innerSchema))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -82,7 +82,7 @@ func main() {
 	innerRecord.Set("creationDate", int64(1082196484))
 
 	// We create both an innerRecord and an outerRecord.
-	outerRecord, err := goavro.NewRecord(goavro.RecordSchemaJson(outerSchema))
+	outerRecord, err := goavro.NewRecord(goavro.RecordSchema(outerSchema))
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -364,7 +364,7 @@ func TestCodecEncoderUnionMap(t *testing.T) {
 func TestCodecEncoderUnionRecord(t *testing.T) {
 	recordSchemaJson := `{"type":"record","name":"record1","fields":[{"type":"int","name":"field1"},{"type":"string","name":"field2"}]}`
 
-	someRecord, err := NewRecord(RecordSchemaJson(recordSchemaJson))
+	someRecord, err := NewRecord(RecordSchema(recordSchemaJson))
 	checkErrorFatal(t, err, nil)
 
 	someRecord.Set("field1", int32(13))
@@ -460,7 +460,7 @@ func TestCodecRecordFieldChecksDefaultType(t *testing.T) {
 	codec, err := NewCodec(recordSchemaJson)
 	checkErrorFatal(t, err, nil)
 
-	someRecord, err := NewRecord(RecordSchemaJson(recordSchemaJson))
+	someRecord, err := NewRecord(RecordSchema(recordSchemaJson))
 	checkErrorFatal(t, err, nil)
 
 	bb := new(bytes.Buffer)
@@ -803,7 +803,7 @@ func TestCodecDecoderRecord(t *testing.T) {
 
 func TestCodecEncoderRecord(t *testing.T) {
 	recordSchemaJson := `{"type":"record","name":"comments","namespace":"com.example","fields":[{"name":"username","type":"string","doc":"Name of user"},{"name":"comment","type":"string","doc":"The content of the user's message"},{"name":"timestamp","type":"long","doc":"Unix epoch time in milliseconds"}],"doc:":"A basic schema for storing blog comments"}`
-	someRecord, err := NewRecord(RecordSchemaJson(recordSchemaJson))
+	someRecord, err := NewRecord(RecordSchema(recordSchemaJson))
 	checkErrorFatal(t, err, nil)
 
 	someRecord.Set("username", "Aquaman")
@@ -816,7 +816,7 @@ func TestCodecEncoderRecord(t *testing.T) {
 
 func TestCodecEncoderRecordWithFieldDefaultValue(t *testing.T) {
 	recordSchemaJson := `{"type":"record","name":"Foo","fields":[{"name":"field1","type":"int"},{"name":"field2","type":"string","default":"happy"}]}`
-	someRecord, err := NewRecord(RecordSchemaJson(recordSchemaJson))
+	someRecord, err := NewRecord(RecordSchema(recordSchemaJson))
 	checkErrorFatal(t, err, nil)
 
 	someRecord.Set("field1", int32(64))

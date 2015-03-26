@@ -50,7 +50,7 @@ func main() {
   ]
 }
 `
-	someRecord, err := goavro.NewRecord(goavro.RecordSchemaJson(recordSchemaJson))
+	someRecord, err := goavro.NewRecord(goavro.RecordSchema(recordSchemaJson))
 	if err != nil {
 		log.Fatal(err)
 	}

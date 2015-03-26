@@ -30,7 +30,7 @@ func TestRecordRequiresSchema(t *testing.T) {
 
 func TestRecordFieldNames(t *testing.T) {
 	someJsonSchema := `{"type":"record","name":"org.foo.Y","fields":[{"type":"int","name":"X"},{"type":"string","name":"W"}]}`
-	someRecord, err := NewRecord(RecordSchemaJson(someJsonSchema))
+	someRecord, err := NewRecord(RecordSchema(someJsonSchema))
 	checkErrorFatal(t, err, nil)
 	if someRecord.Name != "org.foo.Y" {
 		t.Errorf("Actual: %#v; Expected: %#v", someRecord.Name, "org.foo.Y")
@@ -100,11 +100,11 @@ func TestRecordBailsWithoutName(t *testing.T) {
 	schema["fields"] = recordFields
 
 	schema["name"] = 5
-	_, err := NewRecord(RecordSchema(schema))
+	_, err := NewRecord(recordSchemaRaw(schema))
 	checkErrorFatal(t, err, "ought to be non-empty string")
 
 	schema["name"] = ""
-	_, err = NewRecord(RecordSchema(schema))
+	_, err = NewRecord(recordSchemaRaw(schema))
 	checkError(t, err, "ought to be non-empty string")
 }
 
@@ -112,27 +112,27 @@ func TestRecordBailsWithoutFields(t *testing.T) {
 	schema := make(map[string]interface{})
 
 	schema["name"] = "someRecord"
-	_, err := NewRecord(RecordSchema(schema))
+	_, err := NewRecord(recordSchemaRaw(schema))
 	checkError(t, err, fmt.Errorf("record requires fields"))
 
 	schema["fields"] = 5
-	_, err = NewRecord(RecordSchema(schema))
+	_, err = NewRecord(recordSchemaRaw(schema))
 	checkError(t, err, fmt.Errorf("record fields ought to be non-empty array"))
 
 	schema["fields"] = make([]interface{}, 0)
-	_, err = NewRecord(RecordSchema(schema))
+	_, err = NewRecord(recordSchemaRaw(schema))
 	checkError(t, err, fmt.Errorf("record fields ought to be non-empty array"))
 
 	fields := make([]interface{}, 0)
 	fields = append(fields, "int")
 	schema["fields"] = fields
-	_, err = NewRecord(RecordSchema(schema))
+	_, err = NewRecord(recordSchemaRaw(schema))
 	checkError(t, err, fmt.Errorf("expected: map[string]interface{}; actual: string"))
 }
 
 func TestRecordFieldUnion(t *testing.T) {
 	someJsonSchema := `{"type":"record","name":"Foo","fields":[{"type":["null","string"],"name":"field1"}]}`
-	_, err := NewRecord(RecordSchemaJson(someJsonSchema))
+	_, err := NewRecord(RecordSchema(someJsonSchema))
 	checkError(t, err, nil)
 }
 
@@ -169,7 +169,7 @@ func TestRecordGetFieldSchema(t *testing.T) {
   ]
 }
 `
-	outerRecord, err := NewRecord(RecordSchemaJson(outerSchema))
+	outerRecord, err := NewRecord(RecordSchema(outerSchema))
 	checkErrorFatal(t, err, nil)
 	// make sure it bails when no such schema
 	schema, err := outerRecord.GetFieldSchema("no-such-field")

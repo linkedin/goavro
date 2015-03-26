@@ -69,7 +69,7 @@ func init() {
 func main() {
 	innerRecords := make([]interface{}, 0)
 	// make first inner record
-	innerRecord, err := goavro.NewRecord(goavro.RecordSchemaJson(innerSchema))
+	innerRecord, err := goavro.NewRecord(goavro.RecordSchema(innerSchema))
 	if err != nil {
 		panic(fmt.Errorf("cannot create innerRecord: %v", err))
 	}
@@ -81,12 +81,12 @@ func main() {
 	}
 	innerRecords = append(innerRecords, innerRecord)
 	// make another inner record
-	innerRecord, _ = goavro.NewRecord(goavro.RecordSchemaJson(innerSchema))
+	innerRecord, _ = goavro.NewRecord(goavro.RecordSchema(innerSchema))
 	innerRecord.Set("stringValue", "World")
 	innerRecord.Set("intValue", int32(2))
 	innerRecords = append(innerRecords, innerRecord)
 	// make outer record
-	outerRecord, err := goavro.NewRecord(goavro.RecordSchemaJson(outerSchema))
+	outerRecord, err := goavro.NewRecord(goavro.RecordSchema(outerSchema))
 	if err != nil {
 		panic(fmt.Errorf("cannot create outerRecord: %v", err))
 	}

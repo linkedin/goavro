@@ -467,7 +467,7 @@ func (st symtab) makeRecordCodec(enclosingNamespace string, schema interface{}) 
 	cannotCreate := makeErrorReporter("cannot create record (%s): ", errorNamespace)
 
 	// delegate schema checks to NewRecord()
-	recordTemplate, err := NewRecord(RecordSchema(schema), RecordEnclosingNamespace(enclosingNamespace))
+	recordTemplate, err := NewRecord(recordSchemaRaw(schema), RecordEnclosingNamespace(enclosingNamespace))
 	if err != nil {
 		return nil, cannotCreate("%v", err)
 	}
@@ -487,7 +487,7 @@ func (st symtab) makeRecordCodec(enclosingNamespace string, schema interface{}) 
 	c := &codec{
 		nm: recordTemplate.n,
 		df: func(r io.Reader) (interface{}, error) {
-			someRecord, _ := NewRecord(RecordSchema(schema), RecordEnclosingNamespace(enclosingNamespace))
+			someRecord, _ := NewRecord(recordSchemaRaw(schema), RecordEnclosingNamespace(enclosingNamespace))
 			for idx, codec := range fieldCodecs {
 				value, err := codec.Decode(r)
 				if err != nil {
