@@ -91,6 +91,24 @@ func (r Record) String() string {
 
 // NewRecord will create a Record instance corresponding to the
 // specified schema.
+//
+//    func recordExample(codec goavro.Codec, w io.Writer, recordSchema string) error {
+//         // To encode a Record, you need to instantiate a Record instance
+//         // that adheres to the schema the Encoder expect.
+//         someRecord, err := goavro.NewRecord(goavro.RecordSchema(recordSchema))
+//         if err != nil {
+//             return err
+//         }
+//         // Once you have a Record, you can set the values of the various fields.
+//         someRecord.Set("username", "Aquaman")
+//         someRecord.Set("comment", "The Atlantic is oddly cold this morning!")
+//         // Feel free to fully qualify the field name if you'd like
+//         someRecord.Set("com.example.timestamp", int64(1082196484))
+//
+//         // Once the fields of the Record have the correct data, you can encode it
+//         err = codec.Encode(w, someRecord)
+//         return err
+//     }
 func NewRecord(setters ...RecordSetter) (*Record, error) {
 	record := &Record{n: &name{}}
 	for _, setter := range setters {
