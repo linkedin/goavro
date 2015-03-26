@@ -27,6 +27,7 @@ const (
 const (
 	CompressionNull    = "null"
 	CompressionDeflate = "deflate"
+	CompressionSnappy  = "snappy"
 )
 
 var (
@@ -41,7 +42,7 @@ func init() {
 // string is supported by this library.
 func IsCompressionCodecSupported(someCodec string) bool {
 	switch someCodec {
-	case CompressionNull, CompressionDeflate:
+	case CompressionNull, CompressionDeflate, CompressionSnappy:
 		return true
 	default:
 		return false

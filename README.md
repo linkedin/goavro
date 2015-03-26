@@ -10,12 +10,16 @@ streams. Goavro fully adheres to
 
 ## Resources
 
-* [Avro](http://avro.apache.org/)
 * [Avro CLI Examples](https://github.com/miguno/avro-cli-examples)
+* [Avro](http://avro.apache.org/)
+* [Google Snappy](https://code.google.com/p/snappy/)
 * [JavaScript Object Notation, JSON](http://www.json.org/)
 * [Kafka](http://kafka.apache.org)
 
 ## Usage
+
+Please see the example programs in the `examples` directory for
+reference.
 
 Although the Avro specification defines the terms reader and writer as
 library components which read and write Avro data, Go has particular
@@ -61,7 +65,7 @@ different `io` streams as desired.
     func (c *codec) Encode(w io.Writer, datum interface{}) error
 ```
 
-### Creating a `Codec`
+#### Creating a `Codec`
 
 The below is an example of creating a `Codec` from a provided JSON
 schema. `Codec`s do not maintain any internal state, and may be used
@@ -76,7 +80,7 @@ desired.
     }
 ```
 
-### Decoding data
+#### Decoding data
 
 The below is a simplified example of decoding binary data to be read
 from an `io.Reader` into a single datum using a previously compiled
@@ -92,7 +96,7 @@ objects.
     }
 ```
 
-### Encoding data
+#### Encoding data
 
 The below is a simplified example of encoding a single datum into the
 Avro binary format using a previously compiled `Codec`. The `Encode`
@@ -113,20 +117,114 @@ Another example, this time leveraging `bufio.Writer`:
 ```Go
     // Encoding data using bufio.Writer to buffer the writes
     // during data encoding:
- 
+
     func encodeWithBufferedWriter(c Codec, w io.Writer, datum interface{}) error {
-     	bw := bufio.NewWriter(w)
-     	err := c.Encode(bw, datum)
-     	if err != nil {
-     		return err
-     	}
-     	return bw.Flush()
+        bw := bufio.NewWriter(w)
+        err := c.Encode(bw, datum)
+        if err != nil {
+            return err
+        }
+        return bw.Flush()
     }
- 
+
     err := encodeWithBufferedWriter(codec, w, datum)
     if err != nil {
         return nil, err
     }
+```
+
+### Reader and Writer helper types
+
+The `Codec` interface provides means to encode and decode any Avro
+data, but a number of additional helper types are provided to handle
+streaming of Avro data.
+
+See the example programs `examples/file/reader.go` and
+`examples/file/writer.go` for more context:
+
+This example wraps the provided `io.Reader` in a `bufio.Reader` and
+dumps the data to standard output.
+
+```Go
+func dumpReader(r io.Reader) {
+	fr, err := goavro.NewReader(goavro.BufferFromReader(r))
+	if err != nil {
+		log.Fatal("cannot create Reader: ", err)
+	}
+	defer func() {
+		if err := fr.Close(); err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	for fr.Scan() {
+		datum, err := fr.Read()
+		if err != nil {
+			log.Println("cannot read datum: ", err)
+			continue
+		}
+		fmt.Println(datum)
+	}
+}
+```
+
+This example buffers the provided `io.Writer` in a `bufio.Writer`, and
+writes some data to the stream.
+
+```Go
+func makeSomeData(w io.Writer) error {
+    recordSchema := `
+    {
+      "type": "record",
+      "name": "example",
+      "fields": [
+        {
+          "type": "string",
+          "name": "username"
+        },
+        {
+          "type": "string",
+          "name": "comment"
+        },
+        {
+          "type": "long",
+          "name": "timestamp"
+        }
+      ]
+    }
+    `
+	fw, err := goavro.NewWriter(
+		goavro.BlockSize(13), // example; default is 10
+		goavro.Compression(goavro.CompressionSnappy), // default is CompressionNull
+		goavro.WriterSchema(recordSchema),
+		goavro.ToWriter(w))
+	if err != nil {
+		log.Fatal("cannot create Writer: ", err)
+	}
+	defer fw.Close()
+
+    // make a record instance using the same schema
+	someRecord, err := goavro.NewRecord(goavro.RecordSchema(recordSchema))
+	if err != nil {
+		log.Fatal(err)
+	}
+	// identify field name to set datum for
+	someRecord.Set("username", "Aquaman")
+	someRecord.Set("comment", "The Atlantic is oddly cold this morning!")
+	// you can fully qualify the field name
+	someRecord.Set("com.example.timestamp", int64(1082196484))
+    fw.Write(someRecord)
+
+    // make another record
+	someRecord, err = goavro.NewRecord(goavro.RecordSchema(recordSchema))
+	if err != nil {
+		log.Fatal(err)
+	}
+	someRecord.Set("username", "Batman")
+	someRecord.Set("comment", "Who are all of these crazies?")
+	someRecord.Set("com.example.timestamp", int64(1427383430))
+    fw.Write(someRecord)
+}
 ```
 
 ## Limitations
@@ -154,23 +252,6 @@ that is what most applications need.
 
 Note that data schemas are always encoded using JSON, as per the
 specification.
-
-### Avro Object Container Files
-
-Goavro can decode binary encoded Avro data, and encode data into
-Avro's binary encoding. Goavro does not presently handle
-[Avro Object Container Files](http://avro.apache.org/docs/1.7.7/spec.html#Object+Container+Files).
-The Avro Object Container Files format is a file encoding schema that
-sits on top of the Avro Data Serialization format. This has been
-implemented but removed until a future release once the API can be
-improved.
-
-Recall that Avro Data Serialization allows for two encodings: binary
-and JSON. Avro Object Container Files is a higher layer of abstraction
-above Avro Data Serialization that allows for `null`, `deflate`, and
-optionally the `snappy` codecs for storing data in a file. All of
-these compression codecs will be supported once Avro Object Container
-Files support is reintegrated.
 
 ### Kafka Streams
 
@@ -204,7 +285,39 @@ Unless required by applicable law or agreed to in writing, software
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 implied.
 
+### Google Snappy license
+
+Copyright (c) 2011 The Snappy-Go Authors. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+   * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+   * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+   * Neither the name of Google Inc. nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 ## Third Party Dependencies
 
-Goavro has no third party dependencies outside of the standard library
-included with the Go language.
+### Google Snappy
+
+Goavro links with [Google Snappy](https://code.google.com/p/snappy/)
+to provide Snappy compression and decompression support.

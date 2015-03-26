@@ -21,6 +21,7 @@ package goavro
 import (
 	"bufio"
 	"bytes"
+	"code.google.com/p/snappy-go/snappy"
 	"compress/flate"
 	"fmt"
 	"io"
@@ -261,6 +262,24 @@ func decompress(fr *Reader, toDecompress <-chan *readerBlock, toDecode chan<- *r
 		}
 	case CompressionNull:
 		for block := range toDecompress {
+			toDecode <- block
+		}
+	case CompressionSnappy:
+		var src, dst []byte
+		for block := range toDecompress {
+			src, block.err = ioutil.ReadAll(block.r)
+			if block.err != nil {
+				block.err = fmt.Errorf("cannot read: %v", block.err)
+				toDecode <- block
+				continue
+			}
+			dst, block.err = snappy.Decode(dst, src)
+			if block.err != nil {
+				block.err = fmt.Errorf("cannot decompress: %v", block.err)
+				toDecode <- block
+				continue
+			}
+			block.r = bytes.NewReader(dst)
 			toDecode <- block
 		}
 	}

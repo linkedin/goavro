@@ -56,8 +56,8 @@ func main() {
 	}
 	defer fh.Close()
 	fw, err := goavro.NewWriter(
-		goavro.BlockSize(2),
-		goavro.Compression(goavro.CompressionDeflate),
+		goavro.BlockSize(13), // just because
+		goavro.Compression(goavro.CompressionSnappy),
 		goavro.WriterSchema(recordSchema),
 		goavro.ToWriter(fh))
 	if err != nil {

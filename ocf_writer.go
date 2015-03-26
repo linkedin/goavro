@@ -21,6 +21,7 @@ package goavro
 import (
 	"bufio"
 	"bytes"
+	"code.google.com/p/snappy-go/snappy"
 	"compress/flate"
 	"encoding/json"
 	"fmt"
@@ -274,11 +275,6 @@ func encoder(fw *Writer, toEncode <-chan *writerBlock, toCompress chan<- *writer
 
 func compressor(fw *Writer, toCompress <-chan *writerBlock, toWrite chan<- *writerBlock) {
 	switch fw.CompressionCodec {
-	case CompressionNull:
-		for block := range toCompress {
-			block.compressed = block.encoded.Bytes()
-			toWrite <- block
-		}
 	case CompressionDeflate:
 		bb := new(bytes.Buffer)
 		comp, _ := flate.NewWriter(bb, flate.DefaultCompression)
@@ -289,6 +285,19 @@ func compressor(fw *Writer, toCompress <-chan *writerBlock, toWrite chan<- *writ
 			toWrite <- block
 			bb = new(bytes.Buffer)
 			comp.Reset(bb)
+		}
+	case CompressionNull:
+		for block := range toCompress {
+			block.compressed = block.encoded.Bytes()
+			toWrite <- block
+		}
+	case CompressionSnappy:
+		for block := range toCompress {
+			block.compressed, block.err = snappy.Encode(block.compressed, block.encoded.Bytes())
+			if block.err != nil {
+				block.err = fmt.Errorf("cannot compress: %v", block.err)
+			}
+			toWrite <- block
 		}
 	}
 	close(toWrite)
