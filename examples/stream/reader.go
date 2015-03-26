@@ -16,39 +16,36 @@
 //  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 // implied.
 
-package goavro
+package main
 
-const (
-	magicBytes     = "Obj\x01"
-	syncLength     = 16
-	metadataSchema = `{"type":"map","values":"bytes"}`
+import (
+	"fmt"
+	"github.com/linkedin/goavro"
+	"log"
+	"net"
 )
 
-const (
-	CompressionNull    = "null"
-	CompressionDeflate = "deflate"
-	CompressionSnappy  = "snappy"
-)
+func main() {
+	conn, err := net.Dial("tcp", "127.0.0.1:8080")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fr, err := goavro.NewReader(goavro.FromReader(conn))
+	if err != nil {
+		log.Fatal("cannot create Reader: ", err)
+	}
+	defer func() {
+		if err := fr.Close(); err != nil {
+			log.Fatal(err)
+		}
+	}()
 
-var (
-	metadataCodec Codec
-)
-
-func init() {
-	metadataCodec, _ = NewCodec(metadataSchema)
-}
-
-// IsCompressionCodecSupported returns true if and only if the specified codec
-// string is supported by this library.
-func IsCompressionCodecSupported(someCodec string) bool {
-	switch someCodec {
-	case CompressionNull, CompressionDeflate, CompressionSnappy:
-		return true
-	default:
-		return false
+	for fr.Scan() {
+		datum := fr.Read()
+		if datum.Err != nil {
+			log.Println("cannot read datum: ", datum.Err)
+			continue
+		}
+		fmt.Println("RECORD: ", datum.Value)
 	}
 }
-
-// // FileSetter functions are those those which are used to instantiate
-// // a new FileReader or FileWriter.
-// type FileSetter func(*File) error

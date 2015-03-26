@@ -21,7 +21,6 @@ package goavro
 import (
 	"bytes"
 	"io"
-	"os"
 	"testing"
 )
 
@@ -31,50 +30,50 @@ func init() {
 	defaultSync = []byte("\x21\x0f\xc7\xbb\x81\x86\x39\xac\x48\xa4\xc6\xaf\xa2\xf1\x58\x1a")
 }
 
-func TestNewFileWriterBailsUnsupportedCodec(t *testing.T) {
+func TestNewWriterBailsUnsupportedCodec(t *testing.T) {
 	var err error
-	_, err = NewFileWriter(ToWriter(new(bytes.Buffer)), FileCompression(""))
+	_, err = NewWriter(ToWriter(new(bytes.Buffer)), Compression(""))
 	checkError(t, err, "unsupported codec")
 
-	_, err = NewFileWriter(ToWriter(new(bytes.Buffer)), FileCompression("ficticious test codec name"))
+	_, err = NewWriter(ToWriter(new(bytes.Buffer)), Compression("ficticious test codec name"))
 	checkError(t, err, "unsupported codec")
 }
 
-func TestNewFileWriterBailsMissingSchema(t *testing.T) {
+func TestNewWriterBailsMissingWriterSchema(t *testing.T) {
 	var err error
-	_, err = NewFileWriter(ToWriter(new(bytes.Buffer)))
+	_, err = NewWriter(ToWriter(new(bytes.Buffer)))
 	checkError(t, err, "missing schema")
 
-	_, err = NewFileWriter(ToWriter(new(bytes.Buffer)), FileCompression(CompressionNull))
+	_, err = NewWriter(ToWriter(new(bytes.Buffer)), Compression(CompressionNull))
 	checkError(t, err, "missing schema")
 
-	_, err = NewFileWriter(ToWriter(new(bytes.Buffer)), FileCompression(CompressionDeflate))
+	_, err = NewWriter(ToWriter(new(bytes.Buffer)), Compression(CompressionDeflate))
 	checkError(t, err, "missing schema")
 
-	_, err = NewFileWriter(ToWriter(new(bytes.Buffer)), FileCompression(CompressionSnappy))
+	_, err = NewWriter(ToWriter(new(bytes.Buffer)), Compression(CompressionSnappy))
 	checkError(t, err, "missing schema")
 }
 
-func TestNewFileWriterBailsInvalidSchema(t *testing.T) {
-	_, err := NewFileWriter(FileSchema("this should not compile"))
+func TestNewWriterBailsInvalidWriterSchema(t *testing.T) {
+	_, err := NewWriter(WriterSchema("this should not compile"))
 	checkError(t, err, "compiling schema")
 }
 
-func TestNewFileWriterBailsBadSync(t *testing.T) {
-	_, err := NewFileWriter(FileSchema(`"int"`), FileSync(make([]byte, 0)))
+func TestNewWriterBailsBadSync(t *testing.T) {
+	_, err := NewWriter(WriterSchema(`"int"`), Sync(make([]byte, 0)))
 	checkError(t, err, "sync marker ought to be 16 bytes long")
 
-	_, err = NewFileWriter(FileSchema(`"int"`), FileSync(make([]byte, syncLength-1)))
+	_, err = NewWriter(WriterSchema(`"int"`), Sync(make([]byte, syncLength-1)))
 	checkError(t, err, "sync marker ought to be 16 bytes long")
 
-	_, err = NewFileWriter(FileSchema(`"int"`), FileSync(make([]byte, syncLength+1)))
+	_, err = NewWriter(WriterSchema(`"int"`), Sync(make([]byte, syncLength+1)))
 	checkError(t, err, "sync marker ought to be 16 bytes long")
 }
 
-func TestNewFileWriterCreatesRandomSync(t *testing.T) {
+func TestNewWriterCreatesRandomSync(t *testing.T) {
 	bb := new(bytes.Buffer)
 	func(w io.Writer) {
-		fw, err := NewFileWriter(ToWriter(w), FileSchema(`"int"`))
+		fw, err := NewWriter(ToWriter(w), WriterSchema(`"int"`))
 		if err != nil {
 			t.Fatalf("Actual: %#v; Expected: %#v", err, nil)
 		}
@@ -89,10 +88,10 @@ func TestNewFileWriterCreatesRandomSync(t *testing.T) {
 	}
 }
 
-func TestFileWriteHeaderCustomSync(t *testing.T) {
+func TestWriteHeaderCustomSync(t *testing.T) {
 	bb := new(bytes.Buffer)
 	func(w io.Writer) {
-		fw, err := NewFileWriter(ToWriter(w), FileSchema(`"int"`), FileSync(defaultSync))
+		fw, err := NewWriter(ToWriter(w), WriterSchema(`"int"`), Sync(defaultSync))
 		if err != nil {
 			t.Fatalf("Actual: %#v; Expected: %#v", err, nil)
 		}
@@ -110,18 +109,18 @@ func TestFileWriteHeaderCustomSync(t *testing.T) {
 	}
 }
 
-func TestFileWriteWithNullCodec(t *testing.T) {
+func TestWriteWithNullCodec(t *testing.T) {
 	bb := new(bytes.Buffer)
 	func(w io.Writer) {
-		fw, err := NewFileWriter(BufferToWriter(w), FileSchema(`"int"`), FileSync(defaultSync))
+		fw, err := NewWriter(BufferToWriter(w), WriterSchema(`"int"`), Sync(defaultSync))
 		if err != nil {
 			t.Fatalf("Actual: %#v; Expected: %#v", err, nil)
 		}
 		defer fw.Close()
-		fw.Enqueue(int32(13))
-		fw.Enqueue(int32(42))
-		fw.Enqueue(int32(54))
-		fw.Enqueue(int32(99))
+		fw.Write(int32(13))
+		fw.Write(int32(42))
+		fw.Write(int32(54))
+		fw.Write(int32(99))
 	}(bb)
 	t.Logf("bb: %+v", bb.Bytes())
 
@@ -136,23 +135,23 @@ func TestFileWriteWithNullCodec(t *testing.T) {
 	}
 }
 
-func _TestFileWriteWithDeflateCodec(t *testing.T) {
+func _TestWriteWithDeflateCodec(t *testing.T) {
 	bb := new(bytes.Buffer)
 	func(w io.Writer) {
-		fw, err := NewFileWriter(
-			FileBlockSize(2),
-			FileCompression(CompressionDeflate),
-			FileSchema(`"int"`),
-			FileSync(defaultSync),
+		fw, err := NewWriter(
+			BlockSize(2),
+			Compression(CompressionDeflate),
+			WriterSchema(`"int"`),
+			Sync(defaultSync),
 			ToWriter(w))
 		if err != nil {
 			t.Fatalf("Actual: %#v; Expected: %#v", err, nil)
 		}
 		defer fw.Close()
-		fw.Enqueue(int32(13))
-		fw.Enqueue(int32(42))
-		fw.Enqueue(int32(54))
-		fw.Enqueue(int32(99))
+		fw.Write(int32(13))
+		fw.Write(int32(42))
+		fw.Write(int32(54))
+		fw.Write(int32(99))
 	}(bb)
 
 	// NOTE: because key value pair ordering is indeterminate,
@@ -164,27 +163,4 @@ func _TestFileWriteWithDeflateCodec(t *testing.T) {
 	if (bytes.Compare(actual, option1) != 0) && (bytes.Compare(actual, option2) != 0) {
 		t.Errorf("Actual: %#v; Expected: %#v", actual, option1)
 	}
-}
-
-func TestFileWriteToDisk(t *testing.T) {
-	fh, err := os.Create("test.avro")
-	checkErrorFatal(t, err, nil)
-	defer fh.Close()
-	func(w io.Writer) {
-		fw, err := NewFileWriter(
-			FileBlockSize(2),
-			// FileCompression(CompressionDeflate),
-			FileCompression(CompressionSnappy),
-			FileSchema(`"int"`),
-			FileSync(defaultSync),
-			ToWriter(w))
-		if err != nil {
-			t.Fatalf("Actual: %#v; Expected: %#v", err, nil)
-		}
-		defer fw.Close()
-		fw.Enqueue(int32(13))
-		fw.Enqueue(int32(42))
-		fw.Enqueue(int32(54))
-		fw.Enqueue(int32(99))
-	}(fh)
 }
