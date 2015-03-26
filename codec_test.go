@@ -725,7 +725,23 @@ func TestCodecEncoderMap(t *testing.T) {
 	schema := `{"type":"map","values":"string"}`
 	datum := make(map[string]interface{})
 	datum["name"] = "sam"
-	checkCodecEncoderResult(t, schema, datum, []byte("\x02\x08name\x06sam\x00"))
+	datum["color"] = "blue"
+	checkCodecEncoderResult(t, schema, datum, []byte("\x04\x08name\x06sam\x0acolor\x08blue\x00"))
+}
+
+func TestCodecEncoderMapMetadataSchema(t *testing.T) {
+	md := make(map[string]interface{})
+	md["avro.codec"] = []byte("null")
+	md["avro.schema"] = []byte(`"int"`)
+	bits := []byte("\x04\x14avro.codec\x08null\x16avro.schema\x0a" + `"int"` + "\x00")
+	checkCodecEncoderResult(t, metadataSchema, md, bits)
+
+	bb := new(bytes.Buffer)
+	err := metadataCodec.Encode(bb, md)
+	checkErrorFatal(t, err, nil)
+	if bytes.Compare(bb.Bytes(), bits) != 0 {
+		t.Errorf("Actual: %#v; Expected: %#v", bb.Bytes(), bits)
+	}
 }
 
 func TestCodecRecordChecksSchema(t *testing.T) {
