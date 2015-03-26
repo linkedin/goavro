@@ -21,17 +21,31 @@ package main
 import (
 	"fmt"
 	"github.com/linkedin/goavro"
+	"io"
 	"log"
 	"os"
 )
 
 func main() {
-	fh, err := os.Open("test.avro")
-	if err != nil {
-		log.Fatal("cannot open file: ", err)
+	if len(os.Args) > 1 {
+		for i, arg := range os.Args {
+			if i == 0 {
+				continue
+			}
+			fh, err := os.Open(arg)
+			if err != nil {
+				log.Fatal("cannot open file: ", err)
+			}
+			dumpReader(fh)
+			fh.Close()
+		}
+	} else {
+		dumpReader(os.Stdin)
 	}
-	defer fh.Close()
-	fr, err := goavro.NewReader(goavro.FromReader(fh))
+}
+
+func dumpReader(r io.Reader) {
+	fr, err := goavro.NewReader(goavro.BufferFromReader(r))
 	if err != nil {
 		log.Fatal("cannot create Reader: ", err)
 	}
@@ -47,6 +61,6 @@ func main() {
 			log.Println("cannot read datum: ", err)
 			continue
 		}
-		fmt.Println("RECORD: ", datum)
+		fmt.Println(datum)
 	}
 }
