@@ -729,7 +729,7 @@ func TestCodecEncoderMapMetadataSchema(t *testing.T) {
 	// NOTE: because key value pair ordering is indeterminate,
 	// there are two valid possibilities for the encoded map:
 	option1 := []byte("\x04\x14avro.codec\x08null\x16avro.schema\x0a" + `"int"` + "\x00")
-	option2 := []byte("\x04\x16avro.schema\x14avro.codec\x08null\x0a" + `"int"` + "\x00")
+	option2 := []byte("\x04\x16avro.schema\x0a" + `"int"` + "\x14avro.codec\x08null\x00")
 
 	bb := new(bytes.Buffer)
 	err := metadataCodec.Encode(bb, md)
