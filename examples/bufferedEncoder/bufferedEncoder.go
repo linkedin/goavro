@@ -37,14 +37,14 @@ func main() {
 	}
 }
 
-func bufferedEncoder(someSchemaJson string, datum interface{}) (bits []byte, err error) {
+func bufferedEncoder(someSchemaJSON string, datum interface{}) (bits []byte, err error) {
 	bb := new(bytes.Buffer)
 	defer func() {
 		bits = bb.Bytes()
 	}()
 
 	var c goavro.Codec
-	c, err = goavro.NewCodec(someSchemaJson)
+	c, err = goavro.NewCodec(someSchemaJSON)
 	if err != nil {
 		return
 	}

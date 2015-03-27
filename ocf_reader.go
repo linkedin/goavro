@@ -29,6 +29,8 @@ import (
 	"strings"
 )
 
+// ErrReaderInit is returned when an error is created during Reader
+// initialization.
 type ErrReaderInit struct {
 	Message string
 	Err     error
@@ -44,6 +46,8 @@ func (e *ErrReaderInit) Error() string {
 	}
 }
 
+// ErrReaderBlockCount is returned when a reader detects an error
+// while attempting to read the block count and block size.
 type ErrReaderBlockCount struct {
 	Err error
 }
@@ -56,8 +60,8 @@ func (e *ErrReaderBlockCount) Error() string {
 // a new Reader.
 type ReaderSetter func(*Reader) error
 
-// Reader wraps the specified `io.Reader` using a `bufio.Reader`
-// to read from a file.
+// BufferFromReader wraps the specified `io.Reader` using a
+// `bufio.Reader` to read from a file.
 func BufferFromReader(r io.Reader) ReaderSetter {
 	return func(fr *Reader) error {
 		fr.r = bufio.NewReader(r)
@@ -65,7 +69,7 @@ func BufferFromReader(r io.Reader) ReaderSetter {
 	}
 }
 
-// Reader specifies the `io.Reader` to use when reading a file.
+// FromReader specifies the `io.Reader` to use when reading a file.
 func FromReader(r io.Reader) ReaderSetter {
 	return func(fr *Reader) error {
 		fr.r = r

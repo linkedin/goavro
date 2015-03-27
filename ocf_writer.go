@@ -30,10 +30,12 @@ import (
 	"math/rand"
 )
 
+// DefaultWriterBlockSize specifies the default number of datum items
+// in a block when writing.
 const DefaultWriterBlockSize = 10
 
-// ErrWriterInit describes an initialization error for a
-// Writer instance.
+// ErrWriterInit is returned when an error is created during Writer
+// initialization.
 type ErrWriterInit struct {
 	Message string
 	Err     error
@@ -193,7 +195,7 @@ func NewWriter(setters ...WriterSetter) (*Writer, error) {
 	if fw.DataSchema == "" {
 		return nil, &ErrWriterInit{Message: "missing schema"}
 	}
-	fw.DataSchema, err = compressJson(fw.DataSchema)
+	fw.DataSchema, err = compressJSON(fw.DataSchema)
 	if err != nil {
 		return nil, &ErrWriterInit{Err: err}
 	}
@@ -254,13 +256,13 @@ func (fw *Writer) writeHeader() (err error) {
 	return
 }
 
-func compressJson(schemaJson string) (string, error) {
+func compressJSON(schemaJSON string) (string, error) {
 	var err error
 	var compressed []byte
 	var schema interface{}
 	// unmarshal into schema blob
-	if err = json.Unmarshal([]byte(schemaJson), &schema); err != nil {
-		return "", fmt.Errorf("cannot unmarshal schema string: %#v: %v", schemaJson, err)
+	if err = json.Unmarshal([]byte(schemaJSON), &schema); err != nil {
+		return "", fmt.Errorf("cannot unmarshal schema string: %#v: %v", schemaJSON, err)
 	}
 	// remarshal back into compressed json
 	if compressed, err = json.Marshal(schema); err != nil {

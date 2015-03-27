@@ -84,9 +84,9 @@ func checkResponse(t *testing.T, bb *bytes.Buffer, n int, expectedBytes []byte) 
 	}
 }
 
-func schemaType(t *testing.T, someJsonSchema string) string {
+func schemaType(t *testing.T, someJSONSchema string) string {
 	var schema interface{}
-	err := json.Unmarshal([]byte(someJsonSchema), &schema)
+	err := json.Unmarshal([]byte(someJSONSchema), &schema)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,9 +110,9 @@ func schemaType(t *testing.T, someJsonSchema string) string {
 	}
 }
 
-func schemaTypeCodec(t *testing.T, someJsonSchema string) string {
+func schemaTypeCodec(t *testing.T, someJSONSchema string) string {
 	var schema interface{}
-	err := json.Unmarshal([]byte(someJsonSchema), &schema)
+	err := json.Unmarshal([]byte(someJSONSchema), &schema)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,9 +136,9 @@ func schemaTypeCodec(t *testing.T, someJsonSchema string) string {
 	}
 }
 
-func schemaName(t *testing.T, someJsonSchema string) string {
+func schemaName(t *testing.T, someJSONSchema string) string {
 	var schema interface{}
-	err := json.Unmarshal([]byte(someJsonSchema), &schema)
+	err := json.Unmarshal([]byte(someJSONSchema), &schema)
 	if err != nil {
 		t.Fatal(err)
 	}

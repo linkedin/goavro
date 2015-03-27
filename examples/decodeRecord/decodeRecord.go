@@ -26,7 +26,7 @@ import (
 )
 
 func main() {
-	recordSchemaJson := `
+	recordSchemaJSON := `
 {
   "type": "record",
   "name": "comments",
@@ -51,7 +51,7 @@ func main() {
   ]
 }
 `
-	codec, err := goavro.NewCodec(recordSchemaJson)
+	codec, err := goavro.NewCodec(recordSchemaJSON)
 	if err != nil {
 		log.Fatal(err)
 	}

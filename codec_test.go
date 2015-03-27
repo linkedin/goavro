@@ -103,18 +103,18 @@ func checkCodecRoundTrip(t *testing.T, schema string, datum interface{}) {
 		t.Errorf("%v", err)
 		return
 	}
-	actualJson, err := json.Marshal(actual)
+	actualJSON, err := json.Marshal(actual)
 	if err != nil {
 		t.Errorf("%v", err)
 		return
 	}
-	expectedJson, err := json.Marshal(datum)
+	expectedJSON, err := json.Marshal(datum)
 	if err != nil {
 		t.Errorf("%v", err)
 		return
 	}
-	if string(actualJson) != string(expectedJson) {
-		t.Errorf("Actual: %#v; Expected: %#v", string(actualJson), string(expectedJson))
+	if string(actualJSON) != string(expectedJSON) {
+		t.Errorf("Actual: %#v; Expected: %#v", string(actualJSON), string(expectedJSON))
 	}
 }
 
@@ -362,16 +362,16 @@ func TestCodecEncoderUnionMap(t *testing.T) {
 }
 
 func TestCodecEncoderUnionRecord(t *testing.T) {
-	recordSchemaJson := `{"type":"record","name":"record1","fields":[{"type":"int","name":"field1"},{"type":"string","name":"field2"}]}`
+	recordSchemaJSON := `{"type":"record","name":"record1","fields":[{"type":"int","name":"field1"},{"type":"string","name":"field2"}]}`
 
-	someRecord, err := NewRecord(RecordSchema(recordSchemaJson))
+	someRecord, err := NewRecord(RecordSchema(recordSchemaJSON))
 	checkErrorFatal(t, err, nil)
 
 	someRecord.Set("field1", int32(13))
 	someRecord.Set("field2", "Superman")
 
 	bits := []byte("\x02\x1a\x10Superman")
-	checkCodecEncoderResult(t, `["null",`+recordSchemaJson+`]`, someRecord, bits)
+	checkCodecEncoderResult(t, `["null",`+recordSchemaJSON+`]`, someRecord, bits)
 }
 
 func TestCodecEncoderEnumChecksSchema(t *testing.T) {
@@ -450,17 +450,17 @@ func TestCodecReferToNamedTypes(t *testing.T) {
 }
 
 func TestCodecRecordFieldDefaultValueNamedType(t *testing.T) {
-	schemaJson := `{"type":"record","name":"record1","fields":[{"type":"fixed","name":"fixed_16","size":16},{"type":"fixed_16","name":"another","default":3}]}`
-	_, err := NewCodec(schemaJson)
+	schemaJSON := `{"type":"record","name":"record1","fields":[{"type":"fixed","name":"fixed_16","size":16},{"type":"fixed_16","name":"another","default":3}]}`
+	_, err := NewCodec(schemaJSON)
 	checkError(t, err, nil)
 }
 
 func TestCodecRecordFieldChecksDefaultType(t *testing.T) {
-	recordSchemaJson := `{"type":"record","name":"record1","fields":[{"type":"int","name":"field1","default":true},{"type":"string","name":"field2"}]}`
-	codec, err := NewCodec(recordSchemaJson)
+	recordSchemaJSON := `{"type":"record","name":"record1","fields":[{"type":"int","name":"field1","default":true},{"type":"string","name":"field2"}]}`
+	codec, err := NewCodec(recordSchemaJSON)
 	checkErrorFatal(t, err, nil)
 
-	someRecord, err := NewRecord(RecordSchema(recordSchemaJson))
+	someRecord, err := NewRecord(RecordSchema(recordSchemaJSON))
 	checkErrorFatal(t, err, nil)
 
 	bb := new(bytes.Buffer)
@@ -775,9 +775,9 @@ func TestCodecRecordChecksSchema(t *testing.T) {
 }
 
 func TestCodecDecoderRecord(t *testing.T) {
-	recordSchemaJson := `{"type":"record","name":"Foo","fields":[{"name":"age","type":"int"},{"name":"status","type":"string"}]}`
+	recordSchemaJSON := `{"type":"record","name":"Foo","fields":[{"name":"age","type":"int"},{"name":"status","type":"string"}]}`
 
-	decoder, err := NewCodec(recordSchemaJson)
+	decoder, err := NewCodec(recordSchemaJSON)
 	checkErrorFatal(t, err, nil)
 
 	bits := []byte("\x80\x01\x0ahappy")
@@ -803,8 +803,8 @@ func TestCodecDecoderRecord(t *testing.T) {
 }
 
 func TestCodecEncoderRecord(t *testing.T) {
-	recordSchemaJson := `{"type":"record","name":"comments","namespace":"com.example","fields":[{"name":"username","type":"string","doc":"Name of user"},{"name":"comment","type":"string","doc":"The content of the user's message"},{"name":"timestamp","type":"long","doc":"Unix epoch time in milliseconds"}],"doc:":"A basic schema for storing blog comments"}`
-	someRecord, err := NewRecord(RecordSchema(recordSchemaJson))
+	recordSchemaJSON := `{"type":"record","name":"comments","namespace":"com.example","fields":[{"name":"username","type":"string","doc":"Name of user"},{"name":"comment","type":"string","doc":"The content of the user's message"},{"name":"timestamp","type":"long","doc":"Unix epoch time in milliseconds"}],"doc:":"A basic schema for storing blog comments"}`
+	someRecord, err := NewRecord(RecordSchema(recordSchemaJSON))
 	checkErrorFatal(t, err, nil)
 
 	someRecord.Set("username", "Aquaman")
@@ -812,18 +812,18 @@ func TestCodecEncoderRecord(t *testing.T) {
 	someRecord.Set("timestamp", int64(1082196484))
 
 	bits := []byte("\x0eAquamanPThe Atlantic is oddly cold this morning!\x88\x88\x88\x88\x08")
-	checkCodecEncoderResult(t, recordSchemaJson, someRecord, bits)
+	checkCodecEncoderResult(t, recordSchemaJSON, someRecord, bits)
 }
 
 func TestCodecEncoderRecordWithFieldDefaultValue(t *testing.T) {
-	recordSchemaJson := `{"type":"record","name":"Foo","fields":[{"name":"field1","type":"int"},{"name":"field2","type":"string","default":"happy"}]}`
-	someRecord, err := NewRecord(RecordSchema(recordSchemaJson))
+	recordSchemaJSON := `{"type":"record","name":"Foo","fields":[{"name":"field1","type":"int"},{"name":"field2","type":"string","default":"happy"}]}`
+	someRecord, err := NewRecord(RecordSchema(recordSchemaJSON))
 	checkErrorFatal(t, err, nil)
 
 	someRecord.Set("field1", int32(64))
 
 	bits := []byte("\x80\x01\x0ahappy")
-	checkCodecEncoderResult(t, recordSchemaJson, someRecord, bits)
+	checkCodecEncoderResult(t, recordSchemaJSON, someRecord, bits)
 }
 
 ////////////////////////////////////////
@@ -839,14 +839,14 @@ func TestBufferedEncoder(t *testing.T) {
 	}
 }
 
-func bufferedEncoder(someSchemaJson string, datum interface{}) (bits []byte, err error) {
+func bufferedEncoder(someSchemaJSON string, datum interface{}) (bits []byte, err error) {
 	bb := new(bytes.Buffer)
 	defer func() {
 		bits = bb.Bytes()
 	}()
 
 	var c Codec
-	c, err = NewCodec(someSchemaJson)
+	c, err = NewCodec(someSchemaJSON)
 	if err != nil {
 		return
 	}

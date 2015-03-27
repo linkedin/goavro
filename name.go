@@ -95,19 +95,19 @@ func nameNamespace(someNamespace string) nameSetter {
 	}
 }
 
-func (a *name) equals(b *name) bool {
-	if a.n == b.n {
+func (n *name) equals(b *name) bool {
+	if n.n == b.n {
 		return true
 	}
 	return false
 }
 
-func (a name) namespace() string {
-	li := strings.LastIndex(a.n, ".")
+func (n name) namespace() string {
+	li := strings.LastIndex(n.n, ".")
 	if li == -1 {
 		return ""
 	}
-	return a.n[:li]
+	return n.n[:li]
 }
 
 func (n name) GoString() string {

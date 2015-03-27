@@ -29,8 +29,8 @@ func TestRecordRequiresSchema(t *testing.T) {
 }
 
 func TestRecordFieldNames(t *testing.T) {
-	someJsonSchema := `{"type":"record","name":"org.foo.Y","fields":[{"type":"int","name":"X"},{"type":"string","name":"W"}]}`
-	someRecord, err := NewRecord(RecordSchema(someJsonSchema))
+	someJSONSchema := `{"type":"record","name":"org.foo.Y","fields":[{"type":"int","name":"X"},{"type":"string","name":"W"}]}`
+	someRecord, err := NewRecord(RecordSchema(someJSONSchema))
 	checkErrorFatal(t, err, nil)
 	if someRecord.Name != "org.foo.Y" {
 		t.Errorf("Actual: %#v; Expected: %#v", someRecord.Name, "org.foo.Y")
@@ -131,8 +131,8 @@ func TestRecordBailsWithoutFields(t *testing.T) {
 }
 
 func TestRecordFieldUnion(t *testing.T) {
-	someJsonSchema := `{"type":"record","name":"Foo","fields":[{"type":["null","string"],"name":"field1"}]}`
-	_, err := NewRecord(RecordSchema(someJsonSchema))
+	someJSONSchema := `{"type":"record","name":"Foo","fields":[{"type":["null","string"],"name":"field1"}]}`
+	_, err := NewRecord(RecordSchema(someJSONSchema))
 	checkError(t, err, nil)
 }
 

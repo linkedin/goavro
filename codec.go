@@ -16,10 +16,11 @@
 //  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 // implied.
 
-// Goavro is a library that encodes and decodes of Avro data. It
-// provides an interface to encode data directly to io.Writer streams,
-// and to decode data from io.Reader streams. Goavro fully adheres to
-// version 1.7.7 of the Avro specification and data encoding.
+// Package Goavro is a library that encodes and decodes of Avro
+// data. It provides an interface to encode data directly to io.Writer
+// streams, and to decode data from io.Reader streams. Goavro fully
+// adheres to version 1.7.7 of the Avro specification and data
+// encoding.
 package goavro
 
 import (
@@ -70,7 +71,7 @@ type symtab map[string]*codec // map full name to codec
 // Encode methods. It requires an Avro schema, expressed as a JSON
 // string.
 //
-//   codec, err := goavro.NewCodec(someJsonSchema)
+//   codec, err := goavro.NewCodec(someJSONSchema)
 //   if err != nil {
 //       return nil, err
 //   }
@@ -105,11 +106,11 @@ type symtab map[string]*codec // map full name to codec
 //   if err != nil {
 //       return nil, err
 //   }
-func NewCodec(someJsonSchema string, setters ...CodecSetter) (Codec, error) {
+func NewCodec(someJSONSchema string, setters ...CodecSetter) (Codec, error) {
 	var schema interface{}
-	err := json.Unmarshal([]byte(someJsonSchema), &schema)
+	err := json.Unmarshal([]byte(someJSONSchema), &schema)
 	if err != nil {
-		err = fmt.Errorf("cannot parse schema string: %#v: %v", someJsonSchema, err)
+		err = fmt.Errorf("cannot parse schema string: %#v: %v", someJSONSchema, err)
 	}
 
 	// each codec gets a unified namespace of symbols to

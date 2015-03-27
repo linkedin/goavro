@@ -183,10 +183,10 @@ func recordSchemaRaw(schema interface{}) RecordSetter {
 
 // RecordSchema specifies the schema of the record to
 // create. Schema must be a JSON string.
-func RecordSchema(recordSchemaJson string) RecordSetter {
+func RecordSchema(recordSchemaJSON string) RecordSetter {
 	return func(r *Record) error {
 		var schema interface{}
-		err := json.Unmarshal([]byte(recordSchemaJson), &schema)
+		err := json.Unmarshal([]byte(recordSchemaJSON), &schema)
 		if err != nil {
 			return fmt.Errorf("cannot create Record: %v", err)
 		}

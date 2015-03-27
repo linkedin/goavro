@@ -24,6 +24,7 @@ const (
 	metadataSchema = `{"type":"map","values":"bytes"}`
 )
 
+// Compression codecs that Reader and Writer instances can process.
 const (
 	CompressionNull    = "null"
 	CompressionDeflate = "deflate"

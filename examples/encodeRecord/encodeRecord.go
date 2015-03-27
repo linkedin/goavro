@@ -25,7 +25,7 @@ import (
 )
 
 func main() {
-	recordSchemaJson := `
+	recordSchemaJSON := `
 {
   "type": "record",
   "name": "comments",
@@ -50,7 +50,7 @@ func main() {
   ]
 }
 `
-	someRecord, err := goavro.NewRecord(goavro.RecordSchema(recordSchemaJson))
+	someRecord, err := goavro.NewRecord(goavro.RecordSchema(recordSchemaJSON))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -60,7 +60,7 @@ func main() {
 	// you can fully qualify the field name
 	someRecord.Set("com.example.timestamp", int64(1082196484))
 
-	codec, err := goavro.NewCodec(recordSchemaJson)
+	codec, err := goavro.NewCodec(recordSchemaJSON)
 	if err != nil {
 		log.Fatal(err)
 	}
