@@ -18,6 +18,9 @@ streams. Goavro fully adheres to
 
 ## Usage
 
+Documentation is available via
+[![GoDoc](https://godoc.org/github.com/linkedin/goavro?status.svg)](https://godoc.org/github.com/linkedin/goavro).
+
 Please see the example programs in the `examples` directory for
 reference.
 
