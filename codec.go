@@ -16,7 +16,7 @@
 //  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 // implied.
 
-// Package Goavro is a library that encodes and decodes of Avro
+// Package goavro is a library that encodes and decodes of Avro
 // data. It provides an interface to encode data directly to io.Writer
 // streams, and to decode data from io.Reader streams. Goavro fully
 // adheres to version 1.7.7 of the Avro specification and data

@@ -119,11 +119,11 @@ func bytesDecoder(r io.Reader) (interface{}, error) {
 		return nil, fmt.Errorf("cannot decode bytes: negative length: %d", size)
 	}
 	buf := make([]byte, size)
-	bytes_read, err := r.Read(buf)
+	bytesRead, err := r.Read(buf)
 	if err != nil {
 		return nil, fmt.Errorf("cannot decode bytes: %v", err)
 	}
-	if int64(bytes_read) < size {
+	if int64(bytesRead) < size {
 		return nil, fmt.Errorf("cannot decode bytes: buffer underrun")
 	}
 	return buf, nil
