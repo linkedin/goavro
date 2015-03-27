@@ -88,8 +88,7 @@ func serveClient(conn net.Conn) {
 	fw.Write(someRecord)
 
 	// create another record
-	someRecord, err = goavro.NewRecord(goavro.RecordSchema(recordSchema))
-	if err != nil {
+	if someRecord, err = goavro.NewRecord(goavro.RecordSchema(recordSchema)); err != nil {
 		log.Fatal(err)
 	}
 	someRecord.Set("username", "Batman")
