@@ -33,9 +33,8 @@ type ErrEncoder struct {
 func (e ErrEncoder) Error() string {
 	if e.Err == nil {
 		return "cannot encode " + e.Message
-	} else {
-		return "cannot encode " + e.Message + ": " + e.Err.Error()
 	}
+	return "cannot encode " + e.Message + ": " + e.Err.Error()
 }
 
 func newEncoderError(dataType string, a ...interface{}) *ErrEncoder {

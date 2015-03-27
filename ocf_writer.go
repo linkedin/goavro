@@ -316,9 +316,11 @@ func compressor(fw *Writer, toCompress <-chan *writerBlock, toWrite chan<- *writ
 		comp, _ := flate.NewWriter(bb, flate.DefaultCompression)
 		for block := range toCompress {
 			_, block.err = comp.Write(block.encoded.Bytes())
-			comp.Close()
-			block.compressed = bb.Bytes()
-			toWrite <- block
+			block.err = comp.Close()
+			if block.err == nil {
+				block.compressed = bb.Bytes()
+				toWrite <- block
+			}
 			bb = new(bytes.Buffer)
 			comp.Reset(bb)
 		}

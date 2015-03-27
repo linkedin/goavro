@@ -34,9 +34,8 @@ type ErrDecoder struct {
 func (e ErrDecoder) Error() string {
 	if e.Err == nil {
 		return "cannot decode " + e.Message
-	} else {
-		return "cannot decode " + e.Message + ": " + e.Err.Error()
 	}
+	return "cannot decode " + e.Message + ": " + e.Err.Error()
 }
 
 func newDecoderError(dataType string, a ...interface{}) *ErrDecoder {

@@ -256,7 +256,7 @@ func newRecordField(schema interface{}, setters ...recordFieldSetter) (*recordFi
 	}
 	rf.Name = n.n
 
-	val, ok := schemaMap["type"]
+	_, ok = schemaMap["type"]
 	if !ok {
 		return nil, newCodecBuildError("record field", "ought to have type key")
 	}
@@ -264,7 +264,8 @@ func newRecordField(schema interface{}, setters ...recordFieldSetter) (*recordFi
 
 	// fields optional to the avro spec
 
-	if val, ok = schemaMap["default"]; ok {
+	val, ok := schemaMap["default"]
+	if ok {
 		rf.defval = val
 	}
 

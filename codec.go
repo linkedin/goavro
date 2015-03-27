@@ -34,7 +34,6 @@ import (
 const (
 	mask = byte(127)
 	flag = byte(128)
-	zero = byte(0)
 )
 
 // ErrSchemaParse is returned when a Codec cannot be created due to an
@@ -47,9 +46,8 @@ type ErrSchemaParse struct {
 func (e ErrSchemaParse) Error() string {
 	if e.Err == nil {
 		return "cannot parse schema: " + e.Message
-	} else {
-		return "cannot parse schema: " + e.Message + ": " + e.Err.Error()
 	}
+	return "cannot parse schema: " + e.Message + ": " + e.Err.Error()
 }
 
 // ErrCodecBuild is returned when the encoder encounters an error.
@@ -61,9 +59,8 @@ type ErrCodecBuild struct {
 func (e ErrCodecBuild) Error() string {
 	if e.Err == nil {
 		return "cannot build " + e.Message
-	} else {
-		return "cannot build " + e.Message + ": " + e.Err.Error()
 	}
+	return "cannot build " + e.Message + ": " + e.Err.Error()
 }
 
 func newCodecBuildError(dataType string, a ...interface{}) *ErrCodecBuild {

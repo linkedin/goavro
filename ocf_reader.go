@@ -37,9 +37,8 @@ type ErrReaderInit struct {
 func (e ErrReaderInit) Error() string {
 	if e.Err == nil {
 		return "cannot build " + e.Message
-	} else {
-		return "cannot build " + e.Message + ": " + e.Err.Error()
 	}
+	return "cannot build " + e.Message + ": " + e.Err.Error()
 }
 
 func newReaderInitError(a ...interface{}) *ErrReaderInit {
@@ -220,7 +219,6 @@ func getHeaderString(someKey string, header map[string]interface{}) (string, err
 }
 
 type readerBlock struct {
-	data       []Datum
 	datumCount int
 	err        error
 	r          io.Reader
@@ -235,9 +233,8 @@ type ErrReader struct {
 func (e ErrReader) Error() string {
 	if e.Err == nil {
 		return "cannot read from reader: " + e.Message
-	} else {
-		return "cannot read from reader: " + e.Message + ": " + e.Err.Error()
 	}
+	return "cannot read from reader: " + e.Message + ": " + e.Err.Error()
 }
 
 func newReaderError(a ...interface{}) *ErrReader {
@@ -322,7 +319,7 @@ func decompress(fr *Reader, toDecompress <-chan *readerBlock, toDecode chan<- *r
 			if block.err != nil {
 				block.err = newReaderError("cannot read from deflate", block.err)
 				toDecode <- block
-				rc.Close() // already have the read error; ignore the close error
+				_ = rc.Close() // already have the read error; ignore the close error
 				continue
 			}
 			block.err = rc.Close()

@@ -105,7 +105,7 @@ func schemaType(t *testing.T, someJSONSchema string) string {
 	case []interface{}:
 		return "union"
 	default:
-		t.Errorf("Actual: %#T; Expected: map[string]interface{}", schema)
+		t.Errorf("Actual: %T; Expected: map[string]interface{}", schema)
 		return ""
 	}
 }
@@ -131,7 +131,7 @@ func schemaTypeCodec(t *testing.T, someJSONSchema string) string {
 	case []interface{}:
 		return "union"
 	default:
-		t.Errorf("Actual: %#T; Expected: map[string]interface{}", schema)
+		t.Errorf("Actual: %T; Expected: map[string]interface{}", schema)
 		return ""
 	}
 }
@@ -144,7 +144,7 @@ func schemaName(t *testing.T, someJSONSchema string) string {
 	}
 	someMap, ok := schema.(map[string]interface{})
 	if !ok {
-		t.Errorf("Actual: %#T; Expected: map[string]interface{}", schema)
+		t.Errorf("Actual: %T; Expected: map[string]interface{}", schema)
 	}
 	someValue, ok := someMap["name"]
 	if !ok {
