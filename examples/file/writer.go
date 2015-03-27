@@ -61,7 +61,7 @@ func main() {
 		goavro.WriterSchema(recordSchema),
 		goavro.ToWriter(fh))
 	if err != nil {
-		log.Fatal("cannot create Writer: ", err)
+		log.Fatal(err)
 	}
 	defer fw.Close()
 

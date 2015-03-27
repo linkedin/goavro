@@ -22,6 +22,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/linkedin/goavro"
+	"log"
 )
 
 var (
@@ -71,13 +72,13 @@ func main() {
 	// make first inner record
 	innerRecord, err := goavro.NewRecord(goavro.RecordSchema(innerSchema))
 	if err != nil {
-		panic(fmt.Errorf("cannot create innerRecord: %v", err))
+		log.Fatalf("cannot create innerRecord: %v", err)
 	}
 	if err = innerRecord.Set("stringValue", "Hello"); err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	if err = innerRecord.Set("intValue", int32(1)); err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	innerRecords = append(innerRecords, innerRecord)
 	// make another inner record
@@ -88,55 +89,55 @@ func main() {
 	// make outer record
 	outerRecord, err := goavro.NewRecord(goavro.RecordSchema(outerSchema))
 	if err != nil {
-		panic(fmt.Errorf("cannot create outerRecord: %v", err))
+		log.Fatalf("cannot create outerRecord: %v", err)
 	}
 	outerRecord.Set("value", int32(3))
 	outerRecord.Set("rec", innerRecords)
 	// make a codec
 	c, err := goavro.NewCodec(outerSchema)
 	if err != nil {
-		panic(fmt.Errorf("cannot create codec: %v", err))
+		log.Fatal(err)
 	}
 	// encode outerRecord to io.Writer (here, a bytes.Buffer)
 	bb := new(bytes.Buffer)
 	err = c.Encode(bb, outerRecord)
 	if err != nil {
-		panic(fmt.Errorf("cannot encode record: %v", err))
+		log.Fatal(err)
 	}
 	// decode bytes
 	decoded, err := c.Decode(bytes.NewReader(bb.Bytes()))
 	if err != nil {
-		panic(fmt.Errorf("cannot decode record: %v", err))
+		log.Fatal(err)
 	}
 	decodedRecord, ok := decoded.(*goavro.Record)
 	if !ok {
-		panic(fmt.Errorf("expected *goavro.Record; received: %T", decoded))
+		log.Fatalf("expected *goavro.Record; received: %T", decoded)
 	}
 	decodedValue, err := decodedRecord.Get("value")
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	if decodedValue != int32(3) {
-		fmt.Printf("Actual: %#v; Expected: %#v\n", decodedValue, int32(3))
+		log.Printf("Actual: %#v; Expected: %#v\n", decodedValue, int32(3))
 	}
 	fmt.Printf("Read a value: %d\n", decodedValue)
 	rec, err := decodedRecord.Get("rec")
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	decodedArray := rec.([]interface{})
 	if len(decodedArray) != 2 {
-		fmt.Printf("Actual: %#v; Expected: %#v\n", len(decodedArray), 2)
+		log.Fatalf("Actual: %#v; Expected: %#v\n", len(decodedArray), 2)
 	}
 	for index, decodedSubRecord := range decodedArray {
 		r := decodedSubRecord.(*goavro.Record)
 		sv, err := r.Get("stringValue")
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 		iv, err := r.Get("intValue")
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 		fmt.Printf("Read a subrecord %d string value: %s\n", index, sv)
 		fmt.Printf("Read a subrecord %d int value: %d\n", index, iv)

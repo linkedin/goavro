@@ -71,7 +71,7 @@ func serveClient(conn net.Conn) {
 		goavro.WriterSchema(recordSchema),
 		goavro.ToWriter(conn))
 	if err != nil {
-		log.Fatal("cannot create Writer: ", err)
+		log.Fatal(err)
 	}
 	defer fw.Close()
 

@@ -47,7 +47,7 @@ func main() {
 func dumpReader(r io.Reader) {
 	fr, err := goavro.NewReader(goavro.BufferFromReader(r))
 	if err != nil {
-		log.Fatal("cannot create Reader: ", err)
+		log.Fatal(err)
 	}
 	defer func() {
 		if err := fr.Close(); err != nil {
@@ -58,7 +58,7 @@ func dumpReader(r io.Reader) {
 	for fr.Scan() {
 		datum, err := fr.Read()
 		if err != nil {
-			log.Println("cannot read datum: ", err)
+			log.Println(err)
 			continue
 		}
 		fmt.Println(datum)
