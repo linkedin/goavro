@@ -110,7 +110,7 @@ func main() {
 	}
 	decodedRecord, ok := decoded.(*goavro.Record)
 	if !ok {
-		panic(fmt.Errorf("expected *goavro.Record; actual: %T", decoded))
+		panic(fmt.Errorf("expected *goavro.Record; received: %T", decoded))
 	}
 	decodedValue, err := decodedRecord.Get("value")
 	if err != nil {

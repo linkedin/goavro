@@ -118,30 +118,30 @@ func NewRecord(setters ...RecordSetter) (*Record, error) {
 		}
 	}
 	if record.schemaMap == nil {
-		return nil, fmt.Errorf("cannot create Record: no schema defined")
+		return nil, newCodecBuildError("record", "no schema defined")
 	}
 	var err error
 	record.n, err = newName(nameSchema(record.schemaMap), nameEnclosingNamespace(record.ens))
 	if err != nil {
-		return nil, fmt.Errorf("cannot create Record: %v", err)
+		return nil, newCodecBuildError("record", err)
 	}
 	record.Name = record.n.n
 	ns := record.n.namespace()
 
 	val, ok := record.schemaMap["fields"]
 	if !ok {
-		return nil, fmt.Errorf("cannot create Record: record requires fields")
+		return nil, newCodecBuildError("record", "record requires one or more fields")
 	}
 	fields, ok := val.([]interface{})
 	if !ok || len(fields) == 0 {
-		return nil, fmt.Errorf("cannot create Record: record fields ought to be non-empty array")
+		return nil, newCodecBuildError("record", "record fields ought to be non-empty array")
 	}
 
 	record.Fields = make([]*recordField, len(fields))
 	for i, field := range fields {
 		rf, err := newRecordField(field, recordFieldEnclosingNamespace(ns))
 		if err != nil {
-			return nil, fmt.Errorf("cannot create Record: %v", err)
+			return nil, newCodecBuildError("record", err)
 		}
 		record.Fields[i] = rf
 	}
@@ -151,13 +151,13 @@ func NewRecord(setters ...RecordSetter) (*Record, error) {
 	if val, ok = record.schemaMap["doc"]; ok {
 		record.doc, ok = val.(string)
 		if !ok {
-			return nil, fmt.Errorf("record doc ought to be string")
+			return nil, newCodecBuildError("record", "doc ought to be string")
 		}
 	}
 	if val, ok = record.schemaMap["aliases"]; ok {
 		record.aliases, ok = val.([]string)
 		if !ok {
-			return nil, fmt.Errorf("record aliases ought to be array of strings")
+			return nil, newCodecBuildError("record", "aliases ought to be array of strings")
 		}
 	}
 	record.schemaMap = nil
@@ -175,7 +175,7 @@ func recordSchemaRaw(schema interface{}) RecordSetter {
 		var ok bool
 		r.schemaMap, ok = schema.(map[string]interface{})
 		if !ok {
-			return fmt.Errorf("cannot create Record: expected: map[string]interface{}; actual: %T", schema)
+			return newCodecBuildError("record", "expected: map[string]interface{}; received: %T", schema)
 		}
 		return nil
 	}
@@ -188,12 +188,12 @@ func RecordSchema(recordSchemaJSON string) RecordSetter {
 		var schema interface{}
 		err := json.Unmarshal([]byte(recordSchemaJSON), &schema)
 		if err != nil {
-			return fmt.Errorf("cannot create Record: %v", err)
+			return newCodecBuildError("record", err)
 		}
 		var ok bool
 		r.schemaMap, ok = schema.(map[string]interface{})
 		if !ok {
-			return fmt.Errorf("cannot create Record: expected: map[string]interface{}; actual: %T", schema)
+			return newCodecBuildError("record", "expected: map[string]interface{}; received: %T", schema)
 		}
 		return nil
 	}
@@ -237,30 +237,28 @@ func recordFieldEnclosingNamespace(someNamespace string) recordFieldSetter {
 }
 
 func newRecordField(schema interface{}, setters ...recordFieldSetter) (*recordField, error) {
-	cannotCreate := makeErrorReporter("cannot create record field: ")
-
 	schemaMap, ok := schema.(map[string]interface{})
 	if !ok {
-		return nil, cannotCreate("schema expected: map[string]interface{}; actual: %T", schema)
+		return nil, newCodecBuildError("record field", "schema expected: map[string]interface{}; received: %T", schema)
 	}
 
 	rf := &recordField{}
 	for _, setter := range setters {
 		err := setter(rf)
 		if err != nil {
-			return nil, cannotCreate("%v", err)
+			return nil, newCodecBuildError("record field", err)
 		}
 	}
 
 	n, err := newName(nameSchema(schemaMap), nameEnclosingNamespace(rf.ens))
 	if err != nil {
-		return nil, cannotCreate("%v", err)
+		return nil, newCodecBuildError("record field", err)
 	}
 	rf.Name = n.n
 
 	val, ok := schemaMap["type"]
 	if !ok {
-		return nil, cannotCreate("ought to have type key")
+		return nil, newCodecBuildError("record field", "ought to have type key")
 	}
 	rf.schema = schema
 
@@ -273,27 +271,27 @@ func newRecordField(schema interface{}, setters ...recordFieldSetter) (*recordFi
 	if val, ok = schemaMap["doc"]; ok {
 		rf.doc, ok = val.(string)
 		if !ok {
-			return nil, cannotCreate("record field doc ought to be string")
+			return nil, newCodecBuildError("record field", "record field doc ought to be string")
 		}
 	}
 
 	if val, ok = schemaMap["order"]; ok {
 		rf.order, ok = val.(string)
 		if !ok {
-			return nil, cannotCreate("record field order ought to be string")
+			return nil, newCodecBuildError("record field", "record field order ought to be string")
 		}
 		switch rf.order {
 		case "ascending", "descending", "ignore":
 			// ok
 		default:
-			return nil, cannotCreate("record field order ought to bescending, descending, or ignore")
+			return nil, newCodecBuildError("record field", "record field order ought to bescending, descending, or ignore")
 		}
 	}
 
 	if val, ok = schemaMap["aliases"]; ok {
 		rf.aliases, ok = val.([]string)
 		if !ok {
-			return nil, cannotCreate("record field aliases ought to be array of strings")
+			return nil, newCodecBuildError("record field", "record field aliases ought to be array of strings")
 		}
 	}
 

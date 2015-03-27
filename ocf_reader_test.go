@@ -101,3 +101,17 @@ func TestReaderScanShouldNotBlock(t *testing.T) {
 		t.Errorf("Actual: %#v; Expected: %#v", err, nil)
 	}
 }
+
+func TestReadBlockCountAndSizeWithNothing(t *testing.T) {
+	bits := []byte("")
+	bc, bs, err := readBlockCountAndSize(bytes.NewReader(bits))
+	if bc != 0 {
+		t.Errorf("Actual: %#v; Expected: %#v", bc, 0)
+	}
+	if bs != 0 {
+		t.Errorf("Actual: %#v; Expected: %#v", bs, 0)
+	}
+	if err != nil {
+		t.Errorf("Actual: %#v; Expected: %#v", err, nil)
+	}
+}

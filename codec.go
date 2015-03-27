@@ -31,6 +31,65 @@ import (
 	"strings"
 )
 
+const (
+	mask = byte(127)
+	flag = byte(128)
+	zero = byte(0)
+)
+
+// ErrSchemaParse is returned when a Codec cannot be created due to an
+// error while reading or parsing the schema.
+type ErrSchemaParse struct {
+	Message string
+	Err     error
+}
+
+func (e ErrSchemaParse) Error() string {
+	if e.Err == nil {
+		return "cannot parse schema: " + e.Message
+	} else {
+		return "cannot parse schema: " + e.Message + ": " + e.Err.Error()
+	}
+}
+
+// ErrCodecBuild is returned when the encoder encounters an error.
+type ErrCodecBuild struct {
+	Message string
+	Err     error
+}
+
+func (e ErrCodecBuild) Error() string {
+	if e.Err == nil {
+		return "cannot build " + e.Message
+	} else {
+		return "cannot build " + e.Message + ": " + e.Err.Error()
+	}
+}
+
+func newCodecBuildError(dataType string, a ...interface{}) *ErrCodecBuild {
+	var err error
+	var format, message string
+	var ok bool
+	if len(a) == 0 {
+		return &ErrCodecBuild{dataType + ": no reason given", nil}
+	}
+	// if last item is error: save it
+	if err, ok = a[len(a)-1].(error); ok {
+		a = a[:len(a)-1] // pop it
+	}
+	// if items left, first ought to be format string
+	if len(a) > 0 {
+		if format, ok = a[0].(string); ok {
+			a = a[1:] // unshift
+			message = fmt.Sprintf(format, a...)
+		}
+	}
+	if message != "" {
+		message = ": " + message
+	}
+	return &ErrCodecBuild{dataType + message, err}
+}
+
 // Decoder interface specifies structures that may be decoded.
 type Decoder interface {
 	Decode(io.Reader) (interface{}, error)
@@ -108,9 +167,8 @@ type symtab map[string]*codec // map full name to codec
 //   }
 func NewCodec(someJSONSchema string, setters ...CodecSetter) (Codec, error) {
 	var schema interface{}
-	err := json.Unmarshal([]byte(someJSONSchema), &schema)
-	if err != nil {
-		err = fmt.Errorf("cannot parse schema string: %#v: %v", someJSONSchema, err)
+	if err := json.Unmarshal([]byte(someJSONSchema), &schema); err != nil {
+		return nil, &ErrSchemaParse{"cannot unmarshal JSON", err}
 	}
 
 	// each codec gets a unified namespace of symbols to
@@ -173,14 +231,14 @@ func (st symtab) buildCodec(enclosingNamespace string, schema interface{}) (*cod
 	case map[string]interface{}:
 		return st.buildMap(enclosingNamespace, schema.(map[string]interface{}))
 	default:
-		return nil, fmt.Errorf("unknown schema type: %T", schema)
+		return nil, newCodecBuildError("unknown", "schema type: %T", schema)
 	}
 }
 
 func (st symtab) buildMap(enclosingNamespace string, schema map[string]interface{}) (*codec, error) {
 	t, ok := schema["type"]
 	if !ok {
-		return nil, fmt.Errorf("schema ought have type: %v", schema)
+		return nil, newCodecBuildError("map", "ought have type: %v", schema)
 	}
 	switch t.(type) {
 	case string:
@@ -192,7 +250,7 @@ func (st symtab) buildMap(enclosingNamespace string, schema map[string]interface
 		// EXAMPLE: "type":["null","int"]
 		return st.buildCodec(enclosingNamespace, t)
 	default:
-		return nil, fmt.Errorf("schema type ought to be either string, map[string]interface{}, or []interface{}: %T", t)
+		return nil, newCodecBuildError("map", "type ought to be either string, map[string]interface{}, or []interface{}; received: %T", t)
 	}
 }
 
@@ -227,11 +285,11 @@ func (st symtab) buildString(enclosingNamespace, typeName string, schema interfa
 	default:
 		t, err := newName(nameName(typeName), nameEnclosingNamespace(enclosingNamespace))
 		if err != nil {
-			return nil, fmt.Errorf("could not normalize name (%s): %s", enclosingNamespace, typeName)
+			return nil, newCodecBuildError(typeName, "could not normalize name: %s", enclosingNamespace, typeName)
 		}
 		c, ok := st[t.n]
 		if !ok {
-			return nil, fmt.Errorf("unknown type name: %s", t.n)
+			return nil, newCodecBuildError("unknown", "unknown type name: %s", t.n)
 		}
 		return c, nil
 	}
@@ -247,15 +305,15 @@ func (st symtab) makeUnionCodec(enclosingNamespace string, schema interface{}) (
 	if enclosingNamespace != nullNamespace {
 		errorNamespace = enclosingNamespace
 	}
-	cannotCreate := makeErrorReporter("cannot create union (%s): ", errorNamespace)
+	friendlyName := fmt.Sprintf("union (%s)", errorNamespace)
 
 	// schema checks
 	schemaArray, ok := schema.([]interface{})
 	if !ok {
-		return nil, cannotCreate("union ought to be array: %T", schema)
+		return nil, newCodecBuildError(friendlyName, "ought to be array: %T", schema)
 	}
 	if len(schemaArray) == 0 {
-		return nil, cannotCreate("union ought have at least one member")
+		return nil, newCodecBuildError(friendlyName, " ought have at least one member")
 	}
 
 	// setup
@@ -266,7 +324,7 @@ func (st symtab) makeUnionCodec(enclosingNamespace string, schema interface{}) (
 	for idx, unionMemberSchema := range schemaArray {
 		c, err := st.buildCodec(enclosingNamespace, unionMemberSchema)
 		if err != nil {
-			return nil, cannotCreate("union member ought to be decodable: %v", err)
+			return nil, newCodecBuildError(friendlyName, "member ought to be decodable: %v", err)
 		}
 		allowedNames[idx] = c.nm.n
 		indexToDecoder[idx] = c.df
@@ -275,26 +333,25 @@ func (st symtab) makeUnionCodec(enclosingNamespace string, schema interface{}) (
 
 	invalidType := "datum ought match schema: expected: "
 	invalidType += strings.Join(allowedNames, ", ")
-	invalidType += "; actual: "
+	invalidType += "; received: "
 
 	nm, _ := newName(nameName("union"))
-	cannotDecode := makeErrorReporter("cannot decode union (%s): ", nm.n)
-	cannotEncode := makeErrorReporter("cannot encode union (%s): ", nm.n)
+	friendlyName = fmt.Sprintf("union (%s)", nm.n)
 
 	return &codec{
 		nm: nm,
 		df: func(r io.Reader) (interface{}, error) {
 			i, err := intDecoder(r)
 			if err != nil {
-				return nil, cannotDecode("%v", err)
+				return nil, newEncoderError(friendlyName, err)
 			}
 			idx, ok := i.(int32)
 			if !ok {
-				return nil, cannotDecode("expected: int; actual: %T", i)
+				return nil, newEncoderError(friendlyName, "expected: int; received: %T", i)
 			}
 			index := int(idx)
 			if index < 0 || index >= len(indexToDecoder) {
-				return nil, cannotDecode("index must be between 0 and %d", enclosingNamespace, len(indexToDecoder)-1)
+				return nil, newEncoderError(friendlyName, "index must be between 0 and %d", enclosingNamespace, len(indexToDecoder)-1)
 			}
 			return indexToDecoder[index](r)
 		},
@@ -315,15 +372,13 @@ func (st symtab) makeUnionCodec(enclosingNamespace string, schema interface{}) (
 			}
 			ue, ok := nameToUnionEncoder[name]
 			if !ok {
-				return cannotEncode(invalidType + name)
+				return newEncoderError(friendlyName, invalidType+name)
 			}
-			err = intEncoder(w, ue.index)
-			if err != nil {
-				return cannotEncode("%v", err)
+			if err = intEncoder(w, ue.index); err != nil {
+				return newEncoderError(friendlyName, err)
 			}
-			err = ue.ef(w, datum)
-			if err != nil {
-				return cannotEncode("%v", err)
+			if err = ue.ef(w, datum); err != nil {
+				return newEncoderError(friendlyName, err)
 			}
 			return nil
 		},
@@ -335,63 +390,63 @@ func (st symtab) makeEnumCodec(enclosingNamespace string, schema interface{}) (*
 	if enclosingNamespace != nullNamespace {
 		errorNamespace = enclosingNamespace
 	}
-	cannotCreate := makeErrorReporter("cannot create enum (%s): ", errorNamespace)
+	friendlyName := fmt.Sprintf("enum (%s)", errorNamespace)
 
 	// schema checks
 	schemaMap, ok := schema.(map[string]interface{})
 	if !ok {
-		return nil, cannotCreate("expected: map[string]interface{}; actual: %T", schema)
+		return nil, newCodecBuildError(friendlyName, "expected: map[string]interface{}; received: %T", schema)
 	}
 	nm, err := newName(nameEnclosingNamespace(enclosingNamespace), nameSchema(schemaMap))
 	if err != nil {
 		return nil, err
 	}
+	friendlyName = fmt.Sprintf("enum (%s)", nm.n)
+
 	s, ok := schemaMap["symbols"]
 	if !ok {
-		return nil, cannotCreate("ought to have symbols key")
+		return nil, newCodecBuildError(friendlyName, "ought to have symbols key")
 	}
 	symtab, ok := s.([]interface{})
 	if !ok || len(symtab) == 0 {
-		return nil, cannotCreate("symbols ought to be non-empty array")
+		return nil, newCodecBuildError(friendlyName, "symbols ought to be non-empty array")
 	}
 	for _, v := range symtab {
 		_, ok := v.(string)
 		if !ok {
-			return nil, cannotCreate("symbols array member ought to be string")
+			return nil, newCodecBuildError(friendlyName, "symbols array member ought to be string")
 		}
 	}
-	cannotDecode := makeErrorReporter("cannot decode enum (%s): ", nm.n)
-	cannotEncode := makeErrorReporter("cannot encode enum (%s): ", nm.n)
 	c := &codec{
 		nm: nm,
 		df: func(r io.Reader) (interface{}, error) {
 			someValue, err := longDecoder(r)
 			if err != nil {
-				return nil, cannotDecode("%v", err)
+				return nil, newDecoderError(friendlyName, err)
 			}
 			index, ok := someValue.(int64)
 			if !ok {
-				return nil, cannotDecode("expected long; actual: %T", someValue)
+				return nil, newDecoderError(friendlyName, "expected long; received: %T", someValue)
 			}
 			if index < 0 || index >= int64(len(symtab)) {
-				return nil, cannotDecode("index must be between 0 and %d", len(symtab)-1)
+				return nil, newDecoderError(friendlyName, "index must be between 0 and %d", len(symtab)-1)
 			}
 			return symtab[index], nil
 		},
 		ef: func(w io.Writer, datum interface{}) error {
 			someString, ok := datum.(string)
 			if !ok {
-				return cannotEncode("expected: string; actual: %T", datum)
+				return newEncoderError(friendlyName, "expected: string; received: %T", datum)
 			}
 			for idx, symbol := range symtab {
 				if symbol == someString {
 					if err := longEncoder(w, int64(idx)); err != nil {
-						return cannotEncode("%v", err)
+						return newEncoderError(friendlyName, err)
 					}
 					return nil
 				}
 			}
-			return cannotEncode("symbol not defined: %s", someString)
+			return newEncoderError(friendlyName, "symbol not defined: %s", someString)
 		},
 	}
 	st[nm.n] = c
@@ -403,55 +458,54 @@ func (st symtab) makeFixedCodec(enclosingNamespace string, schema interface{}) (
 	if enclosingNamespace != nullNamespace {
 		errorNamespace = enclosingNamespace
 	}
-	cannotCreate := makeErrorReporter("cannot create fixed (%s): ", errorNamespace)
+	friendlyName := fmt.Sprintf("fixed (%s)", errorNamespace)
 
 	// schema checks
 	schemaMap, ok := schema.(map[string]interface{})
 	if !ok {
-		return nil, cannotCreate("expected: map[string]interface{}; actual: %T", schema)
+		return nil, newCodecBuildError(friendlyName, "expected: map[string]interface{}; received: %T", schema)
 	}
 	nm, err := newName(nameSchema(schemaMap), nameEnclosingNamespace(enclosingNamespace))
 	if err != nil {
 		return nil, err
 	}
+	friendlyName = fmt.Sprintf("fixed (%s)", nm.n)
 	s, ok := schemaMap["size"]
 	if !ok {
-		return nil, cannotCreate("ought to have size key")
+		return nil, newCodecBuildError(friendlyName, "ought to have size key")
 	}
 	fs, ok := s.(float64)
 	if !ok {
-		return nil, cannotCreate("size ought to be number: %T", s)
+		return nil, newCodecBuildError(friendlyName, "size ought to be number: %T", s)
 	}
 	size := int32(fs)
-	cannotDecode := makeErrorReporter("cannot decode fixed (%s): ", nm.n)
-	cannotEncode := makeErrorReporter("cannot encode fixed (%s): ", nm.n)
 	c := &codec{
 		nm: nm,
 		df: func(r io.Reader) (interface{}, error) {
 			buf := make([]byte, size)
 			n, err := r.Read(buf)
 			if err != nil {
-				return nil, cannotDecode("%v", err)
+				return nil, newDecoderError(friendlyName, err)
 			}
 			if n < int(size) {
-				return nil, cannotDecode("buffer underrun")
+				return nil, newDecoderError(friendlyName, "buffer underrun")
 			}
 			return buf, nil
 		},
 		ef: func(w io.Writer, datum interface{}) error {
 			someBytes, ok := datum.([]byte)
 			if !ok {
-				return cannotEncode("expected: []byte; actual: %T", datum)
+				return newEncoderError(friendlyName, "expected: []byte; received: %T", datum)
 			}
 			if len(someBytes) != int(size) {
-				return cannotEncode("expected: %d bytes; actual: %d", size, len(someBytes))
+				return newEncoderError(friendlyName, "expected: %d bytes; received: %d", size, len(someBytes))
 			}
 			n, err := w.Write(someBytes)
 			if err != nil {
-				return cannotEncode("%v", err)
+				return newEncoderError(friendlyName, err)
 			}
 			if n != int(size) {
-				return cannotEncode("buffer underrun")
+				return newEncoderError(friendlyName, "buffer underrun")
 			}
 			return nil
 		},
@@ -465,12 +519,12 @@ func (st symtab) makeRecordCodec(enclosingNamespace string, schema interface{}) 
 	if enclosingNamespace != nullNamespace {
 		errorNamespace = enclosingNamespace
 	}
-	cannotCreate := makeErrorReporter("cannot create record (%s): ", errorNamespace)
+	friendlyName := fmt.Sprintf("record (%s)", errorNamespace)
 
 	// delegate schema checks to NewRecord()
 	recordTemplate, err := NewRecord(recordSchemaRaw(schema), RecordEnclosingNamespace(enclosingNamespace))
 	if err != nil {
-		return nil, cannotCreate("%v", err)
+		return nil, err
 	}
 
 	fieldCodecs := make([]*codec, len(recordTemplate.Fields))
@@ -478,12 +532,11 @@ func (st symtab) makeRecordCodec(enclosingNamespace string, schema interface{}) 
 		var err error
 		fieldCodecs[idx], err = st.buildCodec(recordTemplate.n.namespace(), field.schema)
 		if err != nil {
-			return nil, cannotCreate("record field ought to be codec: %+v: %v", st, err)
+			return nil, newCodecBuildError(friendlyName, "record field ought to be codec: %+v", st, err)
 		}
 	}
 
-	cannotDecode := makeErrorReporter("cannot decode record (%s): ", recordTemplate.Name)
-	cannotEncode := makeErrorReporter("cannot encode record (%s): ", recordTemplate.Name)
+	friendlyName = fmt.Sprintf("record (%s)", recordTemplate.Name)
 
 	c := &codec{
 		nm: recordTemplate.n,
@@ -492,7 +545,7 @@ func (st symtab) makeRecordCodec(enclosingNamespace string, schema interface{}) 
 			for idx, codec := range fieldCodecs {
 				value, err := codec.Decode(r)
 				if err != nil {
-					return nil, cannotDecode("%v", err)
+					return nil, newDecoderError(friendlyName, err)
 				}
 				someRecord.Fields[idx].Datum = value
 			}
@@ -501,10 +554,10 @@ func (st symtab) makeRecordCodec(enclosingNamespace string, schema interface{}) 
 		ef: func(w io.Writer, datum interface{}) error {
 			someRecord, ok := datum.(*Record)
 			if !ok {
-				return cannotEncode("expected: Record; actual: %T", datum)
+				return newEncoderError(friendlyName, "expected: Record; received: %T", datum)
 			}
 			if someRecord.Name != recordTemplate.Name {
-				return cannotEncode("expected: %v; actual: %v", recordTemplate.Name, someRecord.Name)
+				return newEncoderError(friendlyName, "expected: %v; received: %v", recordTemplate.Name, someRecord.Name)
 			}
 			for idx, field := range someRecord.Fields {
 				var value interface{}
@@ -514,11 +567,11 @@ func (st symtab) makeRecordCodec(enclosingNamespace string, schema interface{}) 
 				} else if reflect.ValueOf(field.defval).IsValid() {
 					value = field.defval
 				} else {
-					return cannotEncode("field has no data and no default set: %v", field.Name)
+					return newEncoderError(friendlyName, "field has no data and no default set: %v", field.Name)
 				}
 				err = fieldCodecs[idx].Encode(w, value)
 				if err != nil {
-					return cannotEncode("%v", err)
+					return newEncoderError(friendlyName, err)
 				}
 			}
 			return nil
@@ -533,26 +586,24 @@ func (st symtab) makeMapCodec(enclosingNamespace string, schema interface{}) (*c
 	if enclosingNamespace != nullNamespace {
 		errorNamespace = enclosingNamespace
 	}
-	cannotCreate := makeErrorReporter("cannot create map (%s): ", errorNamespace)
+	friendlyName := fmt.Sprintf("map (%s)", errorNamespace)
 
 	// schema checks
 	schemaMap, ok := schema.(map[string]interface{})
 	if !ok {
-		return nil, cannotCreate("expected: map[string]interface{}; actual: %T", schema)
+		return nil, newCodecBuildError(friendlyName, "expected: map[string]interface{}; received: %T", schema)
 	}
 	v, ok := schemaMap["values"]
 	if !ok {
-		return nil, cannotCreate("ought to have values key")
+		return nil, newCodecBuildError(friendlyName, "ought to have values key")
 	}
 	valuesCodec, err := st.buildCodec(enclosingNamespace, v)
 	if err != nil {
-		return nil, cannotCreate("%v", err)
+		return nil, newCodecBuildError(friendlyName, err)
 	}
 
-	cannotDecode := makeErrorReporter("cannot decode map (%s): ", enclosingNamespace)
-	cannotEncode := makeErrorReporter("cannot encode map (%s): ", enclosingNamespace)
-
 	nm := &name{n: "map"}
+	friendlyName = fmt.Sprintf("map (%s)", nm.n)
 
 	return &codec{
 		nm: nm,
@@ -560,7 +611,7 @@ func (st symtab) makeMapCodec(enclosingNamespace string, schema interface{}) (*c
 			data := make(map[string]interface{})
 			someValue, err := longDecoder(r)
 			if err != nil {
-				return nil, cannotDecode("%v", err)
+				return nil, newDecoderError(friendlyName, err)
 			}
 			blockCount := someValue.(int64)
 
@@ -570,17 +621,17 @@ func (st symtab) makeMapCodec(enclosingNamespace string, schema interface{}) (*c
 					// read and discard number of bytes in block
 					_, err := longDecoder(r)
 					if err != nil {
-						return nil, cannotDecode("%v", err)
+						return nil, newDecoderError(friendlyName, err)
 					}
 				}
 				for i := int64(0); i < blockCount; i++ {
 					someValue, err := stringDecoder(r)
 					if err != nil {
-						return nil, cannotDecode("%v", err)
+						return nil, newDecoderError(friendlyName, err)
 					}
 					mapKey, ok := someValue.(string)
 					if !ok {
-						return nil, cannotDecode("key ought to be string")
+						return nil, newDecoderError(friendlyName, "key ought to be string")
 					}
 					datum, err := valuesCodec.df(r)
 					if err != nil {
@@ -590,7 +641,7 @@ func (st symtab) makeMapCodec(enclosingNamespace string, schema interface{}) (*c
 				}
 				someValue, err = longDecoder(r)
 				if err != nil {
-					return nil, cannotDecode("%v", err)
+					return nil, newDecoderError(friendlyName, err)
 				}
 				blockCount = someValue.(int64)
 			}
@@ -599,21 +650,21 @@ func (st symtab) makeMapCodec(enclosingNamespace string, schema interface{}) (*c
 		ef: func(w io.Writer, datum interface{}) error {
 			dict, ok := datum.(map[string]interface{})
 			if !ok {
-				return cannotEncode("expected: map[string]interface{}; actual: %T", datum)
+				return newEncoderError(friendlyName, "expected: map[string]interface{}; received: %T", datum)
 			}
 			if err = longEncoder(w, int64(len(dict))); err != nil {
-				return cannotEncode("%v", err)
+				return newEncoderError(friendlyName, err)
 			}
 			for k, v := range dict {
 				if err = stringEncoder(w, k); err != nil {
-					return cannotEncode("%v", err)
+					return newEncoderError(friendlyName, err)
 				}
 				if err = valuesCodec.ef(w, v); err != nil {
-					return cannotEncode("%v", err)
+					return newEncoderError(friendlyName, err)
 				}
 			}
 			if err = longEncoder(w, int64(0)); err != nil {
-				return cannotEncode("%v", err)
+				return newEncoderError(friendlyName, err)
 			}
 			return nil
 		},
@@ -625,27 +676,25 @@ func (st symtab) makeArrayCodec(enclosingNamespace string, schema interface{}) (
 	if enclosingNamespace != nullNamespace {
 		errorNamespace = enclosingNamespace
 	}
-	cannotCreate := makeErrorReporter("cannot create array (%s): ", errorNamespace)
+	friendlyName := fmt.Sprintf("array (%s)", errorNamespace)
 
 	// schema checks
 	schemaMap, ok := schema.(map[string]interface{})
 	if !ok {
-		return nil, cannotCreate("expected: map[string]interface{}; actual: %T", schema)
+		return nil, newCodecBuildError(friendlyName, "expected: map[string]interface{}; received: %T", schema)
 	}
 	v, ok := schemaMap["items"]
 	if !ok {
-		return nil, cannotCreate("ought to have items key")
+		return nil, newCodecBuildError(friendlyName, "ought to have items key")
 	}
 	valuesCodec, err := st.buildCodec(enclosingNamespace, v)
 	if err != nil {
-		return nil, cannotCreate("%v", err)
+		return nil, newCodecBuildError(friendlyName, err)
 	}
-
-	cannotDecode := makeErrorReporter("cannot decode array (%s): ", enclosingNamespace)
-	cannotEncode := makeErrorReporter("cannot encode array (%s): ", enclosingNamespace)
 
 	const itemsPerArrayBlock = 10
 	nm := &name{n: "array"}
+	friendlyName = fmt.Sprintf("array (%s)", nm.n)
 
 	return &codec{
 		nm: nm,
@@ -654,7 +703,7 @@ func (st symtab) makeArrayCodec(enclosingNamespace string, schema interface{}) (
 
 			someValue, err := longDecoder(r)
 			if err != nil {
-				return nil, cannotDecode("%v", err)
+				return nil, newDecoderError(friendlyName, err)
 			}
 			blockCount := someValue.(int64)
 
@@ -664,19 +713,19 @@ func (st symtab) makeArrayCodec(enclosingNamespace string, schema interface{}) (
 					// read and discard number of bytes in block
 					_, err = longDecoder(r)
 					if err != nil {
-						return nil, cannotDecode("%v", err)
+						return nil, newDecoderError(friendlyName, err)
 					}
 				}
 				for i := int64(0); i < blockCount; i++ {
 					datum, err := valuesCodec.df(r)
 					if err != nil {
-						return nil, cannotDecode("%v", err)
+						return nil, newDecoderError(friendlyName, err)
 					}
 					data = append(data, datum)
 				}
 				someValue, err = longDecoder(r)
 				if err != nil {
-					return nil, cannotDecode("%v", err)
+					return nil, newDecoderError(friendlyName, err)
 				}
 				blockCount = someValue.(int64)
 			}
@@ -685,7 +734,7 @@ func (st symtab) makeArrayCodec(enclosingNamespace string, schema interface{}) (
 		ef: func(w io.Writer, datum interface{}) error {
 			someArray, ok := datum.([]interface{})
 			if !ok {
-				return cannotEncode("expected: []interface{}; actual: %T", datum)
+				return newEncoderError(friendlyName, "expected: []interface{}; received: %T", datum)
 			}
 			for leftIndex := 0; leftIndex < len(someArray); leftIndex += itemsPerArrayBlock {
 				rightIndex := leftIndex + itemsPerArrayBlock
@@ -695,12 +744,12 @@ func (st symtab) makeArrayCodec(enclosingNamespace string, schema interface{}) (
 				items := someArray[leftIndex:rightIndex]
 				err = longEncoder(w, int64(len(items)))
 				if err != nil {
-					return cannotEncode("%v", err)
+					return newEncoderError(friendlyName, err)
 				}
 				for _, item := range items {
 					err = valuesCodec.ef(w, item)
 					if err != nil {
-						return cannotEncode("%v", err)
+						return newEncoderError(friendlyName, err)
 					}
 				}
 			}

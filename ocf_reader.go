@@ -222,6 +222,7 @@ func read(fr *Reader, toDecompress chan<- *readerBlock) {
 	for blockCount != 0 {
 		lr = io.LimitReader(fr.r, int64(blockSize))
 		if bits, err = ioutil.ReadAll(lr); err != nil {
+			err = fmt.Errorf("cannot read block: %v", err)
 			break
 		}
 		toDecompress <- &readerBlock{datumCount: blockCount, r: bytes.NewReader(bits)}
@@ -244,16 +245,26 @@ func read(fr *Reader, toDecompress chan<- *readerBlock) {
 }
 
 func readBlockCountAndSize(r io.Reader) (blockCount, blockSize int, err error) {
+
+	// io.EOF
+	// io.ErrUnexpectedEOF
+
 	bc, err := longCodec.Decode(r)
 	switch err {
 	case io.EOF:
 		// we're done
+		// log.Printf("io.EOF: error type %T\n", err)
 		return 0, 0, nil
 	case nil:
-		// not really an error: ignore
+		// no error: ignore
 	default:
 		// TODO: this could be optimized
 		if strings.Contains(err.Error(), "EOF") {
+			// log.Printf("EOF: error type: %T", err)
+			// if ed, ok := err.(*ErrDecode); ok {
+			// 	log.Printf("EOF: error value: %#v", ed.Err)
+			// 	log.Printf("EOF: error string: %v", ed.Err)
+			// }
 			// we're done
 			return 0, 0, nil
 		}

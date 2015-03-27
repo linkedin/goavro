@@ -171,7 +171,7 @@ func TestCodecDecoderPrimitives(t *testing.T) {
 	// null
 	checkCodecDecoderResult(t, `"null"`, []byte("\x01"), nil)
 	// boolean
-	checkCodecDecoderError(t, `"boolean"`, []byte("\x02"), "cannot decode boolean: 2")
+	checkCodecDecoderError(t, `"boolean"`, []byte("\x02"), "cannot decode boolean")
 	checkCodecDecoderError(t, `"boolean"`, []byte(""), "cannot decode boolean: EOF")
 	checkCodecDecoderResult(t, `"boolean"`, []byte("\x00"), false)
 	checkCodecDecoderResult(t, `"boolean"`, []byte("\x01"), true)
@@ -315,9 +315,9 @@ func TestCodecEncoderPrimitives(t *testing.T) {
 func TestCodecUnionChecksSchema(t *testing.T) {
 	var err error
 	_, err = NewCodec(`[]`)
-	checkErrorFatal(t, err, "union ought have at least one member")
+	checkErrorFatal(t, err, "ought have at least one member")
 	_, err = NewCodec(`["null","flubber"]`)
-	checkErrorFatal(t, err, "union member ought to be decodable")
+	checkErrorFatal(t, err, "member ought to be decodable")
 }
 
 func TestCodecUnionPrimitives(t *testing.T) {
@@ -405,7 +405,7 @@ func TestCodecDecoderEnum(t *testing.T) {
 
 func TestCodecEncoderEnum(t *testing.T) {
 	schema := `{"type":"enum","name":"cards","symbols":["HEARTS","DIAMONDS","SPADES","CLUBS"]}`
-	checkCodecEncoderError(t, schema, []byte("\x01"), "expected: string; actual: []uint8")
+	checkCodecEncoderError(t, schema, []byte("\x01"), "expected: string; received: []uint8")
 	checkCodecEncoderError(t, schema, "some symbol not in schema", "symbol not defined")
 	checkCodecEncoderResult(t, schema, "SPADES", []byte("\x04"))
 }
@@ -430,9 +430,9 @@ func TestCodecFixed(t *testing.T) {
 	schema := `{"type":"fixed","name":"fixed1","size":5}`
 	checkCodecDecoderError(t, schema, []byte(""), "EOF")
 	checkCodecDecoderError(t, schema, []byte("hap"), "buffer underrun")
-	checkCodecEncoderError(t, schema, "happy day", "expected: []byte; actual: string")
-	checkCodecEncoderError(t, schema, []byte("day"), "expected: 5 bytes; actual: 3")
-	checkCodecEncoderError(t, schema, []byte("happy day"), "expected: 5 bytes; actual: 9")
+	checkCodecEncoderError(t, schema, "happy day", "expected: []byte; received: string")
+	checkCodecEncoderError(t, schema, []byte("day"), "expected: 5 bytes; received: 3")
+	checkCodecEncoderError(t, schema, []byte("happy day"), "expected: 5 bytes; received: 9")
 	checkCodecEncoderResult(t, schema, []byte("happy"), []byte("happy"))
 }
 
@@ -465,7 +465,7 @@ func TestCodecRecordFieldChecksDefaultType(t *testing.T) {
 
 	bb := new(bytes.Buffer)
 	err = codec.Encode(bb, someRecord)
-	checkError(t, err, "expected: int32; actual: bool")
+	checkError(t, err, "expected: int32; received: bool")
 	// checkError(t, err, "field default value is wrong type")
 }
 
@@ -476,7 +476,7 @@ func TestCodecEncoderArrayChecksSchema(t *testing.T) {
 	_, err = NewCodec(`{"type":"array","items":"flubber"}`)
 	checkErrorFatal(t, err, "unknown type name")
 
-	checkCodecEncoderError(t, `{"type":"array","items":"long"}`, int64(5), "expected: []interface{}; actual: int64")
+	checkCodecEncoderError(t, `{"type":"array","items":"long"}`, int64(5), "expected: []interface{}; received: int64")
 }
 
 func TestCodecDecoderArrayEOF(t *testing.T) {
@@ -660,8 +660,8 @@ func TestCodecMapChecksSchema(t *testing.T) {
 	_, err = NewCodec(`{"type":"map","values":"flubber"}`)
 	checkErrorFatal(t, err, "unknown type name")
 
-	checkCodecEncoderError(t, `{"type":"map","values":"long"}`, int64(5), "expected: map[string]interface{}; actual: int64")
-	checkCodecEncoderError(t, `{"type":"map","values":"string"}`, 3, "expected: map[string]interface{}; actual: int")
+	checkCodecEncoderError(t, `{"type":"map","values":"long"}`, int64(5), "expected: map[string]interface{}; received: int64")
+	checkCodecEncoderError(t, `{"type":"map","values":"string"}`, 3, "expected: map[string]interface{}; received: int")
 }
 
 func TestCodecDecoderMapEOF(t *testing.T) {
@@ -682,7 +682,7 @@ func TestCodecDecoderMapZeroBlocks(t *testing.T) {
 		t.Errorf("Actual: %#v; Expected: %#v", ok, true)
 	}
 	if len(someMap) != 0 {
-		t.Errorf(`Actual: %v; Expected: %v`, len(someMap), 0)
+		t.Errorf(`received: %v; Expected: %v`, len(someMap), 0)
 	}
 }
 
@@ -699,7 +699,7 @@ func TestCodecDecoderMapReturnsExpectedMap(t *testing.T) {
 		t.Errorf("Actual: %#v; Expected: %#v", ok, true)
 	}
 	if len(someMap) != 1 {
-		t.Errorf(`Actual: %v; Expected: %v`, len(someMap), 1)
+		t.Errorf(`received: %v; Expected: %v`, len(someMap), 1)
 	}
 	datum, ok := someMap["foo"]
 	if !ok {
@@ -718,7 +718,7 @@ func TestCodecEncoderMapChecksValueTypeDuringWrite(t *testing.T) {
 	schema := `{"type":"map","values":"string"}`
 	datum := make(map[string]interface{})
 	datum["name"] = 13
-	checkCodecEncoderError(t, schema, datum, "expected: string; actual: int")
+	checkCodecEncoderError(t, schema, datum, "expected: string; received: int")
 }
 
 func TestCodecEncoderMapMetadataSchema(t *testing.T) {
@@ -750,7 +750,7 @@ func TestCodecRecordChecksSchema(t *testing.T) {
 	checkError(t, err, "name ought to be non-empty string")
 
 	_, err = NewCodec(`{"type":"record","name":"Foo"}`)
-	checkError(t, err, "record requires fields")
+	checkError(t, err, "record requires one or more fields")
 
 	_, err = NewCodec(`{"type":"record","name":"Foo","fields":5}`)
 	checkError(t, err, "fields ought to be non-empty array")
@@ -759,13 +759,13 @@ func TestCodecRecordChecksSchema(t *testing.T) {
 	checkError(t, err, "fields ought to be non-empty array")
 
 	_, err = NewCodec(`{"type":"record","name":"Foo","fields":["foo"]}`)
-	checkError(t, err, "cannot create record field: schema expected")
+	checkError(t, err, "schema expected")
 
 	_, err = NewCodec(`{"type":"record","name":"Foo","fields":[{"type":"int"}]}`)
 	checkError(t, err, "ought to have name key")
 
 	_, err = NewCodec(`{"type":"record","name":"Foo","fields":[{"name":"field1","type":5}]}`)
-	checkError(t, err, "schema type")
+	checkError(t, err, "type ought to be")
 
 	_, err = NewCodec(`{"type":"record","name":"Foo","fields":[{"type":"int"}]}`)
 	checkError(t, err, "ought to have name key")

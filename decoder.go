@@ -25,15 +25,52 @@ import (
 	"math"
 )
 
+// ErrDecoder is returned when the encoder encounters an error.
+type ErrDecoder struct {
+	Message string
+	Err     error
+}
+
+func (e ErrDecoder) Error() string {
+	if e.Err == nil {
+		return "cannot decode " + e.Message
+	} else {
+		return "cannot decode " + e.Message + ": " + e.Err.Error()
+	}
+}
+
+func newDecoderError(dataType string, a ...interface{}) *ErrDecoder {
+	var err error
+	var format, message string
+	var ok bool
+	if len(a) == 0 {
+		return &ErrDecoder{dataType + ": no reason given", nil}
+	}
+	// if last item is error: save it
+	if err, ok = a[len(a)-1].(error); ok {
+		a = a[:len(a)-1] // pop it
+	}
+	// if items left, first ought to be format string
+	if len(a) > 0 {
+		if format, ok = a[0].(string); ok {
+			a = a[1:] // unshift
+			message = fmt.Sprintf(format, a...)
+		}
+	}
+	if message != "" {
+		message = ": " + message
+	}
+	return &ErrDecoder{dataType + message, err}
+}
+
 func nullDecoder(_ io.Reader) (interface{}, error) {
 	return nil, nil
 }
 
 func booleanDecoder(r io.Reader) (interface{}, error) {
 	bb := make([]byte, 1)
-	_, err := r.Read(bb)
-	if err != nil {
-		return nil, fmt.Errorf("cannot decode boolean: %v", err)
+	if _, err := r.Read(bb); err != nil {
+		return nil, newDecoderError("boolean", err)
 	}
 	var datum bool
 	switch bb[0] {
@@ -42,7 +79,7 @@ func booleanDecoder(r io.Reader) (interface{}, error) {
 	case byte(1):
 		datum = true
 	default:
-		return nil, fmt.Errorf("cannot decode boolean: %x", bb[0])
+		return nil, newDecoderError("boolean", "expected 1 or 0; received: %d", bb[0])
 	}
 	return datum, nil
 }
@@ -52,9 +89,8 @@ func intDecoder(r io.Reader) (interface{}, error) {
 	var err error
 	bb := make([]byte, 1)
 	for shift := uint(0); ; shift += 7 {
-		_, err = r.Read(bb)
-		if err != nil {
-			return nil, fmt.Errorf("cannot decode int: %v", err)
+		if _, err = r.Read(bb); err != nil {
+			return nil, newDecoderError("int", err)
 		}
 		b := bb[0]
 		v |= int(b&mask) << shift
@@ -71,9 +107,8 @@ func longDecoder(r io.Reader) (interface{}, error) {
 	var err error
 	bb := make([]byte, 1)
 	for shift := uint(0); ; shift += 7 {
-		_, err = r.Read(bb)
-		if err != nil {
-			return nil, fmt.Errorf("cannot decode long: %v", err)
+		if _, err = r.Read(bb); err != nil {
+			return nil, newDecoderError("long", err)
 		}
 		b := bb[0]
 		v |= int(b&mask) << shift
@@ -87,9 +122,8 @@ func longDecoder(r io.Reader) (interface{}, error) {
 
 func floatDecoder(r io.Reader) (interface{}, error) {
 	buf := make([]byte, 4)
-	_, err := r.Read(buf)
-	if err != nil {
-		return nil, fmt.Errorf("cannot decode float: %v", err)
+	if _, err := r.Read(buf); err != nil {
+		return nil, newDecoderError("float", err)
 	}
 	bits := binary.LittleEndian.Uint32(buf)
 	datum := math.Float32frombits(bits)
@@ -98,9 +132,8 @@ func floatDecoder(r io.Reader) (interface{}, error) {
 
 func doubleDecoder(r io.Reader) (interface{}, error) {
 	buf := make([]byte, 8)
-	_, err := r.Read(buf)
-	if err != nil {
-		return nil, fmt.Errorf("cannot decode double: %v", err)
+	if _, err := r.Read(buf); err != nil {
+		return nil, newDecoderError("double", err)
 	}
 	datum := math.Float64frombits(binary.LittleEndian.Uint64(buf))
 	return datum, nil
@@ -109,22 +142,22 @@ func doubleDecoder(r io.Reader) (interface{}, error) {
 func bytesDecoder(r io.Reader) (interface{}, error) {
 	someValue, err := longDecoder(r)
 	if err != nil {
-		return nil, fmt.Errorf("cannot decode bytes: %v", err)
+		return nil, newDecoderError("bytes", err)
 	}
 	size, ok := someValue.(int64)
 	if !ok {
-		return nil, fmt.Errorf("cannot decode bytes: expected int64; actual: %T", someValue)
+		return nil, newDecoderError("bytes", "expected int64; received: %T", someValue)
 	}
 	if size < 0 {
-		return nil, fmt.Errorf("cannot decode bytes: negative length: %d", size)
+		return nil, newDecoderError("bytes", "negative length: %d", size)
 	}
 	buf := make([]byte, size)
 	bytesRead, err := r.Read(buf)
 	if err != nil {
-		return nil, fmt.Errorf("cannot decode bytes: %v", err)
+		return nil, newDecoderError("bytes", err)
 	}
 	if int64(bytesRead) < size {
-		return nil, fmt.Errorf("cannot decode bytes: buffer underrun")
+		return nil, newDecoderError("bytes", "buffer underrun")
 	}
 	return buf, nil
 }
@@ -134,22 +167,22 @@ func stringDecoder(r io.Reader) (interface{}, error) {
 	// but prefer to not have nested error messages
 	someValue, err := longDecoder(r)
 	if err != nil {
-		return nil, fmt.Errorf("cannot decode string: %v", err)
+		return nil, newDecoderError("string", err)
 	}
 	size, ok := someValue.(int64)
 	if !ok {
-		return nil, fmt.Errorf("cannot decode string: expected int64; actual: %T", someValue)
+		return nil, newDecoderError("string", "expected int64; received: %T", someValue)
 	}
 	if size < 0 {
-		return nil, fmt.Errorf("cannot decode string: negative length: %d", size)
+		return nil, newDecoderError("string", "negative length: %d", size)
 	}
 	buf := make([]byte, size)
 	byteCount, err := r.Read(buf)
 	if err != nil {
-		return nil, fmt.Errorf("cannot decode string: %v", err)
+		return nil, newDecoderError("string", err)
 	}
 	if int64(byteCount) < size {
-		return nil, fmt.Errorf("cannot decode string: buffer underrun")
+		return nil, newDecoderError("string", "buffer underrun")
 	}
 	return string(buf), nil
 }

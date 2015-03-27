@@ -25,7 +25,7 @@ import (
 
 func TestRecordRequiresSchema(t *testing.T) {
 	_, err := NewRecord()
-	checkErrorFatal(t, err, "cannot create Record: no schema defined")
+	checkErrorFatal(t, err, "cannot build record: no schema defined")
 }
 
 func TestRecordFieldNames(t *testing.T) {
@@ -113,7 +113,7 @@ func TestRecordBailsWithoutFields(t *testing.T) {
 
 	schema["name"] = "someRecord"
 	_, err := NewRecord(recordSchemaRaw(schema))
-	checkError(t, err, fmt.Errorf("record requires fields"))
+	checkError(t, err, fmt.Errorf("record requires one or more fields"))
 
 	schema["fields"] = 5
 	_, err = NewRecord(recordSchemaRaw(schema))
@@ -127,7 +127,7 @@ func TestRecordBailsWithoutFields(t *testing.T) {
 	fields = append(fields, "int")
 	schema["fields"] = fields
 	_, err = NewRecord(recordSchemaRaw(schema))
-	checkError(t, err, fmt.Errorf("expected: map[string]interface{}; actual: string"))
+	checkError(t, err, fmt.Errorf("expected: map[string]interface{}; received: string"))
 }
 
 func TestRecordFieldUnion(t *testing.T) {
