@@ -34,7 +34,7 @@ func main() {
 			}
 			fh, err := os.Open(arg)
 			if err != nil {
-				log.Fatal("cannot open file: ", err)
+				log.Fatal(err)
 			}
 			dumpReader(fh)
 			fh.Close()

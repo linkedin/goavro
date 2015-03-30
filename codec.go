@@ -101,6 +101,7 @@ type Encoder interface {
 type Codec interface {
 	Decoder
 	Encoder
+	Schema() string
 }
 
 // CodecSetter functions are those those which are used to modify a
@@ -111,9 +112,10 @@ type decoderFunction func(io.Reader) (interface{}, error)
 type encoderFunction func(io.Writer, interface{}) error
 
 type codec struct {
-	nm *name
-	df decoderFunction
-	ef encoderFunction
+	nm     *name
+	df     decoderFunction
+	ef     encoderFunction
+	schema string
 }
 
 // String returns a string representation of the codec.
@@ -163,9 +165,15 @@ type symtab map[string]*codec // map full name to codec
 //       return nil, err
 //   }
 func NewCodec(someJSONSchema string, setters ...CodecSetter) (Codec, error) {
+	// unmarshal into schema blob
 	var schema interface{}
 	if err := json.Unmarshal([]byte(someJSONSchema), &schema); err != nil {
 		return nil, &ErrSchemaParse{"cannot unmarshal JSON", err}
+	}
+	// remarshal back into compressed json
+	compressedSchema, err := json.Marshal(schema)
+	if err != nil {
+		return nil, fmt.Errorf("cannot marshal schema: %v", err)
 	}
 
 	// each codec gets a unified namespace of symbols to
@@ -183,6 +191,7 @@ func NewCodec(someJSONSchema string, setters ...CodecSetter) (Codec, error) {
 			return nil, err
 		}
 	}
+	newCodec.schema = string(compressedSchema)
 	return newCodec, nil
 }
 
@@ -198,6 +207,10 @@ func (c codec) Decode(r io.Reader) (interface{}, error) {
 // into the Codec's schema.
 func (c codec) Encode(w io.Writer, datum interface{}) error {
 	return c.ef(w, datum)
+}
+
+func (c codec) Schema() string {
+	return c.schema
 }
 
 var (

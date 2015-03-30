@@ -20,12 +20,12 @@ package main
 
 import (
 	"github.com/linkedin/goavro"
+	"io"
 	"log"
 	"os"
 )
 
-func main() {
-	recordSchema := `
+const recordSchema = `
 {
   "type": "record",
   "name": "comments",
@@ -50,16 +50,44 @@ func main() {
   ]
 }
 `
-	fh, err := os.Create("test.avro")
+
+var (
+	codec goavro.Codec
+)
+
+func init() {
+	var err error
+	// If you want speed, create the codec one time for each
+	// schema and reuse it to create multiple Writer instances.
+	codec, err = goavro.NewCodec(recordSchema)
 	if err != nil {
-		log.Fatal("cannot create file: ", err)
+		log.Fatal(err)
 	}
-	defer fh.Close()
+}
+
+func main() {
+	if len(os.Args) > 1 {
+		for i, arg := range os.Args {
+			if i == 0 {
+				continue
+			}
+			fh, err := os.Create(arg)
+			if err != nil {
+				log.Fatal(err)
+			}
+			dumpWriter(fh, codec)
+			fh.Close()
+		}
+	} else {
+		dumpWriter(os.Stdout, codec)
+	}
+}
+
+func dumpWriter(w io.Writer, codec goavro.Codec) {
 	fw, err := goavro.NewWriter(
-		goavro.BlockSize(13), // just because
 		goavro.Compression(goavro.CompressionSnappy),
-		goavro.WriterSchema(recordSchema),
-		goavro.ToWriter(fh))
+		goavro.ToWriter(w),
+		goavro.UseCodec(codec))
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -56,7 +56,7 @@ func TestNewWriterBailsMissingWriterSchema(t *testing.T) {
 
 func TestNewWriterBailsInvalidWriterSchema(t *testing.T) {
 	_, err := NewWriter(WriterSchema("this should not compile"))
-	checkError(t, err, "compiling schema")
+	checkError(t, err, "cannot parse schema")
 }
 
 func TestNewWriterBailsBadSync(t *testing.T) {

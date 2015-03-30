@@ -50,6 +50,20 @@ const recordSchema = `
 }
 `
 
+var (
+	codec goavro.Codec
+)
+
+func init() {
+	var err error
+	// If you want speed, create the codec one time for each
+	// schema and reuse it to create multiple Writer instances.
+	codec, err = goavro.NewCodec(recordSchema)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
 func main() {
 	ln, err := net.Listen("tcp", ":8080")
 	if err != nil {
@@ -60,15 +74,15 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		go serveClient(conn)
+		go serveClient(conn, codec)
 	}
 }
 
-func serveClient(conn net.Conn) {
+func serveClient(conn net.Conn, codec goavro.Codec) {
 	fw, err := goavro.NewWriter(
 		goavro.Compression(goavro.CompressionSnappy),
-		goavro.WriterSchema(recordSchema),
-		goavro.ToWriter(conn))
+		goavro.ToWriter(conn),
+		goavro.UseCodec(codec))
 	if err != nil {
 		log.Fatal(err)
 	}

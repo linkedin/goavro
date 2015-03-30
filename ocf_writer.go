@@ -23,7 +23,6 @@ import (
 	"bytes"
 	"code.google.com/p/snappy-go/snappy"
 	"compress/flate"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -62,6 +61,16 @@ func ToWriter(w io.Writer) WriterSetter {
 	return func(fw *Writer) error {
 		fw.w = w
 		return nil
+	}
+}
+
+func UseCodec(codec Codec) WriterSetter {
+	return func(fw *Writer) error {
+		if codec != nil {
+			fw.dataCodec = codec
+			return nil
+		}
+		return fmt.Errorf("invalid Codec")
 	}
 }
 
@@ -115,21 +124,17 @@ func Sync(someSync []byte) WriterSetter {
 
 // WriterSchema is used to set the Avro schema of a new instance.
 func WriterSchema(someSchema string) WriterSetter {
-	return func(fw *Writer) error {
-		var err error
-		fw.DataSchema = someSchema
-		fw.dataCodec, err = NewCodec(fw.DataSchema)
-		if err != nil {
-			return fmt.Errorf("error compiling schema: %v", err)
+	return func(fw *Writer) (err error) {
+		if fw.dataCodec, err = NewCodec(someSchema); err != nil {
+			return
 		}
-		return nil
+		return
 	}
 }
 
 // Writer structure contains data necessary to write Avro files.
 type Writer struct {
 	CompressionCodec string
-	DataSchema       string
 	Sync             []byte
 	blockSize        int64
 	buffered         bool
@@ -192,15 +197,8 @@ func NewWriter(setters ...WriterSetter) (*Writer, error) {
 	if !IsCompressionCodecSupported(fw.CompressionCodec) {
 		return nil, &ErrWriterInit{Message: fmt.Sprintf("unsupported codec: %s", fw.CompressionCodec)}
 	}
-	if fw.DataSchema == "" {
+	if fw.dataCodec == nil {
 		return nil, &ErrWriterInit{Message: "missing schema"}
-	}
-	fw.DataSchema, err = compressJSON(fw.DataSchema)
-	if err != nil {
-		return nil, &ErrWriterInit{Err: err}
-	}
-	if fw.dataCodec, err = NewCodec(fw.DataSchema); err != nil {
-		return nil, &ErrWriterInit{Err: err}
 	}
 	if fw.Sync == nil {
 		// create random sequence of bytes for file sync marker
@@ -247,28 +245,13 @@ func (fw *Writer) writeHeader() (err error) {
 	}
 	// header metadata
 	hm := make(map[string]interface{})
-	hm["avro.schema"] = []byte(fw.DataSchema)
+	hm["avro.schema"] = []byte(fw.dataCodec.Schema())
 	hm["avro.codec"] = []byte(fw.CompressionCodec)
 	if err = metadataCodec.Encode(fw.w, hm); err != nil {
 		return
 	}
 	_, err = fw.w.Write(fw.Sync)
 	return
-}
-
-func compressJSON(schemaJSON string) (string, error) {
-	var err error
-	var compressed []byte
-	var schema interface{}
-	// unmarshal into schema blob
-	if err = json.Unmarshal([]byte(schemaJSON), &schema); err != nil {
-		return "", fmt.Errorf("cannot unmarshal schema string: %#v: %v", schemaJSON, err)
-	}
-	// remarshal back into compressed json
-	if compressed, err = json.Marshal(schema); err != nil {
-		return "", fmt.Errorf("cannot marshal schema: %v", err)
-	}
-	return string(compressed), nil
 }
 
 type writerBlock struct {
