@@ -64,6 +64,9 @@ func ToWriter(w io.Writer) WriterSetter {
 	}
 }
 
+// UseCodec specifies that a Writer should reuse an existing Codec
+// rather than creating a new one, and recompling the same schema over
+// and over.
 func UseCodec(codec Codec) WriterSetter {
 	return func(fw *Writer) error {
 		if codec != nil {
