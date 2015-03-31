@@ -346,6 +346,11 @@ func TestCodecUnionPrimitives(t *testing.T) {
 	checkCodecEncoderResult(t, `["string","float"]`, "filibuster", []byte("\x00\x14filibuster"))
 }
 
+func TestCodecDecoderUnion(t *testing.T) {
+	checkCodecDecoderResult(t, `["string","float"]`, []byte("\x00\x14filibuster"), "filibuster")
+	checkCodecDecoderResult(t, `["string","int"]`, []byte("\x02\x1a"), int32(13))
+}
+
 func TestCodecEncoderUnionArray(t *testing.T) {
 	checkCodecEncoderResult(t, `[{"type":"array","items":"int"},"string"]`, "filibuster", []byte("\x02\x14filibuster"))
 
