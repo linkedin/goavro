@@ -574,7 +574,7 @@ func (st symtab) makeRecordCodec(enclosingNamespace string, schema interface{}) 
 				// check whether field datum is valid
 				if reflect.ValueOf(field.Datum).IsValid() {
 					value = field.Datum
-				} else if reflect.ValueOf(field.defval).IsValid() {
+				} else if field.hasDefault {
 					value = field.defval
 				} else {
 					return newEncoderError(friendlyName, "field has no data and no default set: %v", field.Name)

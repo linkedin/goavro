@@ -213,14 +213,15 @@ func RecordEnclosingNamespace(someNamespace string) RecordSetter {
 ////////////////////////////////////////
 
 type recordField struct {
-	Name    string
-	Datum   interface{}
-	doc     string
-	defval  interface{}
-	order   string
-	aliases []string
-	schema  interface{}
-	ens     string
+	Name       string
+	Datum      interface{}
+	doc        string
+	defval     interface{}
+	hasDefault bool
+	order      string
+	aliases    []string
+	schema     interface{}
+	ens        string
 }
 
 func (rf recordField) String() string {
@@ -256,7 +257,7 @@ func newRecordField(schema interface{}, setters ...recordFieldSetter) (*recordFi
 	}
 	rf.Name = n.n
 
-	_, ok = schemaMap["type"]
+	typeName, ok := schemaMap["type"]
 	if !ok {
 		return nil, newCodecBuildError("record field", "ought to have type key")
 	}
@@ -266,7 +267,40 @@ func newRecordField(schema interface{}, setters ...recordFieldSetter) (*recordFi
 
 	val, ok := schemaMap["default"]
 	if ok {
-		rf.defval = val
+		rf.hasDefault = true
+		switch typeName.(type) {
+		case string:
+			switch typeName {
+			case "int":
+				dv, ok := val.(float64)
+				if !ok {
+					return nil, newCodecBuildError("record field", "default value type mismatch: %s; expected: %s; received: %T", rf.Name, "int32", val)
+				}
+				rf.defval = int32(dv)
+			case "long":
+				dv, ok := val.(float64)
+				if !ok {
+					return nil, newCodecBuildError("record field", "default value type mismatch: %s; expected: %s; received: %T", rf.Name, "int64", val)
+				}
+				rf.defval = int64(dv)
+			case "float":
+				dv, ok := val.(float64)
+				if !ok {
+					return nil, newCodecBuildError("record field", "default value type mismatch: %s; expected: %s; received: %T", rf.Name, "float32", val)
+				}
+				rf.defval = float32(dv)
+			case "bytes":
+				dv, ok := val.(string)
+				if !ok {
+					return nil, newCodecBuildError("record field", "default value type mismatch: %s; expected: %s; received: %T", rf.Name, "string", val)
+				}
+				rf.defval = []byte(dv)
+			default:
+				rf.defval = val
+			}
+		default:
+			rf.defval = val
+		}
 	}
 
 	if val, ok = schemaMap["doc"]; ok {

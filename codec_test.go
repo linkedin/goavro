@@ -79,7 +79,7 @@ func checkCodecEncoderResult(t *testing.T, schema string, datum interface{}, bit
 	bb := new(bytes.Buffer)
 	err = codec.Encode(bb, datum)
 	if err != nil {
-		t.Errorf("Actual: %#v; Expected: %#v", err, nil)
+		t.Errorf("Actual: %v; Expected: %v", err, nil)
 	}
 	if bytes.Compare(bb.Bytes(), bits) != 0 {
 		t.Errorf("Actual: %#v; Expected: %#v", bb.Bytes(), bits)
@@ -462,16 +462,8 @@ func TestCodecRecordFieldDefaultValueNamedType(t *testing.T) {
 
 func TestCodecRecordFieldChecksDefaultType(t *testing.T) {
 	recordSchemaJSON := `{"type":"record","name":"record1","fields":[{"type":"int","name":"field1","default":true},{"type":"string","name":"field2"}]}`
-	codec, err := NewCodec(recordSchemaJSON)
-	checkErrorFatal(t, err, nil)
-
-	someRecord, err := NewRecord(RecordSchema(recordSchemaJSON))
-	checkErrorFatal(t, err, nil)
-
-	bb := new(bytes.Buffer)
-	err = codec.Encode(bb, someRecord)
+	_, err := NewCodec(recordSchemaJSON)
 	checkError(t, err, "expected: int32; received: bool")
-	// checkError(t, err, "field default value is wrong type")
 }
 
 func TestCodecEncoderArrayChecksSchema(t *testing.T) {
@@ -820,7 +812,75 @@ func TestCodecEncoderRecord(t *testing.T) {
 	checkCodecEncoderResult(t, recordSchemaJSON, someRecord, bits)
 }
 
-func TestCodecEncoderRecordWithFieldDefaultValue(t *testing.T) {
+func TestCodecEncoderRecordWithFieldDefaultNull(t *testing.T) {
+	recordSchemaJSON := `{"type":"record","name":"Foo","fields":[{"name":"field1","type":"int"},{"name":"field2","type":["null","string"],"default":null}]}`
+	someRecord, err := NewRecord(RecordSchema(recordSchemaJSON))
+	checkErrorFatal(t, err, nil)
+
+	someRecord.Set("field1", int32(42))
+	bits := []byte("\x54\x00")
+	checkCodecEncoderResult(t, recordSchemaJSON, someRecord, bits)
+}
+
+func TestCodecEncoderRecordWithFieldDefaultBoolean(t *testing.T) {
+	recordSchemaJSON := `{"type":"record","name":"Foo","fields":[{"name":"field1","type":"int"},{"name":"field2","type":"boolean","default":true}]}`
+	someRecord, err := NewRecord(RecordSchema(recordSchemaJSON))
+	checkErrorFatal(t, err, nil)
+
+	someRecord.Set("field1", int32(64))
+
+	bits := []byte("\x80\x01\x01")
+	checkCodecEncoderResult(t, recordSchemaJSON, someRecord, bits)
+}
+
+func TestCodecEncoderRecordWithFieldDefaultInt(t *testing.T) {
+	recordSchemaJSON := `{"type":"record","name":"Foo","fields":[{"name":"field1","type":"int","default":3}]}`
+	someRecord, err := NewRecord(RecordSchema(recordSchemaJSON))
+	checkErrorFatal(t, err, nil)
+
+	bits := []byte("\x06")
+	checkCodecEncoderResult(t, recordSchemaJSON, someRecord, bits)
+}
+
+func TestCodecEncoderRecordWithFieldDefaultLong(t *testing.T) {
+	recordSchemaJSON := `{"type":"record","name":"Foo","fields":[{"name":"field1","type":"long","default":3}]}`
+	someRecord, err := NewRecord(RecordSchema(recordSchemaJSON))
+	checkErrorFatal(t, err, nil)
+
+	bits := []byte("\x06")
+	checkCodecEncoderResult(t, recordSchemaJSON, someRecord, bits)
+}
+
+func TestCodecEncoderRecordWithFieldDefaultFloat(t *testing.T) {
+	recordSchemaJSON := `{"type":"record","name":"Foo","fields":[{"name":"field1","type":"float","default":3.5}]}`
+	someRecord, err := NewRecord(RecordSchema(recordSchemaJSON))
+	checkErrorFatal(t, err, nil)
+
+	bits := []byte("\x00\x00\x60\x40")
+	checkCodecEncoderResult(t, recordSchemaJSON, someRecord, bits)
+}
+
+func TestCodecEncoderRecordWithFieldDefaultDouble(t *testing.T) {
+	recordSchemaJSON := `{"type":"record","name":"Foo","fields":[{"name":"field1","type":"double","default":3.5}]}`
+	someRecord, err := NewRecord(RecordSchema(recordSchemaJSON))
+	checkErrorFatal(t, err, nil)
+
+	bits := []byte("\x00\x00\x00\x00\x00\x00\f@")
+	checkCodecEncoderResult(t, recordSchemaJSON, someRecord, bits)
+}
+
+func TestCodecEncoderRecordWithFieldDefaultBytes(t *testing.T) {
+	recordSchemaJSON := `{"type":"record","name":"Foo","fields":[{"name":"field1","type":"int"},{"name":"field2","type":"bytes","default":"happy"}]}`
+	someRecord, err := NewRecord(RecordSchema(recordSchemaJSON))
+	checkErrorFatal(t, err, nil)
+
+	someRecord.Set("field1", int32(64))
+
+	bits := []byte("\x80\x01\x0ahappy")
+	checkCodecEncoderResult(t, recordSchemaJSON, someRecord, bits)
+}
+
+func TestCodecEncoderRecordWithFieldDefaultString(t *testing.T) {
 	recordSchemaJSON := `{"type":"record","name":"Foo","fields":[{"name":"field1","type":"int"},{"name":"field2","type":"string","default":"happy"}]}`
 	someRecord, err := NewRecord(RecordSchema(recordSchemaJSON))
 	checkErrorFatal(t, err, nil)
