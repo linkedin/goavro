@@ -84,10 +84,9 @@ func main() {
 }
 
 func dumpWriter(w io.Writer, codec goavro.Codec) {
-	fw, err := goavro.NewWriter(
-		goavro.Compression(goavro.CompressionSnappy),
-		goavro.ToWriter(w),
-		goavro.UseCodec(codec))
+	fw, err := codec.NewWriter(
+		// goavro.Compression(goavro.CompressionSnappy),
+		goavro.ToWriter(w))
 	if err != nil {
 		log.Fatal(err)
 	}

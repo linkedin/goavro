@@ -102,6 +102,7 @@ type Codec interface {
 	Decoder
 	Encoder
 	Schema() string
+	NewWriter(...WriterSetter) (*Writer, error)
 }
 
 // CodecSetter functions are those those which are used to modify a
@@ -211,6 +212,26 @@ func (c codec) Encode(w io.Writer, datum interface{}) error {
 
 func (c codec) Schema() string {
 	return c.schema
+}
+
+// NewWriter creates a new Writer that encodes using the given Codec.
+//
+// The following two code examples produce identical results:
+//
+//    fw, err := codec.NewWriter(goavro.ToWriter(w))
+//    if err != nil {
+//    	log.Fatal(err)
+//    }
+//    defer fw.Close()
+//
+//    fw, err := goavro.NewWriter(goavro.ToWriter(w), goavro.UseCodec(codec))
+//    if err != nil {
+//    	log.Fatal(err)
+//    }
+//    defer fw.Close()
+func (c codec) NewWriter(setters ...WriterSetter) (*Writer, error) {
+	setters = append(setters, UseCodec(c))
+	return NewWriter(setters...)
 }
 
 var (
