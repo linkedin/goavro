@@ -186,7 +186,7 @@ type Writer struct {
 //     }
 func NewWriter(setters ...WriterSetter) (*Writer, error) {
 	var err error
-	fw := &Writer{CompressionCodec: CompressionNull}
+	fw := &Writer{CompressionCodec: CompressionNull, blockSize: DefaultWriterBlockSize}
 	for _, setter := range setters {
 		err = setter(fw)
 		if err != nil {
@@ -270,7 +270,7 @@ func blocker(fw *Writer, toBlock <-chan interface{}, toEncode chan<- *writerBloc
 		items = append(items, item)
 		if int64(len(items)) == fw.blockSize {
 			toEncode <- &writerBlock{items: items}
-			items = make([]interface{}, 0)
+			items = make([]interface{}, 0, fw.BlockSize)
 		}
 	}
 	if len(items) > 0 {
