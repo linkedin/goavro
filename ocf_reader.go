@@ -21,7 +21,7 @@ package goavro
 import (
 	"bufio"
 	"bytes"
-	"code.google.com/p/snappy-go/snappy"
+	"github.com/scalingdata/snappy-go/snappy"
 	"compress/flate"
 	"fmt"
 	"io"
