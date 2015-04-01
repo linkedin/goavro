@@ -25,35 +25,44 @@ import (
 	"log"
 )
 
-func main() {
-	innerSchema := `
+const innerSchema = `
+{
+  "type": "record",
+  "name": "user",
+  "namespace": "com.example",
+  "doc": "User information",
+  "fields": [
     {
-      "type": "record",
-      "name": "user",
-      "namespace": "com.example",
-      "doc": "User information",
-      "fields": [
-        {
-          "type": "string",
-          "name": "account",
-          "doc": "The user's account name"
-        },
-        {
-          "type": "long",
-          "name": "creationDate",
-          "doc": "Unix epoch time in milliseconds"
-        }
-      ]
+      "type": "string",
+      "name": "account",
+      "doc": "The user's account name"
+    },
+    {
+      "type": "long",
+      "name": "creationDate",
+      "doc": "Unix epoch time in milliseconds"
     }
+  ]
+}
 `
-	outerSchema := fmt.Sprintf(`
+
+var (
+	outerSchema string
+	codec       goavro.Codec
+)
+
+func init() {
+	outerSchema = fmt.Sprintf(`
 {
   "type": "record",
   "name": "comments",
   "doc:": "A basic schema for storing blog comments",
   "namespace": "com.example",
   "fields": [
-    %s,
+    {
+      "name": "user",
+      "type": %s
+    },
     {
       "doc": "The content of the user's message",
       "type": "string",
@@ -68,6 +77,16 @@ func main() {
 }
 `, innerSchema)
 
+	var err error
+	// If you want speed, create the codec one time for each
+	// schema and reuse it to create multiple Writer instances.
+	codec, err = goavro.NewCodec(outerSchema)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func main() {
 	// If we want to encode data, we need to put it in an actual
 	// goavro.Record instance corresponding to the schema we wish
 	// to encode against.
@@ -94,13 +113,6 @@ func main() {
 	outerRecord.Set("comment", "The Atlantic is oddly cold this morning!")
 	outerRecord.Set("timestamp", int64(1427255074))
 
-	// Create a codec that encodes and decodes according to the
-	// outerSchema, which includes the innerSchema as the first
-	// field.
-	codec, err := goavro.NewCodec(outerSchema)
-	if err != nil {
-		log.Fatal(err)
-	}
 	// Encode the outerRecord into a bytes.Buffer
 	bb := new(bytes.Buffer)
 	if err = codec.Encode(bb, outerRecord); err != nil {

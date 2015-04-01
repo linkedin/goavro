@@ -19,13 +19,41 @@
 package main
 
 import (
+	"fmt"
 	"github.com/linkedin/goavro"
 	"io"
 	"log"
 	"os"
 )
 
-const recordSchema = `
+const innerSchema = `
+{
+  "type": "record",
+  "name": "user",
+  "namespace": "com.example",
+  "doc": "User information",
+  "fields": [
+    {
+      "type": "string",
+      "name": "account",
+      "doc": "The user's account name"
+    },
+    {
+      "type": "long",
+      "name": "creationDate",
+      "doc": "Unix epoch time in milliseconds"
+    }
+  ]
+}
+`
+
+var (
+	outerSchema string
+	codec       goavro.Codec
+)
+
+func init() {
+	outerSchema = fmt.Sprintf(`
 {
   "type": "record",
   "name": "comments",
@@ -33,9 +61,8 @@ const recordSchema = `
   "namespace": "com.example",
   "fields": [
     {
-      "doc": "Name of user",
-      "type": "string",
-      "name": "username"
+      "name": "user",
+      "type": %s
     },
     {
       "doc": "The content of the user's message",
@@ -49,68 +76,67 @@ const recordSchema = `
     }
   ]
 }
-`
+`, innerSchema)
 
-var (
-	codec goavro.Codec
-)
-
-func init() {
 	var err error
 	// If you want speed, create the codec one time for each
 	// schema and reuse it to create multiple Writer instances.
-	codec, err = goavro.NewCodec(recordSchema)
+	codec, err = goavro.NewCodec(outerSchema)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
 func main() {
-	if len(os.Args) > 1 {
-		for i, arg := range os.Args {
-			if i == 0 {
-				continue
-			}
-			fh, err := os.Create(arg)
-			if err != nil {
-				log.Fatal(err)
-			}
-			dumpWriter(fh, codec)
-			fh.Close()
-		}
-	} else {
+	switch len(os.Args) {
+	case 1:
 		dumpWriter(os.Stdout, codec)
+	case 2:
+		fh, err := os.Create(os.Args[1])
+		if err != nil {
+			log.Fatal(err)
+		}
+		dumpWriter(fh, codec)
+		fh.Close()
+	default:
+		fmt.Fprintf(os.Stderr, "usage: %s [filename]\n", os.Args[0])
+		os.Exit(2)
 	}
 }
 
 func dumpWriter(w io.Writer, codec goavro.Codec) {
 	fw, err := codec.NewWriter(
-		// goavro.Compression(goavro.CompressionSnappy),
+		goavro.Compression(goavro.CompressionDeflate),
 		goavro.ToWriter(w))
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer fw.Close()
 
-	// create a record that matches the schema we want to encode
-	someRecord, err := goavro.NewRecord(goavro.RecordSchema(recordSchema))
+	// If we want to encode data, we need to put it in an actual
+	// goavro.Record instance corresponding to the schema we wish
+	// to encode against.
+	//
+	// NewRecord will create a goavro.Record instance
+	// corresponding to the specified schema.
+	innerRecord, err := goavro.NewRecord(goavro.RecordSchema(innerSchema))
 	if err != nil {
 		log.Fatal(err)
 	}
-	// identify field name to set datum for
-	someRecord.Set("username", "Aquaman")
-	someRecord.Set("comment", "The Atlantic is oddly cold this morning!")
-	// you can fully qualify the field name
-	someRecord.Set("com.example.timestamp", int64(1082196484))
-	fw.Write(someRecord)
+	innerRecord.Set("account", "Aquaman")
+	innerRecord.Set("creationDate", int64(1082196484))
 
-	// create another record
-	someRecord, err = goavro.NewRecord(goavro.RecordSchema(recordSchema))
+	// We create both an innerRecord and an outerRecord.
+	outerRecord, err := goavro.NewRecord(goavro.RecordSchema(outerSchema))
 	if err != nil {
 		log.Fatal(err)
 	}
-	someRecord.Set("username", "Batman")
-	someRecord.Set("comment", "Who are all of these crazies?")
-	someRecord.Set("com.example.timestamp", int64(1427383430))
-	fw.Write(someRecord)
+	// innerRecord is a completely seperate record instance from
+	// outerRecord. Once we have an innerRecord instance it can be
+	// assigned to the appropriate Datum item of the outerRecord.
+	outerRecord.Set("user", innerRecord)
+	// Other fields are set on the outerRecord.
+	outerRecord.Set("comment", "The Atlantic is oddly cold this morning!")
+	outerRecord.Set("timestamp", int64(1427255074))
+	fw.Write(outerRecord)
 }
