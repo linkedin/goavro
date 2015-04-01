@@ -270,7 +270,7 @@ func blocker(fw *Writer, toBlock <-chan interface{}, toEncode chan<- *writerBloc
 		items = append(items, item)
 		if int64(len(items)) == fw.blockSize {
 			toEncode <- &writerBlock{items: items}
-			items = make([]interface{}, 0, fw.BlockSize)
+			items = make([]interface{}, 0, fw.blockSize)
 		}
 	}
 	if len(items) > 0 {
