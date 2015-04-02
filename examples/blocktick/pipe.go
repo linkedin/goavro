@@ -102,8 +102,8 @@ func main() {
 
 func dumpWriter(w io.Writer, codec goavro.Codec) {
 	fw, err := codec.NewWriter(
-		goavro.BlockTick(3*time.Second),
-		goavro.BlockSize(5),
+		goavro.BlockSize(5),             // queue up no more than 5 items
+		goavro.BlockTick(3*time.Second), // but flush at least every 3 seconds
 		goavro.Compression(goavro.CompressionDeflate),
 		goavro.ToWriter(w))
 	if err != nil {
@@ -158,7 +158,7 @@ func sendRecord(fw *goavro.Writer) {
 }
 
 func dumpReader(r io.Reader) {
-	fr, err := goavro.NewReader(goavro.BufferFromReader(r))
+	fr, err := goavro.NewReader(goavro.FromReader(r))
 	if err != nil {
 		log.Fatal(err)
 	}
