@@ -27,9 +27,10 @@ import (
 	"io"
 	"log"
 	"math/rand"
+	"time"
 )
 
-// DefaultWriterBlockSize specifies the default number of datum items
+// DefaultWriterBlockSizeo specifies the default number of datum items
 // in a block when writing.
 const DefaultWriterBlockSize = 10
 
@@ -55,47 +56,58 @@ func (e *ErrWriterInit) Error() string {
 // instantiate a new Writer.
 type WriterSetter func(*Writer) error
 
-// ToWriter specifies which io.Writer is the target of the Writer
-// stream.
-func ToWriter(w io.Writer) WriterSetter {
+// BlockSize specifies the default number of data items to be grouped
+// in a block, compressed, and written to the stream.
+//
+// It is a valid use case to set both BlockTick and BlockSize. For
+// example, if BlockTick is set to time.Minute and BlockSize is set to
+// 20, but only 13 items are written to the Writer in a minute, those
+// 13 items will be grouped in a block, compressed, and written to the
+// stream without waiting for the addition 7 items to complete the
+// BlockSize.
+//
+// By default, BlockSize is set to DefaultWriterBlockSize.
+func BlockSize(blockSize int64) WriterSetter {
 	return func(fw *Writer) error {
-		fw.w = w
+		if blockSize <= 0 {
+			return fmt.Errorf("BlockSize must be larger than 0: %d", blockSize)
+		}
+		fw.blockSize = blockSize
 		return nil
 	}
 }
 
-// UseCodec specifies that a Writer should reuse an existing Codec
-// rather than creating a new one, and recompling the same schema over
-// and over.
-func UseCodec(codec Codec) WriterSetter {
+// BlockTick specifies the duration of time between when the Writer
+// will flush the blocks to the stream.
+//
+// It is a valid use case to set both BlockTick and BlockSize. For
+// example, if BlockTick is set to time.Minute and BlockSize is set to
+// 20, but only 13 items are written to the Writer in a minute, those
+// 13 items will be grouped in a block, compressed, and written to the
+// stream without waiting for the addition 7 items to complete the
+// BlockSize.
+//
+// By default, BlockTick is set to 0 and is ignored. This causes the
+// blocker to fill up its internal queue of data to BlockSize items
+// before flushing them to the stream.
+func BlockTick(blockTick time.Duration) WriterSetter {
 	return func(fw *Writer) error {
-		if codec != nil {
-			fw.dataCodec = codec
-			return nil
+		if blockTick < 0 {
+			return fmt.Errorf("BlockTick must be non-negative time duration: %v", blockTick)
 		}
-		return fmt.Errorf("invalid Codec")
+		fw.blockTick = blockTick
+		return nil
 	}
 }
 
 // BufferToWriter specifies which io.Writer is the target of the
-// Writer stream, and creates a bufio.Writer around that
-// io.Writer.
+// Writer stream, and creates a bufio.Writer around that io.Writer. It
+// is invalid to specify both BufferToWriter and ToWriter. Exactly one
+// of these must be called for a given Writer initialization.
 func BufferToWriter(w io.Writer) WriterSetter {
 	return func(fw *Writer) error {
 		fw.w = bufio.NewWriter(w)
 		fw.buffered = true
-		return nil
-	}
-}
-
-// BlockSize specifies the default number of data items to be
-// grouped in a block, compressed, and written to the stream.
-func BlockSize(blockSize int64) WriterSetter {
-	return func(fw *Writer) error {
-		if blockSize <= 0 {
-			return fmt.Errorf("blockSize must be larger than 0: %d", blockSize)
-		}
-		fw.blockSize = blockSize
 		return nil
 	}
 }
@@ -125,7 +137,33 @@ func Sync(someSync []byte) WriterSetter {
 	}
 }
 
-// WriterSchema is used to set the Avro schema of a new instance.
+// ToWriter specifies which io.Writer is the target of the Writer
+// stream. It is invalid to specify both BufferToWriter and
+// ToWriter. Exactly one of these must be called for a given Writer
+// initialization.
+func ToWriter(w io.Writer) WriterSetter {
+	return func(fw *Writer) error {
+		fw.w = w
+		return nil
+	}
+}
+
+// UseCodec specifies that a Writer should reuse an existing Codec
+// rather than creating a new one, needlessly recompling the same
+// schema.
+func UseCodec(codec Codec) WriterSetter {
+	return func(fw *Writer) error {
+		if codec != nil {
+			fw.dataCodec = codec
+			return nil
+		}
+		return fmt.Errorf("invalid Codec")
+	}
+}
+
+// WriterSchema is used to set the Avro schema of a new instance. If a
+// codec has already been compiled for the schema, it is faster to use
+// the UseCodec method instead of WriterSchema.
 func WriterSchema(someSchema string) WriterSetter {
 	return func(fw *Writer) (err error) {
 		if fw.dataCodec, err = NewCodec(someSchema); err != nil {
@@ -146,17 +184,19 @@ type Writer struct {
 	toBlock          chan interface{}
 	w                io.Writer
 	writerDone       chan struct{}
+	blockTick        time.Duration
 }
 
 // NewWriter returns a object to write data to an io.Writer using the
 // Avro Object Container Files format.
 //
-//     func serveClient(conn net.Conn) {
+//     func serveClient(conn net.Conn, codec goavro.Codec) {
 //         fw, err := goavro.NewWriter(
-//             goavro.BlockSize(100),
+//             goavro.BlockSize(100),                 // flush data every 100 items
+//             goavro.BlockTick(10 * time.Second),    // but at least every 10 seconds
 //             goavro.Compression(goavro.CompressionSnappy),
-//             goavro.WriterSchema(recordSchema),
-//             goavro.ToWriter(conn))
+//             goavro.ToWriter(conn),
+//             goavro.UseCodec(codec))
 //         if err != nil {
 //             log.Fatal("cannot create Writer: ", err)
 //         }
@@ -227,7 +267,7 @@ func NewWriter(setters ...WriterSetter) (*Writer, error) {
 }
 
 // Close is called when the open file is no longer needed. It flushes
-// the bytes to the `io.Writer` if the file is being writtern.
+// the bytes to the io.Writer if the file is being writtern.
 func (fw *Writer) Close() error {
 	close(fw.toBlock)
 	<-fw.writerDone
@@ -266,11 +306,34 @@ type writerBlock struct {
 
 func blocker(fw *Writer, toBlock <-chan interface{}, toEncode chan<- *writerBlock) {
 	items := make([]interface{}, 0, fw.blockSize)
-	for item := range toBlock {
-		items = append(items, item)
-		if int64(len(items)) == fw.blockSize {
-			toEncode <- &writerBlock{items: items}
-			items = make([]interface{}, 0, fw.blockSize)
+
+	if fw.blockTick > 0 {
+	blockerLoop:
+		for {
+			select {
+			case item, more := <-toBlock:
+				if !more {
+					break blockerLoop
+				}
+				items = append(items, item)
+				if int64(len(items)) >= fw.blockSize {
+					toEncode <- &writerBlock{items: items}
+					items = make([]interface{}, 0, fw.blockSize)
+				}
+			case <-time.After(fw.blockTick):
+				if len(items) > 0 {
+					toEncode <- &writerBlock{items: items}
+					items = make([]interface{}, 0, fw.blockSize)
+				}
+			}
+		}
+	} else {
+		for item := range toBlock {
+			items = append(items, item)
+			if int64(len(items)) >= fw.blockSize {
+				toEncode <- &writerBlock{items: items}
+				items = make([]interface{}, 0, fw.blockSize)
+			}
 		}
 	}
 	if len(items) > 0 {
@@ -286,7 +349,7 @@ func encoder(fw *Writer, toEncode <-chan *writerBlock, toCompress chan<- *writer
 			for _, item := range block.items {
 				block.err = fw.dataCodec.Encode(block.encoded, item)
 				if block.err != nil {
-					break
+					break // ??? drops remainder of items on the floor
 				}
 			}
 		}

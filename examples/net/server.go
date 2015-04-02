@@ -79,10 +79,9 @@ func main() {
 }
 
 func serveClient(conn net.Conn, codec goavro.Codec) {
-	fw, err := goavro.NewWriter(
-		goavro.Compression(goavro.CompressionSnappy),
-		goavro.ToWriter(conn),
-		goavro.UseCodec(codec))
+	fw, err := codec.NewWriter(
+		goavro.Compression(goavro.CompressionDeflate),
+		goavro.ToWriter(conn))
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -218,12 +218,14 @@ func (c codec) Schema() string {
 //
 // The following two code examples produce identical results:
 //
+//    // method 1:
 //    fw, err := codec.NewWriter(goavro.ToWriter(w))
 //    if err != nil {
 //    	log.Fatal(err)
 //    }
 //    defer fw.Close()
 //
+//    // method 2:
 //    fw, err := goavro.NewWriter(goavro.ToWriter(w), goavro.UseCodec(codec))
 //    if err != nil {
 //    	log.Fatal(err)
