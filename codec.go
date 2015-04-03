@@ -384,7 +384,7 @@ func (st symtab) makeUnionCodec(enclosingNamespace string, schema interface{}) (
 			}
 			index := int(idx)
 			if index < 0 || index >= len(indexToDecoder) {
-				return nil, newEncoderError(friendlyName, "index must be between 0 and %d", enclosingNamespace, len(indexToDecoder)-1)
+				return nil, newEncoderError(friendlyName, "index must be between 0 and %d", len(indexToDecoder)-1)
 			}
 			return indexToDecoder[index](r)
 		},
