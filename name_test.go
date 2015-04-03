@@ -22,6 +22,21 @@ import (
 	"testing"
 )
 
+func TestNameEnforcesNameRequirements(t *testing.T) {
+	n := &name{}
+	err := nameName("")(n)
+	checkError(t, err, "not be empty")
+
+	err = nameName("0")(n)
+	checkError(t, err, "start with [A-Za-z_]")
+
+	err = nameName("_.")(n)
+	checkError(t, err, "remaining characters contain only [A-Za-z0-9_]")
+
+	err = nameName("_0aZ")(n)
+	checkError(t, err, nil)
+}
+
 func TestNameAndNamespaceBothSpecified(t *testing.T) {
 	a, err := newName(
 		nameName("X"),

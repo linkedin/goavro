@@ -28,18 +28,18 @@ const (
 )
 
 type name struct {
-	n   string
-	ns  string
-	ens string
+	n   string // name
+	ns  string // namespace
+	ens string // enclosing namespace
 }
 
 type nameSetter func(*name) error
 
 func newName(setters ...nameSetter) (*name, error) {
+	var err error
 	n := &name{}
 	for _, setter := range setters {
-		err := setter(n)
-		if err != nil {
+		if err = setter(n); err != nil {
 			return nil, err
 		}
 	}
@@ -74,10 +74,49 @@ func nameSchema(schema map[string]interface{}) nameSetter {
 	}
 }
 
+// ErrInvalidName is returned when a Codec cannot be created due to
+// invalid name format.
+type ErrInvalidName struct {
+	Message string
+}
+
+func (e ErrInvalidName) Error() string {
+	return "The name portion of a fullname, record field names, and enum symbols must " + e.Message
+}
+
+func isRuneInvalidForFirstCharacter(r rune) bool {
+	if (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || r == '_' {
+		return false
+	}
+	return true
+}
+
+func isRuneInvalidForOtherCharacters(r rune) bool {
+	if (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '_' {
+		return false
+	}
+	return true
+}
+
+func checkName(s string) error {
+	if len(s) == 0 {
+		return &ErrInvalidName{"not be empty"}
+	}
+	if strings.IndexFunc(s[:1], isRuneInvalidForFirstCharacter) != -1 {
+		return &ErrInvalidName{"start with [A-Za-z_]"}
+	}
+	if strings.IndexFunc(s[1:], isRuneInvalidForOtherCharacters) != -1 {
+		return &ErrInvalidName{"second and remaining characters contain only [A-Za-z0-9_]"}
+	}
+	return nil
+}
+
 func nameName(someName string) nameSetter {
-	return func(n *name) error {
-		n.n = someName
-		return nil
+	return func(n *name) (err error) {
+		if err = checkName(someName); err == nil {
+			n.n = someName
+		}
+		return
 	}
 }
 
