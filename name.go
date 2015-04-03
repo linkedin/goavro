@@ -106,7 +106,7 @@ func checkName(s string) error {
 		return &ErrInvalidName{"start with [A-Za-z_]"}
 	}
 	if strings.IndexFunc(s[1:], isRuneInvalidForOtherCharacters) != -1 {
-		return &ErrInvalidName{"second and remaining characters contain only [A-Za-z0-9_]"}
+		return &ErrInvalidName{"have second and remaining characters contain only [A-Za-z0-9_]"}
 	}
 	return nil
 }
