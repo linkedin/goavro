@@ -244,10 +244,12 @@ func NewWriter(setters ...WriterSetter) (*Writer, error) {
 		return nil, &ErrWriterInit{Message: "missing schema"}
 	}
 	if fw.Sync == nil {
+		r := rand.New(rand.NewSource(time.Now().Unix()))
+
 		// create random sequence of bytes for file sync marker
 		fw.Sync = make([]byte, syncLength)
 		for i := range fw.Sync {
-			fw.Sync[i] = byte(rand.Intn(256))
+			fw.Sync[i] = byte(r.Intn(256))
 		}
 	}
 	if err = fw.writeHeader(); err != nil {
