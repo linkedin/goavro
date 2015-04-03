@@ -92,10 +92,10 @@ func isRuneInvalidForFirstCharacter(r rune) bool {
 }
 
 func isRuneInvalidForOtherCharacters(r rune) bool {
-	if (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '_' {
+	if r >= '0' && r <= '9' {
 		return false
 	}
-	return true
+	return isRuneInvalidForFirstCharacter(r)
 }
 
 func checkName(s string) error {
