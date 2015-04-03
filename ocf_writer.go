@@ -274,9 +274,14 @@ func (fw *Writer) Close() error {
 	close(fw.toBlock)
 	<-fw.writerDone
 	if fw.buffered {
-		return fw.w.(*bufio.Writer).Flush()
+		// NOTE: error that happened before Close has
+		// precedence of buffer flush error
+		err := fw.w.(*bufio.Writer).Flush()
+		if fw.err == nil {
+			return err
+		}
 	}
-	return nil
+	return fw.err
 }
 
 // Write places a datum into the pipeline to be written to the Writer.
