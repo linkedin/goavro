@@ -21,13 +21,14 @@ package goavro
 import (
 	"bufio"
 	"bytes"
-	"code.google.com/p/snappy-go/snappy"
 	"compress/flate"
 	"fmt"
 	"io"
 	"log"
 	"math/rand"
 	"time"
+
+	"code.google.com/p/snappy-go/snappy"
 )
 
 // DefaultWriterBlockSizeo specifies the default number of datum items
@@ -418,9 +419,6 @@ func writer(fw *Writer, toWrite <-chan *writerBlock) {
 			// } else {
 			// 	log.Printf("[DEBUG] block written: %d, %d, %v", len(block.items), len(block.compressed), block.compressed)
 		}
-	}
-	if fw.err = longCodec.Encode(fw.w, int64(0)); fw.err == nil {
-		fw.err = longCodec.Encode(fw.w, int64(0))
 	}
 	fw.writerDone <- struct{}{}
 }
