@@ -68,6 +68,9 @@ func (r Record) GetFieldSchema(fieldName string) (interface{}, error) {
 
 // Set updates the datum of the specified Record field.
 func (r Record) Set(fieldName string, value interface{}) error {
+	if value == nil {
+		value = NULL_RECORD
+	}
 	// qualify fieldName searches based on record namespace
 	fn, _ := newName(nameName(fieldName), nameNamespace(r.n.ns))
 

@@ -31,6 +31,12 @@ import (
 	"strings"
 )
 
+var NULL_RECORD interface{} = &struct {
+	s string
+}{
+	"37e99601472102d52b981e41847ec718",
+}
+
 const (
 	mask = byte(127)
 	flag = byte(128)
@@ -403,6 +409,9 @@ func (st symtab) makeUnionCodec(enclosingNamespace string, schema interface{}) (
 			case *Record:
 				name = datum.(*Record).Name
 			}
+			if datum == nil {
+				name = "null"
+			}
 			ue, ok := nameToUnionEncoder[name]
 			if !ok {
 				return newEncoderError(friendlyName, invalidType+name)
@@ -595,10 +604,12 @@ func (st symtab) makeRecordCodec(enclosingNamespace string, schema interface{}) 
 			for idx, field := range someRecord.Fields {
 				var value interface{}
 				// check whether field datum is valid
-				if reflect.ValueOf(field.Datum).IsValid() {
-					value = field.Datum
-				} else if field.hasDefault {
+				if field.Datum == NULL_RECORD {
+					value = nil
+				} else if field.Datum == nil && field.hasDefault {
 					value = field.defval
+				} else if reflect.ValueOf(field.Datum).IsValid() {
+					value = field.Datum
 				} else {
 					return newEncoderError(friendlyName, "field has no data and no default set: %v", field.Name)
 				}
