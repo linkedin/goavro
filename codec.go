@@ -398,10 +398,11 @@ func (st symtab) makeUnionCodec(enclosingNamespace string, schema interface{}) (
 				name = "map"
 			case []interface{}:
 				name = "array"
-			case nil:
-				name = "null"
 			case *Record:
 				name = datum.(*Record).Name
+			}
+			if datum == nil {
+				name = "null"
 			}
 			ue, ok := nameToUnionEncoder[name]
 			if !ok {
@@ -601,6 +602,9 @@ func (st symtab) makeRecordCodec(enclosingNamespace string, schema interface{}) 
 					value = field.defval
 				} else {
 					return newEncoderError(friendlyName, "field has no data and no default set: %v", field.Name)
+				}
+				if field.Datum == nil {
+					value = nil
 				}
 				err = fieldCodecs[idx].Encode(w, value)
 				if err != nil {
