@@ -24,6 +24,15 @@ import (
 	"math"
 )
 
+type ByteWriter interface {
+	Grow(int)
+	WriteByte(byte) error
+}
+
+type StringWriter interface {
+	WriteString(string) (int, error)
+}
+
 // ErrEncoder is returned when the encoder encounters an error.
 type ErrEncoder struct {
 	Message string
@@ -70,14 +79,70 @@ func booleanEncoder(w io.Writer, datum interface{}) error {
 	if !ok {
 		return newEncoderError("boolean", "expected: bool; received: %T", datum)
 	}
-	bb := make([]byte, 1)
+
+	var b byte
 	if someBoolean {
-		bb[0] = byte(1)
+		b = byte(1)
 	}
-	if _, err := w.Write(bb); err != nil {
+
+	var err error
+	if bw, ok := w.(ByteWriter); ok {
+		err = bw.WriteByte(b)
+	} else {
+		bb := make([]byte, 1)
+		bb[0] = b
+		_, err = w.Write(bb)
+	}
+	if err != nil {
 		return newEncoderError("boolean", err)
 	}
 	return nil
+}
+
+func writeInt(w io.Writer, byteCount int, encoded int64) error {
+	var err error
+	var bb []byte
+	bw, ok := w.(ByteWriter)
+	// To avoid reallocations, grow capacity to the largest possible size
+	// for this integer
+	if ok {
+		bw.Grow(byteCount)
+	} else {
+		bb = make([]byte, 0, byteCount)
+	}
+
+	if encoded == 0 {
+		if bw != nil {
+			err = bw.WriteByte(0)
+			if err != nil {
+				return err
+			}
+		} else {
+			bb = append(bb, byte(0))
+		}
+	} else {
+		for encoded > 0 {
+			b := byte(encoded & 127)
+			encoded = encoded >> 7
+			if !(encoded == 0) {
+				b |= 128
+			}
+			if bw != nil {
+				err = bw.WriteByte(b)
+				if err != nil {
+					return err
+				}
+			} else {
+				bb = append(bb, b)
+			}
+		}
+	}
+	if bw == nil {
+		_, err := w.Write(bb)
+		return err
+	}
+	return nil
+
 }
 
 func intEncoder(w io.Writer, datum interface{}) error {
@@ -87,21 +152,8 @@ func intEncoder(w io.Writer, datum interface{}) error {
 		return newEncoderError("int", "expected: int32; received: %T", datum)
 	}
 	encoded := int64((someInt << 1) ^ (someInt >> downShift))
-	bb := make([]byte, 0)
-	if encoded == 0 {
-		bb = append(bb, byte(0))
-	} else {
-		for encoded > 0 {
-			b := byte(encoded & 127)
-			encoded = encoded >> 7
-			if !(encoded == 0) {
-				b |= 128
-			}
-			bb = append(bb, b)
-		}
-	}
-	_, err := w.Write(bb)
-	return err
+	const maxByteSize = 5
+	return writeInt(w, maxByteSize, encoded)
 }
 
 func longEncoder(w io.Writer, datum interface{}) error {
@@ -111,21 +163,35 @@ func longEncoder(w io.Writer, datum interface{}) error {
 		return newEncoderError("long", "expected: int64; received: %T", datum)
 	}
 	encoded := int64((someInt << 1) ^ (someInt >> downShift))
-	bb := make([]byte, 0)
-	if encoded == 0 {
-		bb = append(bb, byte(0))
+	const maxByteSize = 10
+	return writeInt(w, maxByteSize, encoded)
+}
+
+func writeFloat(w io.Writer, byteCount int, bits uint64) error {
+	var err error
+	var bb []byte
+	bw, ok := w.(ByteWriter)
+	if ok {
+		bw.Grow(byteCount)
 	} else {
-		for encoded > 0 {
-			b := byte(encoded & 127)
-			encoded = encoded >> 7
-			if !(encoded == 0) {
-				b |= 128
-			}
-			bb = append(bb, b)
-		}
+		bb = make([]byte, 0, byteCount)
 	}
-	_, err := w.Write(bb)
-	return err
+	for i := 0; i < byteCount; i++ {
+		if bw != nil {
+			err = bw.WriteByte(byte(bits & 255))
+			if err != nil {
+				return err
+			}
+		} else {
+			bb = append(bb, byte(bits&255))
+		}
+		bits = bits >> 8
+	}
+	if bw == nil {
+		_, err = w.Write(bb)
+		return err
+	}
+	return nil
 }
 
 func floatEncoder(w io.Writer, datum interface{}) error {
@@ -135,13 +201,7 @@ func floatEncoder(w io.Writer, datum interface{}) error {
 	}
 	bits := uint64(math.Float32bits(someFloat))
 	const byteCount = 4
-	buf := make([]byte, byteCount)
-	for i := 0; i < byteCount; i++ {
-		buf[i] = byte(bits & 255)
-		bits = bits >> 8
-	}
-	_, err := w.Write(buf)
-	return err
+	return writeFloat(w, byteCount, bits)
 }
 
 func doubleEncoder(w io.Writer, datum interface{}) error {
@@ -151,13 +211,7 @@ func doubleEncoder(w io.Writer, datum interface{}) error {
 	}
 	bits := uint64(math.Float64bits(someFloat))
 	const byteCount = 8
-	buf := make([]byte, byteCount)
-	for i := 0; i < byteCount; i++ {
-		buf[i] = byte(bits & 255)
-		bits = bits >> 8
-	}
-	_, err := w.Write(buf)
-	return err
+	return writeFloat(w, byteCount, bits)
 }
 
 func bytesEncoder(w io.Writer, datum interface{}) error {
@@ -182,6 +236,10 @@ func stringEncoder(w io.Writer, datum interface{}) error {
 	if err != nil {
 		return newEncoderError("string", err)
 	}
-	_, err = w.Write([]byte(someString))
+	if sw, ok := w.(StringWriter); ok {
+		_, err = sw.WriteString(someString)
+	} else {
+		_, err = w.Write([]byte(someString))
+	}
 	return err
 }
