@@ -40,44 +40,67 @@ type Record struct {
 	schemaMap map[string]interface{}
 }
 
-// Get returns the datum of the specified Record field.
-func (r Record) Get(fieldName string) (interface{}, error) {
-	// qualify fieldName searches based on record namespace
-	fn, _ := newName(nameName(fieldName), nameNamespace(r.n.ns))
-
+func (r Record) getField(fieldName string) (*recordField, error) {
 	for _, field := range r.Fields {
-		if field.Name == fn.n {
-			return field.Datum, nil
+		if field.Name == fieldName {
+			return field, nil
 		}
 	}
 	return nil, fmt.Errorf("no such field: %s", fieldName)
+}
+
+// GetQualified returns the datum of the specified Record field, without attempting to qualify the name
+func (r Record) GetQualified(qualifiedName string) (interface{}, error) {
+	field, err := r.getField(qualifiedName)
+	if err != nil {
+		return nil, err
+	}
+	return field.Datum, nil
+}
+
+// Get returns the datum of the specified Record field.
+func (r Record) Get(fieldName string) (interface{}, error) {
+	// qualify fieldName searches based on record namespace
+	fn, err := newName(nameName(fieldName), nameNamespace(r.n.ns))
+	if err != nil {
+		return nil, err
+	}
+	return r.GetQualified(fn.n)
 }
 
 // GetFieldSchema returns the schema of the specified Record field.
 func (r Record) GetFieldSchema(fieldName string) (interface{}, error) {
 	// qualify fieldName searches based on record namespace
-	fn, _ := newName(nameName(fieldName), nameNamespace(r.n.ns))
-
-	for _, field := range r.Fields {
-		if field.Name == fn.n {
-			return field.schema, nil
-		}
+	fn, err := newName(nameName(fieldName), nameNamespace(r.n.ns))
+	if err != nil {
+		return nil, err
 	}
-	return nil, fmt.Errorf("no such field: %s", fieldName)
+	field, err := r.getField(fn.n)
+	if err != nil {
+		return nil, err
+	}
+	return field.schema, nil
+}
+
+// SetQualified updates the datum of the specified Record field, without attempting to qualify the name
+func (r Record) SetQualified(qualifiedName string, value interface{}) error {
+	field, err := r.getField(qualifiedName)
+	if err != nil {
+		return err
+	}
+	field.Datum = value
+	return nil
+
 }
 
 // Set updates the datum of the specified Record field.
 func (r Record) Set(fieldName string, value interface{}) error {
 	// qualify fieldName searches based on record namespace
-	fn, _ := newName(nameName(fieldName), nameNamespace(r.n.ns))
-
-	for _, field := range r.Fields {
-		if field.Name == fn.n {
-			field.Datum = value
-			return nil
-		}
+	fn, err := newName(nameName(fieldName), nameNamespace(r.n.ns))
+	if err != nil {
+		return err
 	}
-	return fmt.Errorf("no such field: %s", fieldName)
+	return r.SetQualified(fn.n, value)
 }
 
 // String returns a string representation of the Record.
