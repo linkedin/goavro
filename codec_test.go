@@ -64,41 +64,51 @@ func checkCodecDecoderResult(t *testing.T, schema string, bits []byte, datum int
 }
 
 func checkCodecEncoderError(t *testing.T, schema string, datum interface{}, expectedError interface{}) {
+	bb := new(bytes.Buffer)
 	codec, err := NewCodec(schema)
 	checkErrorFatal(t, err, nil)
 
-	bb := new(bytes.Buffer)
 	err = codec.Encode(bb, datum)
 	checkErrorFatal(t, err, expectedError)
 }
 
-func checkCodecEncoderResult(t *testing.T, schema string, datum interface{}, bits []byte) {
+func checkCodecEncoderResult(wb TestBuffer, t *testing.T, schema string, datum interface{}, bits []byte) {
 	codec, err := NewCodec(schema)
 	checkErrorFatal(t, err, nil)
 
-	bb := new(bytes.Buffer)
-	err = codec.Encode(bb, datum)
+	err = codec.Encode(wb, datum)
 	if err != nil {
 		t.Errorf("Actual: %v; Expected: %v", err, nil)
 	}
-	if bytes.Compare(bb.Bytes(), bits) != 0 {
-		t.Errorf("Actual: %#v; Expected: %#v", bb.Bytes(), bits)
+	if bytes.Compare(wb.Bytes(), bits) != 0 {
+		t.Errorf("Actual: %#v; Expected: %#v", wb.Bytes(), bits)
 	}
 }
 
-func checkCodecRoundTrip(t *testing.T, schema string, datum interface{}) {
+/* Test encoder result with a bytes.Buffer, which has WriteString, Grow and WriteByte */
+func checkCodecEncoderResultByteBuffer(t *testing.T, schema string, datum interface{}, bits []byte) {
+	bb := new(bytes.Buffer)
+	checkCodecEncoderResult(bb, t, schema, datum, bits)
+}
+
+/* Test encoder result with a SimpleBuffer, which only supports Write */
+func checkCodecEncoderResultSimpleBuffer(t *testing.T, schema string, datum interface{}, bits []byte) {
+	sb := new(SimpleBuffer)
+	checkCodecEncoderResult(sb, t, schema, datum, bits)
+}
+
+func checkCodecRoundTrip(wb TestBuffer, t *testing.T, schema string, datum interface{}) {
 	codec, err := NewCodec(schema)
 	if err != nil {
 		t.Errorf("%v", err)
 		return
 	}
-	bb := new(bytes.Buffer)
-	err = codec.Encode(bb, datum)
+	err = codec.Encode(wb, datum)
 	if err != nil {
 		t.Errorf("%v", err)
 		return
 	}
-	actual, err := codec.Decode(bb)
+	actual, err := codec.Decode(wb)
 	if err != nil {
 		t.Errorf("%v", err)
 		return
@@ -118,53 +128,112 @@ func checkCodecRoundTrip(t *testing.T, schema string, datum interface{}) {
 	}
 }
 
+/* Test a round trip with a bytes.Buffer, which has WriteString, Grow and WriteByte */
+func checkCodecRoundTripByteBuffer(t *testing.T, schema string, datum interface{}) {
+	bb := new(bytes.Buffer)
+	checkCodecRoundTrip(bb, t, schema, datum)
+}
+
+/* Test a round trip with a SimpleBuffer, which only supports Write */
+func checkCodecRoundTripSimpleBuffer(t *testing.T, schema string, datum interface{}) {
+	sb := new(SimpleBuffer)
+	checkCodecRoundTrip(sb, t, schema, datum)
+}
+
 ////////////////////////////////////////
 
-func TestCodecRoundTrip(t *testing.T) {
+func TestCodecRoundTripByteBuffer(t *testing.T) {
 	// null
-	checkCodecRoundTrip(t, `"null"`, nil)
-	checkCodecRoundTrip(t, `{"type":"null"}`, nil)
+	checkCodecRoundTripByteBuffer(t, `"null"`, nil)
+	checkCodecRoundTripByteBuffer(t, `{"type":"null"}`, nil)
 	// boolean
-	checkCodecRoundTrip(t, `"boolean"`, false)
-	checkCodecRoundTrip(t, `"boolean"`, true)
+	checkCodecRoundTripByteBuffer(t, `"boolean"`, false)
+	checkCodecRoundTripByteBuffer(t, `"boolean"`, true)
 	// int
-	checkCodecRoundTrip(t, `"int"`, int32(-3))
-	checkCodecRoundTrip(t, `"int"`, int32(-65))
-	checkCodecRoundTrip(t, `"int"`, int32(0))
-	checkCodecRoundTrip(t, `"int"`, int32(1016))
-	checkCodecRoundTrip(t, `"int"`, int32(3))
-	checkCodecRoundTrip(t, `"int"`, int32(42))
-	checkCodecRoundTrip(t, `"int"`, int32(64))
-	checkCodecRoundTrip(t, `"int"`, int32(66052))
-	checkCodecRoundTrip(t, `"int"`, int32(8454660))
+	checkCodecRoundTripByteBuffer(t, `"int"`, int32(-3))
+	checkCodecRoundTripByteBuffer(t, `"int"`, int32(-65))
+	checkCodecRoundTripByteBuffer(t, `"int"`, int32(0))
+	checkCodecRoundTripByteBuffer(t, `"int"`, int32(1016))
+	checkCodecRoundTripByteBuffer(t, `"int"`, int32(3))
+	checkCodecRoundTripByteBuffer(t, `"int"`, int32(42))
+	checkCodecRoundTripByteBuffer(t, `"int"`, int32(64))
+	checkCodecRoundTripByteBuffer(t, `"int"`, int32(66052))
+	checkCodecRoundTripByteBuffer(t, `"int"`, int32(8454660))
 	// long
-	checkCodecRoundTrip(t, `"long"`, int64(-2147483648))
-	checkCodecRoundTrip(t, `"long"`, int64(-3))
-	checkCodecRoundTrip(t, `"long"`, int64(-65))
-	checkCodecRoundTrip(t, `"long"`, int64(0))
-	checkCodecRoundTrip(t, `"long"`, int64(1082196484))
-	checkCodecRoundTrip(t, `"long"`, int64(138521149956))
-	checkCodecRoundTrip(t, `"long"`, int64(17730707194372))
-	checkCodecRoundTrip(t, `"long"`, int64(2147483647))
-	checkCodecRoundTrip(t, `"long"`, int64(2269530520879620))
-	checkCodecRoundTrip(t, `"long"`, int64(3))
-	checkCodecRoundTrip(t, `"long"`, int64(64))
+	checkCodecRoundTripByteBuffer(t, `"long"`, int64(-2147483648))
+	checkCodecRoundTripByteBuffer(t, `"long"`, int64(-3))
+	checkCodecRoundTripByteBuffer(t, `"long"`, int64(-65))
+	checkCodecRoundTripByteBuffer(t, `"long"`, int64(0))
+	checkCodecRoundTripByteBuffer(t, `"long"`, int64(1082196484))
+	checkCodecRoundTripByteBuffer(t, `"long"`, int64(138521149956))
+	checkCodecRoundTripByteBuffer(t, `"long"`, int64(17730707194372))
+	checkCodecRoundTripByteBuffer(t, `"long"`, int64(2147483647))
+	checkCodecRoundTripByteBuffer(t, `"long"`, int64(2269530520879620))
+	checkCodecRoundTripByteBuffer(t, `"long"`, int64(3))
+	checkCodecRoundTripByteBuffer(t, `"long"`, int64(64))
 	// float
-	checkCodecRoundTrip(t, `"float"`, float32(3.5))
-	// checkCodecRoundTrip(t, `"float"`, float32(math.Inf(-1)))
-	// checkCodecRoundTrip(t, `"float"`, float32(math.Inf(1)))
-	// checkCodecRoundTrip(t, `"float"`, float32(math.NaN()))
+	checkCodecRoundTripByteBuffer(t, `"float"`, float32(3.5))
+	// checkCodecRoundTripByteBuffer(t, `"float"`, float32(math.Inf(-1)))
+	// checkCodecRoundTripByteBuffer(t, `"float"`, float32(math.Inf(1)))
+	// checkCodecRoundTripByteBuffer(t, `"float"`, float32(math.NaN()))
 	// double
-	checkCodecRoundTrip(t, `"double"`, float64(3.5))
-	// checkCodecRoundTrip(t, `"double"`, float64(math.Inf(-1)))
-	// checkCodecRoundTrip(t, `"double"`, float64(math.Inf(1)))
-	// checkCodecRoundTrip(t, `"double"`, float64(math.NaN()))
+	checkCodecRoundTripByteBuffer(t, `"double"`, float64(3.5))
+	// checkCodecRoundTripByteBuffer(t, `"double"`, float64(math.Inf(-1)))
+	// checkCodecRoundTripByteBuffer(t, `"double"`, float64(math.Inf(1)))
+	// checkCodecRoundTripByteBuffer(t, `"double"`, float64(math.NaN()))
 	// bytes
-	checkCodecRoundTrip(t, `"bytes"`, []byte(""))
-	checkCodecRoundTrip(t, `"bytes"`, []byte("some bytes"))
+	checkCodecRoundTripByteBuffer(t, `"bytes"`, []byte(""))
+	checkCodecRoundTripByteBuffer(t, `"bytes"`, []byte("some bytes"))
 	// string
-	checkCodecRoundTrip(t, `"string"`, "")
-	checkCodecRoundTrip(t, `"string"`, "filibuster")
+	checkCodecRoundTripByteBuffer(t, `"string"`, "")
+	checkCodecRoundTripByteBuffer(t, `"string"`, "filibuster")
+}
+
+func TestCodecRoundTripSimpleBuffer(t *testing.T) {
+	// null
+	checkCodecRoundTripSimpleBuffer(t, `"null"`, nil)
+	checkCodecRoundTripSimpleBuffer(t, `{"type":"null"}`, nil)
+	// boolean
+	checkCodecRoundTripSimpleBuffer(t, `"boolean"`, false)
+	checkCodecRoundTripSimpleBuffer(t, `"boolean"`, true)
+	// int
+	checkCodecRoundTripSimpleBuffer(t, `"int"`, int32(-3))
+	checkCodecRoundTripSimpleBuffer(t, `"int"`, int32(-65))
+	checkCodecRoundTripSimpleBuffer(t, `"int"`, int32(0))
+	checkCodecRoundTripSimpleBuffer(t, `"int"`, int32(1016))
+	checkCodecRoundTripSimpleBuffer(t, `"int"`, int32(3))
+	checkCodecRoundTripSimpleBuffer(t, `"int"`, int32(42))
+	checkCodecRoundTripSimpleBuffer(t, `"int"`, int32(64))
+	checkCodecRoundTripSimpleBuffer(t, `"int"`, int32(66052))
+	checkCodecRoundTripSimpleBuffer(t, `"int"`, int32(8454660))
+	// long
+	checkCodecRoundTripSimpleBuffer(t, `"long"`, int64(-2147483648))
+	checkCodecRoundTripSimpleBuffer(t, `"long"`, int64(-3))
+	checkCodecRoundTripSimpleBuffer(t, `"long"`, int64(-65))
+	checkCodecRoundTripSimpleBuffer(t, `"long"`, int64(0))
+	checkCodecRoundTripSimpleBuffer(t, `"long"`, int64(1082196484))
+	checkCodecRoundTripSimpleBuffer(t, `"long"`, int64(138521149956))
+	checkCodecRoundTripSimpleBuffer(t, `"long"`, int64(17730707194372))
+	checkCodecRoundTripSimpleBuffer(t, `"long"`, int64(2147483647))
+	checkCodecRoundTripSimpleBuffer(t, `"long"`, int64(2269530520879620))
+	checkCodecRoundTripSimpleBuffer(t, `"long"`, int64(3))
+	checkCodecRoundTripSimpleBuffer(t, `"long"`, int64(64))
+	// float
+	checkCodecRoundTripSimpleBuffer(t, `"float"`, float32(3.5))
+	// checkCodecRoundTripSimpleBuffer(t, `"float"`, float32(math.Inf(-1)))
+	// checkCodecRoundTripSimpleBuffer(t, `"float"`, float32(math.Inf(1)))
+	// checkCodecRoundTripSimpleBuffer(t, `"float"`, float32(math.NaN()))
+	// double
+	checkCodecRoundTripSimpleBuffer(t, `"double"`, float64(3.5))
+	// checkCodecRoundTripSimpleBuffer(t, `"double"`, float64(math.Inf(-1)))
+	// checkCodecRoundTripSimpleBuffer(t, `"double"`, float64(math.Inf(1)))
+	// checkCodecRoundTripSimpleBuffer(t, `"double"`, float64(math.NaN()))
+	// bytes
+	checkCodecRoundTripSimpleBuffer(t, `"bytes"`, []byte(""))
+	checkCodecRoundTripSimpleBuffer(t, `"bytes"`, []byte("some bytes"))
+	// string
+	checkCodecRoundTripSimpleBuffer(t, `"string"`, "")
+	checkCodecRoundTripSimpleBuffer(t, `"string"`, "filibuster")
 }
 
 func TestCodecDecoderPrimitives(t *testing.T) {
@@ -263,53 +332,102 @@ func TestCodecDecoderDoubleNaN(t *testing.T) {
 	}
 }
 
-func TestCodecEncoderPrimitives(t *testing.T) {
+func TestCodecEncoderPrimitivesByteBuffer(t *testing.T) {
 	// null
-	checkCodecEncoderResult(t, `"null"`, nil, []byte(""))
-	checkCodecEncoderResult(t, `{"type":"null"}`, nil, []byte(""))
+	checkCodecEncoderResultByteBuffer(t, `"null"`, nil, []byte(""))
+	checkCodecEncoderResultByteBuffer(t, `{"type":"null"}`, nil, []byte(""))
 	// boolean
-	checkCodecEncoderResult(t, `"boolean"`, false, []byte("\x00"))
-	checkCodecEncoderResult(t, `"boolean"`, true, []byte("\x01"))
+	checkCodecEncoderResultByteBuffer(t, `"boolean"`, false, []byte("\x00"))
+	checkCodecEncoderResultByteBuffer(t, `"boolean"`, true, []byte("\x01"))
 	// int
-	checkCodecEncoderResult(t, `"int"`, int32(-53), []byte("\x69"))
-	checkCodecEncoderResult(t, `"int"`, int32(-33), []byte("\x41"))
-	checkCodecEncoderResult(t, `"int"`, int32(-3), []byte("\x05"))
-	checkCodecEncoderResult(t, `"int"`, int32(-65), []byte("\x81\x01"))
-	checkCodecEncoderResult(t, `"int"`, int32(0), []byte("\x00"))
-	checkCodecEncoderResult(t, `"int"`, int32(1016), []byte("\xf0\x0f"))
-	checkCodecEncoderResult(t, `"int"`, int32(3), []byte("\x06"))
-	checkCodecEncoderResult(t, `"int"`, int32(42), []byte("\x54"))
-	checkCodecEncoderResult(t, `"int"`, int32(64), []byte("\x80\x01"))
-	checkCodecEncoderResult(t, `"int"`, int32(66052), []byte("\x88\x88\x08"))
-	checkCodecEncoderResult(t, `"int"`, int32(8454660), []byte("\x88\x88\x88\x08"))
+	checkCodecEncoderResultByteBuffer(t, `"int"`, int32(-53), []byte("\x69"))
+	checkCodecEncoderResultByteBuffer(t, `"int"`, int32(-33), []byte("\x41"))
+	checkCodecEncoderResultByteBuffer(t, `"int"`, int32(-3), []byte("\x05"))
+	checkCodecEncoderResultByteBuffer(t, `"int"`, int32(-65), []byte("\x81\x01"))
+	checkCodecEncoderResultByteBuffer(t, `"int"`, int32(0), []byte("\x00"))
+	checkCodecEncoderResultByteBuffer(t, `"int"`, int32(1016), []byte("\xf0\x0f"))
+	checkCodecEncoderResultByteBuffer(t, `"int"`, int32(3), []byte("\x06"))
+	checkCodecEncoderResultByteBuffer(t, `"int"`, int32(42), []byte("\x54"))
+	checkCodecEncoderResultByteBuffer(t, `"int"`, int32(64), []byte("\x80\x01"))
+	checkCodecEncoderResultByteBuffer(t, `"int"`, int32(66052), []byte("\x88\x88\x08"))
+	checkCodecEncoderResultByteBuffer(t, `"int"`, int32(8454660), []byte("\x88\x88\x88\x08"))
 	// long
-	checkCodecEncoderResult(t, `"long"`, int64(-2147483648), []byte("\xff\xff\xff\xff\x0f"))
-	checkCodecEncoderResult(t, `"long"`, int64(-3), []byte("\x05"))
-	checkCodecEncoderResult(t, `"long"`, int64(-65), []byte("\x81\x01"))
-	checkCodecEncoderResult(t, `"long"`, int64(0), []byte("\x00"))
-	checkCodecEncoderResult(t, `"long"`, int64(1082196484), []byte("\x88\x88\x88\x88\x08"))
-	checkCodecEncoderResult(t, `"long"`, int64(138521149956), []byte("\x88\x88\x88\x88\x88\x08"))
-	checkCodecEncoderResult(t, `"long"`, int64(17730707194372), []byte("\x88\x88\x88\x88\x88\x88\x08"))
-	checkCodecEncoderResult(t, `"long"`, int64(2147483647), []byte("\xfe\xff\xff\xff\x0f"))
-	checkCodecEncoderResult(t, `"long"`, int64(2269530520879620), []byte("\x88\x88\x88\x88\x88\x88\x88\x08"))
-	checkCodecEncoderResult(t, `"long"`, int64(3), []byte("\x06"))
-	checkCodecEncoderResult(t, `"long"`, int64(64), []byte("\x80\x01"))
+	checkCodecEncoderResultByteBuffer(t, `"long"`, int64(-2147483648), []byte("\xff\xff\xff\xff\x0f"))
+	checkCodecEncoderResultByteBuffer(t, `"long"`, int64(-3), []byte("\x05"))
+	checkCodecEncoderResultByteBuffer(t, `"long"`, int64(-65), []byte("\x81\x01"))
+	checkCodecEncoderResultByteBuffer(t, `"long"`, int64(0), []byte("\x00"))
+	checkCodecEncoderResultByteBuffer(t, `"long"`, int64(1082196484), []byte("\x88\x88\x88\x88\x08"))
+	checkCodecEncoderResultByteBuffer(t, `"long"`, int64(138521149956), []byte("\x88\x88\x88\x88\x88\x08"))
+	checkCodecEncoderResultByteBuffer(t, `"long"`, int64(17730707194372), []byte("\x88\x88\x88\x88\x88\x88\x08"))
+	checkCodecEncoderResultByteBuffer(t, `"long"`, int64(2147483647), []byte("\xfe\xff\xff\xff\x0f"))
+	checkCodecEncoderResultByteBuffer(t, `"long"`, int64(2269530520879620), []byte("\x88\x88\x88\x88\x88\x88\x88\x08"))
+	checkCodecEncoderResultByteBuffer(t, `"long"`, int64(3), []byte("\x06"))
+	checkCodecEncoderResultByteBuffer(t, `"long"`, int64(64), []byte("\x80\x01"))
 	// float
-	checkCodecEncoderResult(t, `"float"`, float32(3.5), []byte("\x00\x00\x60\x40"))
-	checkCodecEncoderResult(t, `"float"`, float32(math.Inf(-1)), []byte("\x00\x00\x80\xff"))
-	checkCodecEncoderResult(t, `"float"`, float32(math.Inf(1)), []byte("\x00\x00\x80\u007f"))
-	checkCodecEncoderResult(t, `"float"`, float32(math.NaN()), []byte("\x00\x00\xc0\u007f"))
+	checkCodecEncoderResultByteBuffer(t, `"float"`, float32(3.5), []byte("\x00\x00\x60\x40"))
+	checkCodecEncoderResultByteBuffer(t, `"float"`, float32(math.Inf(-1)), []byte("\x00\x00\x80\xff"))
+	checkCodecEncoderResultByteBuffer(t, `"float"`, float32(math.Inf(1)), []byte("\x00\x00\x80\u007f"))
+	checkCodecEncoderResultByteBuffer(t, `"float"`, float32(math.NaN()), []byte("\x00\x00\xc0\u007f"))
 	// double
-	checkCodecEncoderResult(t, `"double"`, float64(3.5), []byte("\x00\x00\x00\x00\x00\x00\f@"))
-	checkCodecEncoderResult(t, `"double"`, float64(math.Inf(-1)), []byte("\x00\x00\x00\x00\x00\x00\xf0\xff"))
-	checkCodecEncoderResult(t, `"double"`, float64(math.Inf(1)), []byte("\x00\x00\x00\x00\x00\x00\xf0\u007f"))
-	checkCodecEncoderResult(t, `"double"`, float64(math.NaN()), []byte("\x01\x00\x00\x00\x00\x00\xf8\u007f"))
+	checkCodecEncoderResultByteBuffer(t, `"double"`, float64(3.5), []byte("\x00\x00\x00\x00\x00\x00\f@"))
+	checkCodecEncoderResultByteBuffer(t, `"double"`, float64(math.Inf(-1)), []byte("\x00\x00\x00\x00\x00\x00\xf0\xff"))
+	checkCodecEncoderResultByteBuffer(t, `"double"`, float64(math.Inf(1)), []byte("\x00\x00\x00\x00\x00\x00\xf0\u007f"))
+	checkCodecEncoderResultByteBuffer(t, `"double"`, float64(math.NaN()), []byte("\x01\x00\x00\x00\x00\x00\xf8\u007f"))
 	// bytes
-	checkCodecEncoderResult(t, `"bytes"`, []byte(""), []byte("\x00"))
-	checkCodecEncoderResult(t, `"bytes"`, []byte("some bytes"), []byte("\x14some bytes"))
+	checkCodecEncoderResultByteBuffer(t, `"bytes"`, []byte(""), []byte("\x00"))
+	checkCodecEncoderResultByteBuffer(t, `"bytes"`, []byte("some bytes"), []byte("\x14some bytes"))
 	// string
-	checkCodecEncoderResult(t, `"string"`, "", []byte("\x00"))
-	checkCodecEncoderResult(t, `"string"`, "filibuster", []byte("\x14filibuster"))
+	checkCodecEncoderResultByteBuffer(t, `"string"`, "", []byte("\x00"))
+	checkCodecEncoderResultByteBuffer(t, `"string"`, "filibuster", []byte("\x14filibuster"))
+}
+
+func TestCodecEncoderPrimitivesSimpleBuffer(t *testing.T) {
+	// null
+	checkCodecEncoderResultSimpleBuffer(t, `"null"`, nil, []byte(""))
+	checkCodecEncoderResultSimpleBuffer(t, `{"type":"null"}`, nil, []byte(""))
+	// boolean
+	checkCodecEncoderResultSimpleBuffer(t, `"boolean"`, false, []byte("\x00"))
+	checkCodecEncoderResultSimpleBuffer(t, `"boolean"`, true, []byte("\x01"))
+	// int
+	checkCodecEncoderResultSimpleBuffer(t, `"int"`, int32(-53), []byte("\x69"))
+	checkCodecEncoderResultSimpleBuffer(t, `"int"`, int32(-33), []byte("\x41"))
+	checkCodecEncoderResultSimpleBuffer(t, `"int"`, int32(-3), []byte("\x05"))
+	checkCodecEncoderResultSimpleBuffer(t, `"int"`, int32(-65), []byte("\x81\x01"))
+	checkCodecEncoderResultSimpleBuffer(t, `"int"`, int32(0), []byte("\x00"))
+	checkCodecEncoderResultSimpleBuffer(t, `"int"`, int32(1016), []byte("\xf0\x0f"))
+	checkCodecEncoderResultSimpleBuffer(t, `"int"`, int32(3), []byte("\x06"))
+	checkCodecEncoderResultSimpleBuffer(t, `"int"`, int32(42), []byte("\x54"))
+	checkCodecEncoderResultSimpleBuffer(t, `"int"`, int32(64), []byte("\x80\x01"))
+	checkCodecEncoderResultSimpleBuffer(t, `"int"`, int32(66052), []byte("\x88\x88\x08"))
+	checkCodecEncoderResultSimpleBuffer(t, `"int"`, int32(8454660), []byte("\x88\x88\x88\x08"))
+	// long
+	checkCodecEncoderResultSimpleBuffer(t, `"long"`, int64(-2147483648), []byte("\xff\xff\xff\xff\x0f"))
+	checkCodecEncoderResultSimpleBuffer(t, `"long"`, int64(-3), []byte("\x05"))
+	checkCodecEncoderResultSimpleBuffer(t, `"long"`, int64(-65), []byte("\x81\x01"))
+	checkCodecEncoderResultSimpleBuffer(t, `"long"`, int64(0), []byte("\x00"))
+	checkCodecEncoderResultSimpleBuffer(t, `"long"`, int64(1082196484), []byte("\x88\x88\x88\x88\x08"))
+	checkCodecEncoderResultSimpleBuffer(t, `"long"`, int64(138521149956), []byte("\x88\x88\x88\x88\x88\x08"))
+	checkCodecEncoderResultSimpleBuffer(t, `"long"`, int64(17730707194372), []byte("\x88\x88\x88\x88\x88\x88\x08"))
+	checkCodecEncoderResultSimpleBuffer(t, `"long"`, int64(2147483647), []byte("\xfe\xff\xff\xff\x0f"))
+	checkCodecEncoderResultSimpleBuffer(t, `"long"`, int64(2269530520879620), []byte("\x88\x88\x88\x88\x88\x88\x88\x08"))
+	checkCodecEncoderResultSimpleBuffer(t, `"long"`, int64(3), []byte("\x06"))
+	checkCodecEncoderResultSimpleBuffer(t, `"long"`, int64(64), []byte("\x80\x01"))
+	// float
+	checkCodecEncoderResultSimpleBuffer(t, `"float"`, float32(3.5), []byte("\x00\x00\x60\x40"))
+	checkCodecEncoderResultSimpleBuffer(t, `"float"`, float32(math.Inf(-1)), []byte("\x00\x00\x80\xff"))
+	checkCodecEncoderResultSimpleBuffer(t, `"float"`, float32(math.Inf(1)), []byte("\x00\x00\x80\u007f"))
+	checkCodecEncoderResultSimpleBuffer(t, `"float"`, float32(math.NaN()), []byte("\x00\x00\xc0\u007f"))
+	// double
+	checkCodecEncoderResultSimpleBuffer(t, `"double"`, float64(3.5), []byte("\x00\x00\x00\x00\x00\x00\f@"))
+	checkCodecEncoderResultSimpleBuffer(t, `"double"`, float64(math.Inf(-1)), []byte("\x00\x00\x00\x00\x00\x00\xf0\xff"))
+	checkCodecEncoderResultSimpleBuffer(t, `"double"`, float64(math.Inf(1)), []byte("\x00\x00\x00\x00\x00\x00\xf0\u007f"))
+	checkCodecEncoderResultSimpleBuffer(t, `"double"`, float64(math.NaN()), []byte("\x01\x00\x00\x00\x00\x00\xf8\u007f"))
+	// bytes
+	checkCodecEncoderResultSimpleBuffer(t, `"bytes"`, []byte(""), []byte("\x00"))
+	checkCodecEncoderResultSimpleBuffer(t, `"bytes"`, []byte("some bytes"), []byte("\x14some bytes"))
+	// string
+	checkCodecEncoderResultSimpleBuffer(t, `"string"`, "", []byte("\x00"))
+	checkCodecEncoderResultSimpleBuffer(t, `"string"`, "filibuster", []byte("\x14filibuster"))
 }
 
 func TestCodecUnionChecksSchema(t *testing.T) {
@@ -320,30 +438,56 @@ func TestCodecUnionChecksSchema(t *testing.T) {
 	checkErrorFatal(t, err, "member ought to be decodable")
 }
 
-func TestCodecUnionPrimitives(t *testing.T) {
+func TestCodecUnionPrimitivesByteBuffer(t *testing.T) {
 	// null
-	checkCodecEncoderResult(t, `["null"]`, nil, []byte("\x00"))
-	checkCodecEncoderResult(t, `[{"type":"null"}]`, nil, []byte("\x00"))
+	checkCodecEncoderResultByteBuffer(t, `["null"]`, nil, []byte("\x00"))
+	checkCodecEncoderResultByteBuffer(t, `[{"type":"null"}]`, nil, []byte("\x00"))
 	// boolean
-	checkCodecEncoderResult(t, `["null","boolean"]`, nil, []byte("\x00"))
-	checkCodecEncoderResult(t, `["null","boolean"]`, false, []byte("\x02\x00"))
-	checkCodecEncoderResult(t, `["null","boolean"]`, true, []byte("\x02\x01"))
-	checkCodecEncoderResult(t, `["boolean","null"]`, true, []byte("\x00\x01"))
+	checkCodecEncoderResultByteBuffer(t, `["null","boolean"]`, nil, []byte("\x00"))
+	checkCodecEncoderResultByteBuffer(t, `["null","boolean"]`, false, []byte("\x02\x00"))
+	checkCodecEncoderResultByteBuffer(t, `["null","boolean"]`, true, []byte("\x02\x01"))
+	checkCodecEncoderResultByteBuffer(t, `["boolean","null"]`, true, []byte("\x00\x01"))
 	// int
-	checkCodecEncoderResult(t, `["null","int"]`, nil, []byte("\x00"))
-	checkCodecEncoderResult(t, `["boolean","int"]`, true, []byte("\x00\x01"))
-	checkCodecEncoderResult(t, `["boolean","int"]`, int32(3), []byte("\x02\x06"))
-	checkCodecEncoderResult(t, `["int",{"type":"boolean"}]`, int32(42), []byte("\x00\x54"))
+	checkCodecEncoderResultByteBuffer(t, `["null","int"]`, nil, []byte("\x00"))
+	checkCodecEncoderResultByteBuffer(t, `["boolean","int"]`, true, []byte("\x00\x01"))
+	checkCodecEncoderResultByteBuffer(t, `["boolean","int"]`, int32(3), []byte("\x02\x06"))
+	checkCodecEncoderResultByteBuffer(t, `["int",{"type":"boolean"}]`, int32(42), []byte("\x00\x54"))
 	// long
-	checkCodecEncoderResult(t, `["boolean","long"]`, int64(3), []byte("\x02\x06"))
+	checkCodecEncoderResultByteBuffer(t, `["boolean","long"]`, int64(3), []byte("\x02\x06"))
 	// float
-	checkCodecEncoderResult(t, `["int","float"]`, float32(3.5), []byte("\x02\x00\x00\x60\x40"))
+	checkCodecEncoderResultByteBuffer(t, `["int","float"]`, float32(3.5), []byte("\x02\x00\x00\x60\x40"))
 	// double
-	checkCodecEncoderResult(t, `["float","double"]`, float64(3.5), []byte("\x02\x00\x00\x00\x00\x00\x00\f@"))
+	checkCodecEncoderResultByteBuffer(t, `["float","double"]`, float64(3.5), []byte("\x02\x00\x00\x00\x00\x00\x00\f@"))
 	// bytes
-	checkCodecEncoderResult(t, `["int","bytes"]`, []byte("foobar"), []byte("\x02\x0cfoobar"))
+	checkCodecEncoderResultByteBuffer(t, `["int","bytes"]`, []byte("foobar"), []byte("\x02\x0cfoobar"))
 	// string
-	checkCodecEncoderResult(t, `["string","float"]`, "filibuster", []byte("\x00\x14filibuster"))
+	checkCodecEncoderResultByteBuffer(t, `["string","float"]`, "filibuster", []byte("\x00\x14filibuster"))
+}
+
+func TestCodecUnionPrimitivesSimpleBuffer(t *testing.T) {
+	// null
+	checkCodecEncoderResultSimpleBuffer(t, `["null"]`, nil, []byte("\x00"))
+	checkCodecEncoderResultSimpleBuffer(t, `[{"type":"null"}]`, nil, []byte("\x00"))
+	// boolean
+	checkCodecEncoderResultSimpleBuffer(t, `["null","boolean"]`, nil, []byte("\x00"))
+	checkCodecEncoderResultSimpleBuffer(t, `["null","boolean"]`, false, []byte("\x02\x00"))
+	checkCodecEncoderResultSimpleBuffer(t, `["null","boolean"]`, true, []byte("\x02\x01"))
+	checkCodecEncoderResultSimpleBuffer(t, `["boolean","null"]`, true, []byte("\x00\x01"))
+	// int
+	checkCodecEncoderResultSimpleBuffer(t, `["null","int"]`, nil, []byte("\x00"))
+	checkCodecEncoderResultSimpleBuffer(t, `["boolean","int"]`, true, []byte("\x00\x01"))
+	checkCodecEncoderResultSimpleBuffer(t, `["boolean","int"]`, int32(3), []byte("\x02\x06"))
+	checkCodecEncoderResultSimpleBuffer(t, `["int",{"type":"boolean"}]`, int32(42), []byte("\x00\x54"))
+	// long
+	checkCodecEncoderResultSimpleBuffer(t, `["boolean","long"]`, int64(3), []byte("\x02\x06"))
+	// float
+	checkCodecEncoderResultSimpleBuffer(t, `["int","float"]`, float32(3.5), []byte("\x02\x00\x00\x60\x40"))
+	// double
+	checkCodecEncoderResultSimpleBuffer(t, `["float","double"]`, float64(3.5), []byte("\x02\x00\x00\x00\x00\x00\x00\f@"))
+	// bytes
+	checkCodecEncoderResultSimpleBuffer(t, `["int","bytes"]`, []byte("foobar"), []byte("\x02\x0cfoobar"))
+	// string
+	checkCodecEncoderResultSimpleBuffer(t, `["string","float"]`, "filibuster", []byte("\x00\x14filibuster"))
 }
 
 func TestCodecDecoderUnion(t *testing.T) {
@@ -352,18 +496,18 @@ func TestCodecDecoderUnion(t *testing.T) {
 }
 
 func TestCodecEncoderUnionArray(t *testing.T) {
-	checkCodecEncoderResult(t, `[{"type":"array","items":"int"},"string"]`, "filibuster", []byte("\x02\x14filibuster"))
+	checkCodecEncoderResultByteBuffer(t, `[{"type":"array","items":"int"},"string"]`, "filibuster", []byte("\x02\x14filibuster"))
 
 	someArray := make([]interface{}, 0)
 	someArray = append(someArray, int32(3))
 	someArray = append(someArray, int32(13))
-	checkCodecEncoderResult(t, `[{"type":"array","items":"int"},"string"]`, someArray, []byte("\x00\x04\x06\x1a\x00"))
+	checkCodecEncoderResultByteBuffer(t, `[{"type":"array","items":"int"},"string"]`, someArray, []byte("\x00\x04\x06\x1a\x00"))
 }
 
 func TestCodecEncoderUnionMap(t *testing.T) {
 	someMap := make(map[string]interface{})
 	someMap["superhero"] = "Batman"
-	checkCodecEncoderResult(t, `["null",{"type":"map","values":"string"}]`, someMap, []byte("\x02\x02\x12superhero\x0cBatman\x00"))
+	checkCodecEncoderResultByteBuffer(t, `["null",{"type":"map","values":"string"}]`, someMap, []byte("\x02\x02\x12superhero\x0cBatman\x00"))
 }
 
 func TestCodecEncoderUnionRecord(t *testing.T) {
@@ -376,7 +520,7 @@ func TestCodecEncoderUnionRecord(t *testing.T) {
 	someRecord.Set("field2", "Superman")
 
 	bits := []byte("\x02\x1a\x10Superman")
-	checkCodecEncoderResult(t, `["null",`+recordSchemaJSON+`]`, someRecord, bits)
+	checkCodecEncoderResultByteBuffer(t, `["null",`+recordSchemaJSON+`]`, someRecord, bits)
 }
 
 func TestCodecEncoderEnumChecksSchema(t *testing.T) {
@@ -412,7 +556,7 @@ func TestCodecEncoderEnum(t *testing.T) {
 	schema := `{"type":"enum","name":"cards","symbols":["HEARTS","DIAMONDS","SPADES","CLUBS"]}`
 	checkCodecEncoderError(t, schema, []byte("\x01"), "expected: string; received: []uint8")
 	checkCodecEncoderError(t, schema, "some symbol not in schema", "symbol not defined")
-	checkCodecEncoderResult(t, schema, "SPADES", []byte("\x04"))
+	checkCodecEncoderResultByteBuffer(t, schema, "SPADES", []byte("\x04"))
 }
 
 func TestCodecFixedChecksSchema(t *testing.T) {
@@ -438,7 +582,7 @@ func TestCodecFixed(t *testing.T) {
 	checkCodecEncoderError(t, schema, "happy day", "expected: []byte; received: string")
 	checkCodecEncoderError(t, schema, []byte("day"), "expected: 5 bytes; received: 3")
 	checkCodecEncoderError(t, schema, []byte("happy day"), "expected: 5 bytes; received: 9")
-	checkCodecEncoderResult(t, schema, []byte("happy"), []byte("happy"))
+	checkCodecEncoderResultByteBuffer(t, schema, []byte("happy"), []byte("happy"))
 }
 
 func TestCodecNamedTypes(t *testing.T) {
@@ -621,7 +765,7 @@ func TestCodecDecoderArrayMultipleBlocks(t *testing.T) {
 	}
 }
 
-func TestCodecEncoderArray(t *testing.T) {
+func TestCodecEncoderArrayByteBuffer(t *testing.T) {
 	schema := `{"type":"array","items":{"type":"long"}}`
 
 	datum := make([]interface{}, 0)
@@ -647,7 +791,36 @@ func TestCodecEncoderArray(t *testing.T) {
 		0,
 	}
 
-	checkCodecEncoderResult(t, schema, datum, bits)
+	checkCodecEncoderResultByteBuffer(t, schema, datum, bits)
+}
+
+func TestCodecEncoderArraySimpleBuffer(t *testing.T) {
+	schema := `{"type":"array","items":{"type":"long"}}`
+
+	datum := make([]interface{}, 0)
+	datum = append(datum, int64(-1))
+	datum = append(datum, int64(-2))
+	datum = append(datum, int64(-3))
+	datum = append(datum, int64(-4))
+	datum = append(datum, int64(-5))
+	datum = append(datum, int64(-6))
+	datum = append(datum, int64(0))
+	datum = append(datum, int64(1))
+	datum = append(datum, int64(2))
+	datum = append(datum, int64(3))
+	datum = append(datum, int64(4))
+	datum = append(datum, int64(5))
+	datum = append(datum, int64(6))
+
+	bits := []byte{
+		20,
+		1, 3, 5, 7, 9, 11, 0, 2, 4, 6,
+		6,
+		8, 10, 12,
+		0,
+	}
+
+	checkCodecEncoderResultSimpleBuffer(t, schema, datum, bits)
 }
 
 func TestCodecMapChecksSchema(t *testing.T) {
@@ -799,7 +972,7 @@ func TestCodecDecoderRecord(t *testing.T) {
 	}
 }
 
-func TestCodecEncoderRecord(t *testing.T) {
+func TestCodecEncoderRecordByteBuffer(t *testing.T) {
 	recordSchemaJSON := `{"type":"record","name":"comments","namespace":"com.example","fields":[{"name":"username","type":"string","doc":"Name of user"},{"name":"comment","type":"string","doc":"The content of the user's message"},{"name":"timestamp","type":"long","doc":"Unix epoch time in milliseconds"}],"doc:":"A basic schema for storing blog comments"}`
 	someRecord, err := NewRecord(RecordSchema(recordSchemaJSON))
 	checkErrorFatal(t, err, nil)
@@ -809,7 +982,20 @@ func TestCodecEncoderRecord(t *testing.T) {
 	someRecord.Set("timestamp", int64(1082196484))
 
 	bits := []byte("\x0eAquamanPThe Atlantic is oddly cold this morning!\x88\x88\x88\x88\x08")
-	checkCodecEncoderResult(t, recordSchemaJSON, someRecord, bits)
+	checkCodecEncoderResultByteBuffer(t, recordSchemaJSON, someRecord, bits)
+}
+
+func TestCodecEncoderRecordSimpleBuffer(t *testing.T) {
+	recordSchemaJSON := `{"type":"record","name":"comments","namespace":"com.example","fields":[{"name":"username","type":"string","doc":"Name of user"},{"name":"comment","type":"string","doc":"The content of the user's message"},{"name":"timestamp","type":"long","doc":"Unix epoch time in milliseconds"}],"doc:":"A basic schema for storing blog comments"}`
+	someRecord, err := NewRecord(RecordSchema(recordSchemaJSON))
+	checkErrorFatal(t, err, nil)
+
+	someRecord.Set("username", "Aquaman")
+	someRecord.Set("comment", "The Atlantic is oddly cold this morning!")
+	someRecord.Set("timestamp", int64(1082196484))
+
+	bits := []byte("\x0eAquamanPThe Atlantic is oddly cold this morning!\x88\x88\x88\x88\x08")
+	checkCodecEncoderResultSimpleBuffer(t, recordSchemaJSON, someRecord, bits)
 }
 
 func TestCodecEncoderRecordWithFieldDefaultNull(t *testing.T) {
@@ -819,7 +1005,7 @@ func TestCodecEncoderRecordWithFieldDefaultNull(t *testing.T) {
 
 	someRecord.Set("field1", int32(42))
 	bits := []byte("\x54\x00")
-	checkCodecEncoderResult(t, recordSchemaJSON, someRecord, bits)
+	checkCodecEncoderResultByteBuffer(t, recordSchemaJSON, someRecord, bits)
 }
 
 func TestCodecEncoderRecordWithFieldDefaultBoolean(t *testing.T) {
@@ -830,7 +1016,7 @@ func TestCodecEncoderRecordWithFieldDefaultBoolean(t *testing.T) {
 	someRecord.Set("field1", int32(64))
 
 	bits := []byte("\x80\x01\x01")
-	checkCodecEncoderResult(t, recordSchemaJSON, someRecord, bits)
+	checkCodecEncoderResultByteBuffer(t, recordSchemaJSON, someRecord, bits)
 }
 
 func TestCodecEncoderRecordWithFieldDefaultInt(t *testing.T) {
@@ -839,7 +1025,7 @@ func TestCodecEncoderRecordWithFieldDefaultInt(t *testing.T) {
 	checkErrorFatal(t, err, nil)
 
 	bits := []byte("\x06")
-	checkCodecEncoderResult(t, recordSchemaJSON, someRecord, bits)
+	checkCodecEncoderResultByteBuffer(t, recordSchemaJSON, someRecord, bits)
 }
 
 func TestCodecEncoderRecordWithFieldDefaultLong(t *testing.T) {
@@ -848,7 +1034,7 @@ func TestCodecEncoderRecordWithFieldDefaultLong(t *testing.T) {
 	checkErrorFatal(t, err, nil)
 
 	bits := []byte("\x06")
-	checkCodecEncoderResult(t, recordSchemaJSON, someRecord, bits)
+	checkCodecEncoderResultByteBuffer(t, recordSchemaJSON, someRecord, bits)
 }
 
 func TestCodecEncoderRecordWithFieldDefaultFloat(t *testing.T) {
@@ -857,7 +1043,7 @@ func TestCodecEncoderRecordWithFieldDefaultFloat(t *testing.T) {
 	checkErrorFatal(t, err, nil)
 
 	bits := []byte("\x00\x00\x60\x40")
-	checkCodecEncoderResult(t, recordSchemaJSON, someRecord, bits)
+	checkCodecEncoderResultByteBuffer(t, recordSchemaJSON, someRecord, bits)
 }
 
 func TestCodecEncoderRecordWithFieldDefaultDouble(t *testing.T) {
@@ -866,7 +1052,7 @@ func TestCodecEncoderRecordWithFieldDefaultDouble(t *testing.T) {
 	checkErrorFatal(t, err, nil)
 
 	bits := []byte("\x00\x00\x00\x00\x00\x00\f@")
-	checkCodecEncoderResult(t, recordSchemaJSON, someRecord, bits)
+	checkCodecEncoderResultByteBuffer(t, recordSchemaJSON, someRecord, bits)
 }
 
 func TestCodecEncoderRecordWithFieldDefaultBytes(t *testing.T) {
@@ -877,7 +1063,7 @@ func TestCodecEncoderRecordWithFieldDefaultBytes(t *testing.T) {
 	someRecord.Set("field1", int32(64))
 
 	bits := []byte("\x80\x01\x0ahappy")
-	checkCodecEncoderResult(t, recordSchemaJSON, someRecord, bits)
+	checkCodecEncoderResultByteBuffer(t, recordSchemaJSON, someRecord, bits)
 }
 
 func TestCodecEncoderRecordWithFieldDefaultString(t *testing.T) {
@@ -888,7 +1074,7 @@ func TestCodecEncoderRecordWithFieldDefaultString(t *testing.T) {
 	someRecord.Set("field1", int32(64))
 
 	bits := []byte("\x80\x01\x0ahappy")
-	checkCodecEncoderResult(t, recordSchemaJSON, someRecord, bits)
+	checkCodecEncoderResultByteBuffer(t, recordSchemaJSON, someRecord, bits)
 }
 
 ////////////////////////////////////////
