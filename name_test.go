@@ -51,20 +51,6 @@ func TestNameAndNamespaceBothSpecified(t *testing.T) {
 	}
 }
 
-func TestNameWithDots(t *testing.T) {
-	a, err := newName(
-		nameName("org.foo.X"),
-		nameNamespace("namespace"),
-		nameEnclosingNamespace("enclosing.namespace"))
-	if err != nil {
-		t.Fatalf("%v", err)
-	}
-	expected := &name{n: "org.foo.X"}
-	if !a.equals(expected) {
-		t.Errorf("Actual: %#v; Expected: %#v", a, expected)
-	}
-}
-
 func TestNameWithoutDots(t *testing.T) {
 	a, err := newName(nameName("X"), nameEnclosingNamespace("enclosing.namespace"))
 	if err != nil {
