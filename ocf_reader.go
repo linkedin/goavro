@@ -21,9 +21,9 @@ package goavro
 import (
 	"bufio"
 	"bytes"
-	"code.google.com/p/snappy-go/snappy"
 	"compress/flate"
 	"fmt"
+	"github.com/golang/snappy"
 	"io"
 	"io/ioutil"
 )
