@@ -21,9 +21,9 @@ package goavro
 import (
 	"bufio"
 	"bytes"
-	"code.google.com/p/snappy-go/snappy"
 	"compress/flate"
 	"fmt"
+	"github.com/golang/snappy"
 	"io"
 	"log"
 	"math/rand"
@@ -387,10 +387,7 @@ func compressor(fw *Writer, toCompress <-chan *writerBlock, toWrite chan<- *writ
 		}
 	case CompressionSnappy:
 		for block := range toCompress {
-			block.compressed, block.err = snappy.Encode(block.compressed, block.encoded.Bytes())
-			if block.err != nil {
-				block.err = fmt.Errorf("cannot compress: %v", block.err)
-			}
+			block.compressed = snappy.Encode(block.compressed, block.encoded.Bytes())
 			toWrite <- block
 		}
 	}
