@@ -185,6 +185,7 @@ type Writer struct {
 	w                io.Writer
 	writerDone       chan struct{}
 	blockTick        time.Duration
+	errors           []error
 }
 
 // NewWriter returns a object to write data to an io.Writer using the
@@ -277,11 +278,14 @@ func (fw *Writer) Close() error {
 		// NOTE: error that happened before Close has
 		// precedence of buffer flush error
 		err := fw.w.(*bufio.Writer).Flush()
-		if fw.err == nil {
-			return err
+		if err != nil {
+			fw.errors = append(fw.errors, err)
 		}
 	}
-	return fw.err
+	if fw.errors != nil {
+		return fmt.Errorf("q", fw.errors)
+	}
+	return nil
 }
 
 // Write places a datum into the pipeline to be written to the Writer.
@@ -350,14 +354,14 @@ func blocker(fw *Writer, toBlock <-chan interface{}, toEncode chan<- *writerBloc
 }
 
 func encoder(fw *Writer, toEncode <-chan *writerBlock, toCompress chan<- *writerBlock) {
+EncoderLoop:
 	for block := range toEncode {
-		if block.err == nil {
-			block.encoded = new(bytes.Buffer)
-			for _, item := range block.items {
-				block.err = fw.dataCodec.Encode(block.encoded, item)
-				if block.err != nil {
-					break // ??? drops remainder of items on the floor
-				}
+		block.encoded = new(bytes.Buffer)
+		for _, item := range block.items {
+			block.err = fw.dataCodec.Encode(block.encoded, item)
+			if block.err != nil {
+				fw.errors = append(fw.errors, block.err)
+				break EncoderLoop
 			}
 		}
 		toCompress <- block
@@ -370,7 +374,11 @@ func compressor(fw *Writer, toCompress <-chan *writerBlock, toWrite chan<- *writ
 	case CompressionDeflate:
 		bb := new(bytes.Buffer)
 		comp, _ := flate.NewWriter(bb, flate.DefaultCompression)
+	CompressionDeflateLoop:
 		for block := range toCompress {
+			if block.err != nil {
+				break CompressionDeflateLoop
+			}
 			_, block.err = comp.Write(block.encoded.Bytes())
 			block.err = comp.Close()
 			if block.err == nil {
@@ -381,12 +389,20 @@ func compressor(fw *Writer, toCompress <-chan *writerBlock, toWrite chan<- *writ
 			comp.Reset(bb)
 		}
 	case CompressionNull:
+	CompressionNullLoop:
 		for block := range toCompress {
+			if block.err != nil {
+				break CompressionNullLoop
+			}
 			block.compressed = block.encoded.Bytes()
 			toWrite <- block
 		}
 	case CompressionSnappy:
+	CompressionSnappyLoop:
 		for block := range toCompress {
+			if block.err != nil {
+				break CompressionSnappyLoop
+			}
 			block.compressed = snappy.Encode(block.compressed, block.encoded.Bytes())
 			toWrite <- block
 		}
@@ -410,14 +426,18 @@ func writer(fw *Writer, toWrite <-chan *writerBlock) {
 		}
 		if block.err != nil {
 			log.Printf("[WARNING] cannot write block: %v", block.err)
-			fw.err = block.err // ???
-			break
+			fw.errors = append(fw.errors, block.err)
 			// } else {
 			// 	log.Printf("[DEBUG] block written: %d, %d, %v", len(block.items), len(block.compressed), block.compressed)
 		}
 	}
-	if fw.err = longCodec.Encode(fw.w, int64(0)); fw.err == nil {
-		fw.err = longCodec.Encode(fw.w, int64(0))
+	err := longCodec.Encode(fw.w, int64(0))
+	if err == nil {
+		err = longCodec.Encode(fw.w, int64(0))
+	}
+	if err != nil {
+		fw.errors = append(fw.errors, err)
 	}
 	fw.writerDone <- struct{}{}
+	log.Printf("%q", fw.errors)
 }
