@@ -19,9 +19,10 @@
 package main
 
 import (
-	"github.com/linkedin/goavro"
 	"log"
 	"net"
+
+	"github.com/linkedin/goavro"
 )
 
 const recordSchema = `
@@ -96,7 +97,7 @@ func serveClient(conn net.Conn, codec goavro.Codec) {
 	someRecord.Set("username", "Aquaman")
 	someRecord.Set("comment", "The Atlantic is oddly cold this morning!")
 	// you can fully qualify the field name
-	someRecord.Set("com.example.timestamp", int64(1082196484))
+	someRecord.Set("timestamp", int64(1082196484))
 	fw.Write(someRecord)
 
 	// create another record
@@ -105,6 +106,6 @@ func serveClient(conn net.Conn, codec goavro.Codec) {
 	}
 	someRecord.Set("username", "Batman")
 	someRecord.Set("comment", "Who are all of these crazies?")
-	someRecord.Set("com.example.timestamp", int64(1427383430))
+	someRecord.Set("timestamp", int64(1427383430))
 	fw.Write(someRecord)
 }
