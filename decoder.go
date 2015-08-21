@@ -25,6 +25,25 @@ import (
 	"math"
 )
 
+// MaxDecodeSize defines the maximum length a String or Bytes field. This
+// is here because the way we decode Strings and Bytes fields is entirely
+// stateless. This means we can't follow the example set by other encoders
+// who look at how much data is left to be decoded and return an error if
+// that amount is exceeded.
+//
+// If you need to decode Avro data which contains strings or bytes fields
+// longer than ~2.2GB, modify this value at your discretion.
+//
+// On a 32bit platform this value should not exceed math.MaxInt32, as Go's
+// make function is limited to only creating MaxInt number of objects at a
+// time. On a 64bit platform the limitation is primarily your avaialble memory.
+//
+// Example:
+//	func init() {
+//		goavro.MaxDecodeSize = (1 << 40) // 1 TB of runes or bytes
+//	}
+var MaxDecodeSize = int64(math.MaxInt32)
+
 // ErrDecoder is returned when the encoder encounters an error.
 type ErrDecoder struct {
 	Message string
@@ -150,6 +169,9 @@ func bytesDecoder(r io.Reader) (interface{}, error) {
 	if size < 0 {
 		return nil, newDecoderError("bytes", "negative length: %d", size)
 	}
+	if size > MaxDecodeSize {
+		return nil, newDecoderError("bytes", "implementation error: length of bytes (%d) is greater than the max currently set with MaxDecodeSize (%d)", size, MaxDecodeSize)
+	}
 	buf := make([]byte, size)
 	bytesRead, err := r.Read(buf)
 	if err != nil {
@@ -174,6 +196,9 @@ func stringDecoder(r io.Reader) (interface{}, error) {
 	}
 	if size < 0 {
 		return nil, newDecoderError("string", "negative length: %d", size)
+	}
+	if size > MaxDecodeSize {
+		return nil, newDecoderError("bytes", "implementation error: length of bytes (%d) is greater than the max currently set with MaxDecodeSize (%d)", size, MaxDecodeSize)
 	}
 	buf := make([]byte, size)
 	byteCount, err := r.Read(buf)
