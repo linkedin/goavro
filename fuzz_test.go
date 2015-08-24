@@ -41,7 +41,35 @@ func testFuzz(crasher string) error {
 
 // This is where we put anything that just caused a panic and wasn't solved by returning an error
 func TestFuzz_Panics(t *testing.T) {
-	var crashers = []string{}
+	var crashers = []string{
+		"Obj\x01\x04\x14avro.codec\fsna" +
+			"ppy\x16avro.schema\xf2\x05{\"t" +
+			"ype\":\"record\",\"name\"" +
+			":\"twitter_schema\",\"n" +
+			"amespace\":\"com.migun" +
+			"o.avro\",\"fields\":[{\"" +
+			"name\":\"username\",\"ty" +
+			"pe\":\"string\",\"doc\":\"" +
+			"Name of the user acc" +
+			"ount on Twitter.com\"" +
+			"},{\"name\":\"tweet\",\"t" +
+			"ype\":\"string\",\"doc\":" +
+			"\"The content of the " +
+			"user's Twitter messa" +
+			"ge\"},{\"name\":\"timest" +
+			"amp\",\"type\":\"null\",\"" +
+			"doc\":\"Unix epoch tim" +
+			"e in milliseconds\"}]" +
+			",\"doc:\":\"A basic sch" +
+			"ema for storing Twit" +
+			"ter messages\"}\x005\\\x951\xa4" +
+			"\xae~\xa2\x8f\xdc\xf8\xa3H\x87\x83\x80\x04\xd6\x01d\xf0c\fmi" +
+			"gunoFRock: Nerf pape" +
+			"r, scissors is fine." +
+			"\xb2\xb8\xee\x96\n\x14BlizzardCSFWor" +
+			"ks as intended.  Ter" +
+			"ran is IMBA.\xe2\xf3\xee\x96\n",
+	}
 
 	for n, data := range crashers {
 		if err := testFuzz(data); err != nil {
