@@ -595,7 +595,7 @@ func (st symtab) makeRecordCodec(enclosingNamespace string, schema interface{}) 
 			for idx, field := range someRecord.Fields {
 				var value interface{}
 				// check whether field datum is valid
-				if reflect.ValueOf(field.Datum).IsValid() {
+				if reflect.ValueOf(field.Datum).IsValid() || field.Datum == nil {
 					value = field.Datum
 				} else if field.hasDefault {
 					value = field.defval
