@@ -184,18 +184,19 @@ func recordSchemaRaw(schema interface{}) RecordSetter {
 // RecordSchema specifies the schema of the record to
 // create. Schema must be a JSON string.
 func RecordSchema(recordSchemaJSON string) RecordSetter {
+	var schema map[string]interface{}
+	err := json.Unmarshal([]byte(recordSchemaJSON), &schema)
+	if err != nil {
+		err = newCodecBuildError("record", err)
+	}
+
 	return func(r *Record) error {
-		var schema interface{}
-		err := json.Unmarshal([]byte(recordSchemaJSON), &schema)
 		if err != nil {
-			return newCodecBuildError("record", err)
+			return err
+		} else {
+			r.schemaMap = schema
+			return nil
 		}
-		var ok bool
-		r.schemaMap, ok = schema.(map[string]interface{})
-		if !ok {
-			return newCodecBuildError("record", "expected: map[string]interface{}; received: %T", schema)
-		}
-		return nil
 	}
 }
 
