@@ -19,6 +19,7 @@
 package goavro
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
 )
@@ -181,4 +182,19 @@ func TestRecordGetFieldSchema(t *testing.T) {
 	if !ok {
 		t.Errorf("Actual: %#v; Expected: %#v", ok, true)
 	}
+}
+
+func TestNullField(t *testing.T) {
+	someJSONSchema := `{"type":"record","name":"Foo","fields":[{"type":"null","name":"field1"}]}`
+
+	codec, err := NewCodec(someJSONSchema)
+	checkError(t, err, nil)
+
+	bb := bytes.NewBufferString("")
+
+	rec, err := NewRecord(RecordSchema(someJSONSchema))
+	checkError(t, err, nil)
+
+	err = codec.Encode(bb, rec)
+	checkError(t, err, nil)
 }

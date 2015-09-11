@@ -264,6 +264,12 @@ func newRecordField(schema interface{}, setters ...recordFieldSetter) (*recordFi
 	}
 	rf.schema = schema
 
+	// Null can only ever be null
+	if typeName == "null" {
+		rf.defval = nil
+		rf.hasDefault = true
+	}
+
 	// fields optional to the avro spec
 
 	val, ok := schemaMap["default"]

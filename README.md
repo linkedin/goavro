@@ -265,6 +265,16 @@ is a layer of abstraction that also sits above Avro Data Serialization
 format, but has its own schema. Like Avro Object Container Files, this
 has been implemented but removed until the API can be improved.
 
+### Default maximum length of `String` and `Bytes` fields
+
+Because the way we currently decode String and Bytes fields is entirely
+stateless an Avro file could specify that a String or Bytes field is
+extremely large and there would be no way for the decode function to know
+anything was wrong. Instead of checking the available system memory on
+every decode operation, we've instead decided to opt for what we believe
+to be a sane default (`math.MaxInt32` or ~2.2GB) but leave that variable exported so that a user
+can change the variable if they need to exceed this limit.
+
 ## License
 
 ### Goavro license
