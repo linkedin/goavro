@@ -4,16 +4,16 @@
 // at http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
-//  distributed under the License is distributed on an "AS IS" BASIS,
-//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 // implied.Copyright [201X] LinkedIn Corp. Licensed under the Apache
 // License, Version 2.0 (the "License"); you may not use this file
 // except in compliance with the License.  You may obtain a copy of
 // the License at http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
-//  distributed under the License is distributed on an "AS IS" BASIS,
-//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 // implied.
 
 package goavro
@@ -22,8 +22,10 @@ import (
 	"bufio"
 	"bytes"
 	"compress/flate"
+	"encoding/binary"
 	"fmt"
 	"github.com/golang/snappy"
+	"hash/crc32"
 	"io"
 	"io/ioutil"
 )
@@ -310,6 +312,11 @@ func readBlockCountAndSize(r io.Reader) (blockCount, blockSize int, err error) {
 
 func decompress(fr *Reader, toDecompress <-chan *readerBlock, toDecode chan<- *readerBlock) {
 	switch fr.CompressionCodec {
+	case CompressionNull:
+		for block := range toDecompress {
+			toDecode <- block
+		}
+
 	case CompressionDeflate:
 		var rc io.ReadCloser
 		var bits []byte
@@ -331,12 +338,12 @@ func decompress(fr *Reader, toDecompress <-chan *readerBlock, toDecode chan<- *r
 			block.r = bytes.NewReader(bits)
 			toDecode <- block
 		}
-	case CompressionNull:
-		for block := range toDecompress {
-			toDecode <- block
-		}
+
 	case CompressionSnappy:
-		var src, dst []byte
+		var (
+			src, dst []byte
+			crc      uint32
+		)
 		for block := range toDecompress {
 			src, block.err = ioutil.ReadAll(block.r)
 			if block.err != nil {
@@ -344,12 +351,28 @@ func decompress(fr *Reader, toDecompress <-chan *readerBlock, toDecode chan<- *r
 				toDecode <- block
 				continue
 			}
-			dst, block.err = snappy.Decode(dst, src)
+			index := len(src) - 4 // last 4 bytes is crc32 of decoded blob
+
+			dst, block.err = snappy.Decode(nil, src[:index])
 			if block.err != nil {
 				block.err = newReaderError("cannot decompress", block.err)
 				toDecode <- block
 				continue
 			}
+
+			block.err = binary.Read(bytes.NewReader(src[index:index+4]), binary.BigEndian, &crc)
+			if block.err != nil {
+				block.err = newReaderError("failed to read crc checksum after snappy block", block.err)
+				toDecode <- block
+				continue
+			}
+
+			if crc != crc32.ChecksumIEEE(dst) {
+				block.err = newReaderError("snappy crc checksum mismatch", block.err)
+				toDecode <- block
+				continue
+			}
+
 			block.r = bytes.NewReader(dst)
 			toDecode <- block
 		}
