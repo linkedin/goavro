@@ -23,6 +23,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"io/ioutil"
 	"math"
 	"reflect"
 	"testing"
@@ -1112,4 +1113,76 @@ func encodeWithBufferedWriter(c Codec, w io.Writer, datum interface{}) error {
 		return err
 	}
 	return bw.Flush()
+}
+
+////////////////////////////////////////
+
+type slowStartReader struct {
+	buf []byte
+	max int
+}
+
+func NewSlowStartReader(ior io.Reader) *slowStartReader {
+	ssr := &slowStartReader{max: 1}
+	ssr.buf, _ = ioutil.ReadAll(ior)
+	return ssr
+}
+
+func (ssr *slowStartReader) Read(buf []byte) (int, error) {
+	size := ssr.max
+	if size > len(buf) {
+		size = len(buf)
+	}
+	n := copy(buf[:size], ssr.buf)
+	ssr.buf = ssr.buf[n:]
+	ssr.max++
+	return n, nil
+}
+
+func TestDecoderBytesPartialReads(t *testing.T) {
+	text := []byte("1234567890abcdef")
+
+	bb := bytes.NewBuffer([]byte{})
+	if err := longEncoder(bb, int64(16)); err != nil {
+		t.Fatalf("Actual: %#v; Expected: %#v", err, nil)
+	}
+	n, err := bb.Write([]byte(text))
+	if want := 16; n < want {
+		t.Fatalf("Actual: %#v; Expected: %#v", n, want)
+	}
+	if err != nil {
+		t.Fatalf("Actual: %#v; Expected: %#v", err, nil)
+	}
+
+	result, err := bytesDecoder(NewSlowStartReader(bb))
+	if err != nil {
+		t.Errorf("Actual: %#v; Expected: %#v", err, nil)
+	}
+	if equal := bytes.Equal(text, result.([]byte)); !equal {
+		t.Errorf("Actual: %#v; Expected: %#v", equal, true)
+	}
+}
+
+func TestDecoderStringPartialReads(t *testing.T) {
+	text := "1234567890abcdef"
+
+	bb := bytes.NewBufferString("")
+	if err := longEncoder(bb, int64(16)); err != nil {
+		t.Fatalf("Actual: %#v; Expected: %#v", err, nil)
+	}
+	n, err := bb.Write([]byte(text))
+	if want := 16; n < want {
+		t.Fatalf("Actual: %#v; Expected: %#v", n, want)
+	}
+	if err != nil {
+		t.Fatalf("Actual: %#v; Expected: %#v", err, nil)
+	}
+
+	result, err := stringDecoder(NewSlowStartReader(bb))
+	if err != nil {
+		t.Errorf("Actual: %#v; Expected: %#v", err, nil)
+	}
+	if want := text; want != result {
+		t.Errorf("Actual: %#v; Expected: %#v", result, want)
+	}
 }

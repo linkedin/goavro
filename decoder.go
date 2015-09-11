@@ -86,31 +86,30 @@ func nullDecoder(_ io.Reader) (interface{}, error) {
 }
 
 func booleanDecoder(r io.Reader) (interface{}, error) {
-	bb := make([]byte, 1)
-	if _, err := r.Read(bb); err != nil {
+	buf := make([]byte, 1)
+	if _, err := io.ReadFull(r, buf); err != nil {
 		return nil, newDecoderError("boolean", err)
 	}
 	var datum bool
-	switch bb[0] {
+	switch buf[0] {
 	case byte(0):
 		// zero value of boolean is false
 	case byte(1):
 		datum = true
 	default:
-		return nil, newDecoderError("boolean", "expected 1 or 0; received: %d", bb[0])
+		return nil, newDecoderError("boolean", "expected 1 or 0; received: %d", buf[0])
 	}
 	return datum, nil
 }
 
 func intDecoder(r io.Reader) (interface{}, error) {
 	var v int
-	var err error
-	bb := make([]byte, 1)
+	buf := make([]byte, 1)
 	for shift := uint(0); ; shift += 7 {
-		if _, err = r.Read(bb); err != nil {
+		if _, err := io.ReadFull(r, buf); err != nil {
 			return nil, newDecoderError("int", err)
 		}
-		b := bb[0]
+		b := buf[0]
 		v |= int(b&mask) << shift
 		if b&flag == 0 {
 			break
@@ -122,13 +121,12 @@ func intDecoder(r io.Reader) (interface{}, error) {
 
 func longDecoder(r io.Reader) (interface{}, error) {
 	var v int
-	var err error
-	bb := make([]byte, 1)
+	buf := make([]byte, 1)
 	for shift := uint(0); ; shift += 7 {
-		if _, err = r.Read(bb); err != nil {
+		if _, err := io.ReadFull(r, buf); err != nil {
 			return nil, newDecoderError("long", err)
 		}
-		b := bb[0]
+		b := buf[0]
 		v |= int(b&mask) << shift
 		if b&flag == 0 {
 			break
@@ -140,7 +138,7 @@ func longDecoder(r io.Reader) (interface{}, error) {
 
 func floatDecoder(r io.Reader) (interface{}, error) {
 	buf := make([]byte, 4)
-	if _, err := r.Read(buf); err != nil {
+	if _, err := io.ReadFull(r, buf); err != nil {
 		return nil, newDecoderError("float", err)
 	}
 	bits := binary.LittleEndian.Uint32(buf)
@@ -150,7 +148,7 @@ func floatDecoder(r io.Reader) (interface{}, error) {
 
 func doubleDecoder(r io.Reader) (interface{}, error) {
 	buf := make([]byte, 8)
-	if _, err := r.Read(buf); err != nil {
+	if _, err := io.ReadFull(r, buf); err != nil {
 		return nil, newDecoderError("double", err)
 	}
 	datum := math.Float64frombits(binary.LittleEndian.Uint64(buf))
@@ -173,12 +171,8 @@ func bytesDecoder(r io.Reader) (interface{}, error) {
 		return nil, newDecoderError("bytes", "implementation error: length of bytes (%d) is greater than the max currently set with MaxDecodeSize (%d)", size, MaxDecodeSize)
 	}
 	buf := make([]byte, size)
-	bytesRead, err := r.Read(buf)
-	if err != nil {
+	if _, err = io.ReadFull(r, buf); err != nil {
 		return nil, newDecoderError("bytes", err)
-	}
-	if int64(bytesRead) < size {
-		return nil, newDecoderError("bytes", "buffer underrun")
 	}
 	return buf, nil
 }
@@ -201,12 +195,8 @@ func stringDecoder(r io.Reader) (interface{}, error) {
 		return nil, newDecoderError("bytes", "implementation error: length of bytes (%d) is greater than the max currently set with MaxDecodeSize (%d)", size, MaxDecodeSize)
 	}
 	buf := make([]byte, size)
-	byteCount, err := r.Read(buf)
-	if err != nil {
+	if _, err = io.ReadFull(r, buf); err != nil {
 		return nil, newDecoderError("string", err)
-	}
-	if int64(byteCount) < size {
-		return nil, newDecoderError("string", "buffer underrun")
 	}
 	return string(buf), nil
 }
