@@ -20,11 +20,34 @@ package goavro
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
+	"io"
 	"strings"
 	"testing"
 )
+
+type testBuffer interface {
+	io.ReadWriter
+	Bytes() []byte
+}
+
+// A byte buffer for testing that fulfills io.ReadWriter, but can't be
+// upcast to ByteWriter or StringWriter
+type simpleBuffer struct {
+	buf bytes.Buffer
+}
+
+func (self *simpleBuffer) Write(b []byte) (n int, err error) {
+	return self.buf.Write(b)
+}
+
+func (self *simpleBuffer) Bytes() []byte {
+	return self.buf.Bytes()
+}
+
+func (self *simpleBuffer) Read(p []byte) (n int, err error) {
+	return self.buf.Read(p)
+}
 
 func checkError(t *testing.T, actualError error, expectedError interface{}) {
 	if expectedError == nil {
@@ -82,77 +105,4 @@ func checkResponse(t *testing.T, bb *bytes.Buffer, n int, expectedBytes []byte) 
 	if bytes.Compare(bb.Bytes(), expectedBytes) != 0 {
 		t.Errorf("Actual: %#v; Expected: %#v", bb.Bytes(), expectedBytes)
 	}
-}
-
-func schemaType(t *testing.T, someJSONSchema string) string {
-	var schema interface{}
-	err := json.Unmarshal([]byte(someJSONSchema), &schema)
-	if err != nil {
-		t.Fatal(err)
-	}
-	switch schema.(type) {
-	case map[string]interface{}:
-		someMap := schema.(map[string]interface{})
-		someValue, ok := someMap["type"]
-		if !ok {
-			t.Errorf("Actual: %#v; Expected: %#v", ok, true)
-		}
-		someString, ok := someValue.(string)
-		if !ok {
-			t.Errorf("Actual: %#v; Expected: %#v", ok, true)
-		}
-		return someString
-	case []interface{}:
-		return "union"
-	default:
-		t.Errorf("Actual: %T; Expected: map[string]interface{}", schema)
-		return ""
-	}
-}
-
-func schemaTypeCodec(t *testing.T, someJSONSchema string) string {
-	var schema interface{}
-	err := json.Unmarshal([]byte(someJSONSchema), &schema)
-	if err != nil {
-		t.Fatal(err)
-	}
-	switch schema.(type) {
-	case map[string]interface{}:
-		someMap := schema.(map[string]interface{})
-		someValue, ok := someMap["type"]
-		if !ok {
-			t.Errorf("Actual: %#v; Expected: %#v", ok, true)
-		}
-		someString, ok := someValue.(string)
-		if !ok {
-			t.Errorf("Actual: %#v; Expected: %#v", ok, true)
-		}
-		return someString
-	case []interface{}:
-		return "union"
-	default:
-		t.Errorf("Actual: %T; Expected: map[string]interface{}", schema)
-		return ""
-	}
-}
-
-func schemaName(t *testing.T, someJSONSchema string) string {
-	var schema interface{}
-	err := json.Unmarshal([]byte(someJSONSchema), &schema)
-	if err != nil {
-		t.Fatal(err)
-	}
-	someMap, ok := schema.(map[string]interface{})
-	if !ok {
-		t.Errorf("Actual: %T; Expected: map[string]interface{}", schema)
-	}
-	someValue, ok := someMap["name"]
-	if !ok {
-		t.Errorf("Actual: %#v; Expected: %#v", ok, true)
-	}
-	someString, ok := someValue.(string)
-	if !ok {
-		t.Errorf("Actual: %#v; Expected: %#v", ok, true)
-	}
-	return someString
 }
