@@ -28,6 +28,8 @@ import (
 	"hash/crc32"
 	"io"
 	"io/ioutil"
+
+	"code.google.com/p/snappy-go/snappy"
 )
 
 // ErrReaderInit is returned when the encoder encounters an error.
@@ -190,6 +192,16 @@ func NewReader(setters ...ReaderSetter) (*Reader, error) {
 // Close releases resources and returns any Reader errors.
 func (fr *Reader) Close() error {
 	return fr.err
+}
+
+// Use this to Scan.Scan() is buggly, cause done and deblocked the two avr, will not atomic ever.
+func (fr *Reader) ScanData(doing func(interface{}, error) error) {
+	for fr.datum = range fr.deblocked {
+		err := doing(fr.Read())
+		if err != nil {
+			break
+		}
+	}
 }
 
 // Scan returns true if more data is ready to be read.
