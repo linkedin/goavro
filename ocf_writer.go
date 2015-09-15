@@ -30,6 +30,8 @@ import (
 	"log"
 	"math/rand"
 	"time"
+
+	"code.google.com/p/snappy-go/snappy"
 )
 
 // DefaultWriterBlockSizeo specifies the default number of datum items
