@@ -103,7 +103,6 @@ type Reader struct {
 	dataCodec        Codec
 	datum            Datum
 	deblocked        chan Datum
-	done             bool
 	err              error
 	r                io.Reader
 }
@@ -195,8 +194,9 @@ func (fr *Reader) Close() error {
 
 // Scan returns true if more data is ready to be read.
 func (fr *Reader) Scan() bool {
-	fr.datum = <-fr.deblocked
-	return !fr.done
+	var ok bool
+	fr.datum, ok = <-fr.deblocked
+	return ok
 }
 
 // Read returns the next element from the Reader.
@@ -268,6 +268,7 @@ func read(fr *Reader, toDecompress chan<- *readerBlock) {
 
 	blockCount, blockSize, err := readBlockCountAndSize(fr.r)
 	if err != nil {
+		fr.err = err
 		blockCount = 0
 	}
 	for blockCount != 0 {
@@ -277,28 +278,25 @@ func read(fr *Reader, toDecompress chan<- *readerBlock) {
 			break
 		}
 		toDecompress <- &readerBlock{datumCount: blockCount, r: bytes.NewReader(bits)}
-		if _, err = fr.r.Read(sync); err != nil {
-			err = newReaderError("cannot read sync marker", err)
+		if _, fr.err = fr.r.Read(sync); fr.err != nil {
+			err = newReaderError("cannot read sync marker", fr.err)
 			break
 		}
-		if bytes.Compare(fr.Sync, sync) != 0 {
-			err = newReaderError(fmt.Sprintf("sync marker mismatch: %#v != %#v", sync, fr.Sync))
+		if !bytes.Equal(fr.Sync, sync) {
+			fr.err = newReaderError(fmt.Sprintf("sync marker mismatch: %#v != %#v", sync, fr.Sync))
 			break
 		}
-		if blockCount, blockSize, err = readBlockCountAndSize(fr.r); err != nil {
+		if blockCount, blockSize, fr.err = readBlockCountAndSize(fr.r); fr.err != nil {
 			break
 		}
-	}
-	if err != nil {
-		fr.err = err
 	}
 	close(toDecompress)
 }
 
-func readBlockCountAndSize(r io.Reader) (blockCount, blockSize int, err error) {
+func readBlockCountAndSize(r io.Reader) (int, int, error) {
 	bc, err := longCodec.Decode(r)
 	if err != nil {
-		if ed, ok := err.(*ErrDecoder); ok && ed.Err.Error() == "EOF" {
+		if ed, ok := err.(*ErrDecoder); ok && ed.Err == io.EOF {
 			return 0, 0, nil // we're done
 		}
 		return 0, 0, &ErrReaderBlockCount{err}
@@ -392,6 +390,5 @@ decodeLoop:
 			fr.deblocked <- datum
 		}
 	}
-	fr.done = true
 	close(fr.deblocked)
 }
