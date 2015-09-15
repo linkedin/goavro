@@ -4,16 +4,16 @@
 // at http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
-//  distributed under the License is distributed on an "AS IS" BASIS,
-//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 // implied.Copyright [201X] LinkedIn Corp. Licensed under the Apache
 // License, Version 2.0 (the "License"); you may not use this file
 // except in compliance with the License.  You may obtain a copy of
 // the License at http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
-//  distributed under the License is distributed on an "AS IS" BASIS,
-//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 // implied.
 
 package goavro
@@ -22,8 +22,10 @@ import (
 	"bufio"
 	"bytes"
 	"compress/flate"
+	"encoding/binary"
 	"fmt"
 	"github.com/golang/snappy"
+	"hash/crc32"
 	"io"
 	"log"
 	"math/rand"
@@ -311,6 +313,9 @@ type writerBlock struct {
 	err        error
 }
 
+// NOTE: this is bad because it waits for enough items to show up
+// before it starts encoding, rather than encode items as they arrive.
+
 func blocker(fw *Writer, toBlock <-chan interface{}, toEncode chan<- *writerBlock) {
 	items := make([]interface{}, 0, fw.blockSize)
 
@@ -367,29 +372,50 @@ func encoder(fw *Writer, toEncode <-chan *writerBlock, toCompress chan<- *writer
 
 func compressor(fw *Writer, toCompress <-chan *writerBlock, toWrite chan<- *writerBlock) {
 	switch fw.CompressionCodec {
-	case CompressionDeflate:
-		bb := new(bytes.Buffer)
-		comp, _ := flate.NewWriter(bb, flate.DefaultCompression)
-		for block := range toCompress {
-			_, block.err = comp.Write(block.encoded.Bytes())
-			block.err = comp.Close()
-			if block.err == nil {
-				block.compressed = bb.Bytes()
-				toWrite <- block
-			}
-			bb = new(bytes.Buffer)
-			comp.Reset(bb)
-		}
 	case CompressionNull:
 		for block := range toCompress {
 			block.compressed = block.encoded.Bytes()
 			toWrite <- block
 		}
-	case CompressionSnappy:
+
+	case CompressionDeflate:
+		bb := new(bytes.Buffer)
+		cw, _ := flate.NewWriter(bb, flate.DefaultCompression)
+
 		for block := range toCompress {
-			block.compressed = snappy.Encode(block.compressed, block.encoded.Bytes())
+			bb = new(bytes.Buffer)
+			cw.Reset(bb)
+
+			if _, block.err = cw.Write(block.encoded.Bytes()); block.err != nil {
+				continue
+			}
+
+			if block.err = cw.Close(); block.err != nil {
+				continue
+			}
+
+			block.compressed = bb.Bytes()
 			toWrite <- block
 		}
+
+	case CompressionSnappy:
+		var bb *bytes.Buffer
+
+		var dst []byte
+
+		for block := range toCompress {
+			checksum := crc32.ChecksumIEEE(block.encoded.Bytes())
+
+			dst = snappy.Encode(nil, block.encoded.Bytes())
+			bb = bytes.NewBuffer(dst)
+			if block.err = binary.Write(bb, binary.BigEndian, checksum); block.err != nil {
+				continue
+			}
+
+			block.compressed = bb.Bytes()
+			toWrite <- block
+		}
+
 	}
 	close(toWrite)
 }
@@ -415,9 +441,6 @@ func writer(fw *Writer, toWrite <-chan *writerBlock) {
 			// } else {
 			// 	log.Printf("[DEBUG] block written: %d, %d, %v", len(block.items), len(block.compressed), block.compressed)
 		}
-	}
-	if fw.err = longCodec.Encode(fw.w, int64(0)); fw.err == nil {
-		fw.err = longCodec.Encode(fw.w, int64(0))
 	}
 	fw.writerDone <- struct{}{}
 }
