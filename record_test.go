@@ -132,9 +132,33 @@ func TestRecordBailsWithoutFields(t *testing.T) {
 	checkError(t, err, fmt.Errorf("expected: map[string]interface{}; received: string"))
 }
 
-func TestRecordFieldUnion(t *testing.T) {
+func TestRecordFieldUnionNullOrStringCanBeNull(t *testing.T) {
 	someJSONSchema := `{"type":"record","name":"Foo","fields":[{"type":["null","string"],"name":"field1"}]}`
-	_, err := NewRecord(RecordSchema(someJSONSchema))
+
+	codec, err := NewCodec(someJSONSchema)
+	checkErrorFatal(t, err, nil)
+
+	record, err := NewRecord(RecordSchema(someJSONSchema))
+	checkErrorFatal(t, err, nil)
+
+	bb := new(bytes.Buffer)
+	err = codec.Encode(bb, record)
+	checkError(t, err, nil)
+}
+
+func TestRecordFieldUnionNullOrStringCanBeString(t *testing.T) {
+	someJSONSchema := `{"type":"record","name":"Foo","fields":[{"type":["null","string"],"name":"field1"}]}`
+
+	codec, err := NewCodec(someJSONSchema)
+	checkErrorFatal(t, err, nil)
+
+	record, err := NewRecord(RecordSchema(someJSONSchema))
+	checkErrorFatal(t, err, nil)
+
+	record.Set("field1", "something")
+
+	bb := new(bytes.Buffer)
+	err = codec.Encode(bb, record)
 	checkError(t, err, nil)
 }
 
