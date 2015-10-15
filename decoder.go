@@ -120,14 +120,14 @@ func intDecoder(r io.Reader) (interface{}, error) {
 }
 
 func longDecoder(r io.Reader) (interface{}, error) {
-	var v int
+	var v uint64
 	buf := make([]byte, 1)
 	for shift := uint(0); ; shift += 7 {
 		if _, err := io.ReadFull(r, buf); err != nil {
 			return nil, newDecoderError("long", err)
 		}
 		b := buf[0]
-		v |= int(b&mask) << shift
+		v |= uint64(b&mask) << shift
 		if b&flag == 0 {
 			break
 		}
