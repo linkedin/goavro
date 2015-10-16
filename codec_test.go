@@ -158,6 +158,12 @@ func TestCodecRoundTrip(t *testing.T) {
 	checkCodecRoundTrip(t, `"long"`, int64(2269530520879620))
 	checkCodecRoundTrip(t, `"long"`, int64(3))
 	checkCodecRoundTrip(t, `"long"`, int64(64))
+
+	checkCodecRoundTrip(t, `"long"`, int64(-(1 << 63)))
+	checkCodecRoundTrip(t, `"long"`, int64((1<<63)-1))
+	checkCodecRoundTrip(t, `"long"`, int64(5959107741628848600))
+	checkCodecRoundTrip(t, `"long"`, int64(1359702038045356208))
+
 	// float
 	checkCodecRoundTrip(t, `"float"`, float32(3.5))
 	// checkCodecRoundTrip(t, `"float"`, float32(math.Inf(-1)))
