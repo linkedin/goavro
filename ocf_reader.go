@@ -24,10 +24,11 @@ import (
 	"compress/flate"
 	"encoding/binary"
 	"fmt"
-	"github.com/golang/snappy"
 	"hash/crc32"
 	"io"
 	"io/ioutil"
+
+	"github.com/golang/snappy"
 )
 
 // ErrReaderInit is returned when the encoder encounters an error.

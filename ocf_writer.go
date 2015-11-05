@@ -24,12 +24,13 @@ import (
 	"compress/flate"
 	"encoding/binary"
 	"fmt"
-	"github.com/golang/snappy"
 	"hash/crc32"
 	"io"
 	"log"
 	"math/rand"
 	"time"
+
+	"github.com/golang/snappy"
 )
 
 // DefaultWriterBlockSizeo specifies the default number of datum items
