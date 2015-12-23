@@ -24,6 +24,19 @@ import (
 	"strings"
 )
 
+// ErrNoSuchField is returned when attempt to Get a field that does not exist in a Record.
+type ErrNoSuchField struct {
+	field, path string
+}
+
+// Error returns the string representation of an ErrNoSuchField error.
+func (e ErrNoSuchField) Error() string {
+	if e.path != "" {
+		return fmt.Sprintf("no such field: %q in %q", e.field, e.path)
+	}
+	return fmt.Sprintf("no such field: %q", e.field)
+}
+
 // Record is an abstract data type used to hold data corresponding to
 // an Avro record. Wherever an Avro schema specifies a record, this
 // library's Decode method will return a Record initialized to the
@@ -46,7 +59,7 @@ func (r Record) getField(fieldName string) (*recordField, error) {
 			return field, nil
 		}
 	}
-	return nil, fmt.Errorf("no such field: %s", fieldName)
+	return nil, ErrNoSuchField{field: fieldName}
 }
 
 // GetQualified returns the datum of the specified Record field, without attempting to qualify the name
@@ -90,7 +103,6 @@ func (r Record) SetQualified(qualifiedName string, value interface{}) error {
 	}
 	field.Datum = value
 	return nil
-
 }
 
 // Set updates the datum of the specified Record field.
