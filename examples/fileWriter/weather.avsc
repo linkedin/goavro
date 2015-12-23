@@ -1,0 +1,16 @@
+{
+  "type" : "record",
+  "name" : "Weather",
+  "namespace" : "test",
+  "doc" : "A weather reading.",
+  "fields" : [ {
+    "name" : "station",
+    "type" : "string"
+  }, {
+    "name" : "time",
+    "type" : "long"
+  }, {
+    "name" : "temp",
+    "type" : "int"
+  } ]
+}
