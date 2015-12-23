@@ -99,7 +99,7 @@ func booleanEncoder(w io.Writer, datum interface{}) error {
 	return nil
 }
 
-func writeInt(w io.Writer, byteCount int, encoded int64) error {
+func writeInt(w io.Writer, byteCount int, encoded uint64) error {
 	var err error
 	var bb []byte
 	bw, ok := w.(ByteWriter)
@@ -151,7 +151,7 @@ func intEncoder(w io.Writer, datum interface{}) error {
 	if !ok {
 		return newEncoderError("int", "expected: int32; received: %T", datum)
 	}
-	encoded := int64((someInt << 1) ^ (someInt >> downShift))
+	encoded := uint64((someInt << 1) ^ (someInt >> downShift))
 	const maxByteSize = 5
 	return writeInt(w, maxByteSize, encoded)
 }
@@ -162,7 +162,7 @@ func longEncoder(w io.Writer, datum interface{}) error {
 	if !ok {
 		return newEncoderError("long", "expected: int64; received: %T", datum)
 	}
-	encoded := int64((someInt << 1) ^ (someInt >> downShift))
+	encoded := uint64((someInt << 1) ^ (someInt >> downShift))
 	const maxByteSize = 10
 	return writeInt(w, maxByteSize, encoded)
 }
