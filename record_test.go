@@ -198,3 +198,39 @@ func TestNullField(t *testing.T) {
 	err = codec.Encode(bb, rec)
 	checkError(t, err, nil)
 }
+
+func TestNullableStringField(t *testing.T) {
+	schema := `
+    {
+        "name": "record",
+        "type": "record",
+        "fields": [
+            { "type": "string", "name": "string" },
+            { "type": ["null", "string"], "name": "nil_or_string" }
+        ]
+    }
+    `
+
+	codec, err := NewCodec(schema)
+	checkErrorFatal(t, err, nil)
+
+	record, err := NewRecord(RecordSchema(schema))
+	checkErrorFatal(t, err, nil)
+
+	record.Set("nil_or_string", nil) // or a string
+	record.Set("string", "can't be empty")
+	buf := new(bytes.Buffer)
+
+	err = codec.Encode(buf, record) // "\x1ccan't be empty\x00"
+	checkErrorFatal(t, err, nil)
+
+	decode, err := codec.Decode(buf)
+	checkErrorFatal(t, err, nil)
+
+	nil_or_string, err := decode.(*Record).Get("nil_or_string")
+	checkErrorFatal(t, err, nil)
+
+	if nil_or_string != nil {
+		t.Fatalf("Expected nil, got (%T) - (%q)", nil_or_string, nil_or_string)
+	}
+}
