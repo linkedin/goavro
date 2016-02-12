@@ -318,7 +318,7 @@ func (st symtab) buildString(enclosingNamespace, typeName string, schema interfa
 	default:
 		t, err := newName(nameName(typeName), nameEnclosingNamespace(enclosingNamespace))
 		if err != nil {
-			return nil, newCodecBuildError(typeName, "could not normalize name: %s: %s: %s", enclosingNamespace, typeName, err)
+			return nil, newCodecBuildError(typeName, "could not normalize name: %q: %q: %s", enclosingNamespace, typeName, err)
 		}
 		c, ok := st[t.n]
 		if !ok {
