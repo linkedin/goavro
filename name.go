@@ -85,7 +85,7 @@ func (e ErrInvalidName) Error() string {
 }
 
 func isRuneInvalidForFirstCharacter(r rune) bool {
-	if (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || r == '_' {
+	if (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || r == '_' || r == '.' {
 		return false
 	}
 	return true

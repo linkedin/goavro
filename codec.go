@@ -357,7 +357,7 @@ func (st symtab) makeUnionCodec(enclosingNamespace string, schema interface{}) (
 	for idx, unionMemberSchema := range schemaArray {
 		c, err := st.buildCodec(enclosingNamespace, unionMemberSchema)
 		if err != nil {
-			return nil, newCodecBuildError(friendlyName, "member ought to be decodable: %v", err)
+			return nil, newCodecBuildError(friendlyName, "member ought to be decodable: %s", err)
 		}
 		allowedNames[idx] = c.nm.n
 		indexToDecoder[idx] = c.df
