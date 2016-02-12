@@ -51,6 +51,7 @@ type Record struct {
 	n         *name
 	ens       string
 	schemaMap map[string]interface{}
+	pedantic  bool
 }
 
 func (r Record) getField(fieldName string) (*recordField, error) {
@@ -168,7 +169,7 @@ func NewRecord(setters ...RecordSetter) (*Record, error) {
 		return nil, newCodecBuildError("record", "record requires one or more fields")
 	}
 	fields, ok := val.([]interface{})
-	if !ok || len(fields) == 0 {
+	if !ok || (len(fields) == 0 && record.pedantic) {
 		return nil, newCodecBuildError("record", "record fields ought to be non-empty array")
 	}
 
@@ -212,6 +213,15 @@ func recordSchemaRaw(schema interface{}) RecordSetter {
 		if !ok {
 			return newCodecBuildError("record", "expected: map[string]interface{}; received: %T", schema)
 		}
+		return nil
+	}
+}
+
+// RecordPedantic specifies pedantic handling, and will cause NewRecord to signal an error if
+// various harmless schema violations occur.
+func RecordPedantic() RecordSetter {
+	return func(r *Record) error {
+		r.pedantic = true
 		return nil
 	}
 }
