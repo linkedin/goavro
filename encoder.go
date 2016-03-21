@@ -151,7 +151,7 @@ func intEncoder(w io.Writer, datum interface{}) error {
 	if !ok {
 		return newEncoderError("int", "expected: int32; received: %T", datum)
 	}
-	encoded := uint64((someInt << 1) ^ (someInt >> downShift))
+	encoded := uint64((uint32(someInt) << 1) ^ uint32(someInt>>downShift))
 	const maxByteSize = 5
 	return writeInt(w, maxByteSize, encoded)
 }
