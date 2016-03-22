@@ -121,7 +121,8 @@ func TestRecordBailsWithoutFields(t *testing.T) {
 	checkError(t, err, fmt.Errorf("record fields ought to be non-empty array"))
 
 	schema["fields"] = make([]interface{}, 0)
-	_, err = NewRecord(recordSchemaRaw(schema))
+	// Empty unions are only checked if RecordPedantic is set
+	_, err = NewRecord(recordSchemaRaw(schema), RecordPedantic())
 	checkError(t, err, fmt.Errorf("record fields ought to be non-empty array"))
 
 	fields := make([]interface{}, 0)
