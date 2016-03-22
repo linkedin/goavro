@@ -30,7 +30,7 @@ func TestNameEnforcesNameRequirements(t *testing.T) {
 	err = nameName("0")(n)
 	checkError(t, err, "start with [A-Za-z_]")
 
-	err = nameName("_.")(n)
+	err = nameName("_|")(n)
 	checkError(t, err, "remaining characters contain only [A-Za-z0-9_]")
 
 	err = nameName("_0aZ")(n)
