@@ -560,6 +560,10 @@ func (st symtab) makeRecordCodec(enclosingNamespace string, schema interface{}) 
 		return nil, err
 	}
 
+	if len(recordTemplate.Fields) == 0 {
+		return nil, newCodecBuildError(friendlyName, "fields ought to be non-empty array")
+	}
+
 	fieldCodecs := make([]*codec, len(recordTemplate.Fields))
 	for idx, field := range recordTemplate.Fields {
 		var err error
