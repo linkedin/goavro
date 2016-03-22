@@ -394,7 +394,7 @@ func TestCodecDecoderUnionErrorYieldsName(t *testing.T) {
 }
 `
 	bits := []byte("\x04")
-	checkCodecDecoderError(t, schema, bits, "union (flubber)")
+	checkCodecDecoderError(t, schema, bits, "cannot encode union (union): index must be between 0 and 1; read index: 2")
 }
 
 func TestCodecEncoderUnionRecord(t *testing.T) {
