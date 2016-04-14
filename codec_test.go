@@ -146,6 +146,8 @@ func TestCodecRoundTrip(t *testing.T) {
 	checkCodecRoundTrip(t, `"int"`, int32(64))
 	checkCodecRoundTrip(t, `"int"`, int32(66052))
 	checkCodecRoundTrip(t, `"int"`, int32(8454660))
+	checkCodecRoundTrip(t, `"int"`, int32(2147483647))
+	checkCodecRoundTrip(t, `"int"`, int32(-2147483647))
 	// long
 	checkCodecRoundTrip(t, `"long"`, int64(-2147483648))
 	checkCodecRoundTrip(t, `"long"`, int64(-3))
@@ -297,6 +299,8 @@ func TestCodecEncoderPrimitives(t *testing.T) {
 	checkCodecEncoderResult(t, `"int"`, int32(64), []byte("\x80\x01"))
 	checkCodecEncoderResult(t, `"int"`, int32(66052), []byte("\x88\x88\x08"))
 	checkCodecEncoderResult(t, `"int"`, int32(8454660), []byte("\x88\x88\x88\x08"))
+	checkCodecEncoderResult(t, `"int"`, int32(2147483647), []byte("\xfe\xff\xff\xff\x0f"))
+	checkCodecEncoderResult(t, `"int"`, int32(-2147483647), []byte("\xfd\xff\xff\xff\x0f"))
 	// long
 	checkCodecEncoderResult(t, `"long"`, int64(-2147483648), []byte("\xff\xff\xff\xff\x0f"))
 	checkCodecEncoderResult(t, `"long"`, int64(-3), []byte("\x05"))
