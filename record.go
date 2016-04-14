@@ -315,6 +315,14 @@ func newRecordField(schema interface{}, setters ...recordFieldSetter) (*recordFi
 		rf.hasDefault = true
 	}
 
+	// Nullable fields ( {"type": ["null", "string"], ...} ) have a default of nil
+	if typeSlice, ok := typeName.([]interface{}); ok {
+		if typeSlice[0] == "null" {
+			rf.defval = nil
+			rf.hasDefault = true
+		}
+	}
+
 	// fields optional to the avro spec
 
 	val, ok := schemaMap["default"]
