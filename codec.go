@@ -655,7 +655,7 @@ func (st symtab) makeMapCodec(enclosingNamespace string, schema interface{}) (*c
 			for blockCount != 0 {
 				if blockCount < 0 {
 					blockCount = -blockCount
-					// read and discard number of bytes in block
+					// next long is size of block, for which we have no use
 					_, err := longDecoder(r)
 					if err != nil {
 						return nil, newDecoderError(friendlyName, err)
@@ -668,7 +668,7 @@ func (st symtab) makeMapCodec(enclosingNamespace string, schema interface{}) (*c
 					}
 					mapKey, ok := someValue.(string)
 					if !ok {
-						return nil, newDecoderError(friendlyName, "key ought to be string")
+						return nil, newDecoderError(friendlyName, "map key ought to be string")
 					}
 					datum, err := valuesCodec.df(r)
 					if err != nil {
@@ -676,6 +676,7 @@ func (st symtab) makeMapCodec(enclosingNamespace string, schema interface{}) (*c
 					}
 					data[mapKey] = datum
 				}
+				// decode next blockcount
 				someValue, err = longDecoder(r)
 				if err != nil {
 					return nil, newDecoderError(friendlyName, err)
@@ -689,15 +690,17 @@ func (st symtab) makeMapCodec(enclosingNamespace string, schema interface{}) (*c
 			if !ok {
 				return newEncoderError(friendlyName, "expected: map[string]interface{}; received: %T", datum)
 			}
-			if err = longEncoder(w, int64(len(dict))); err != nil {
-				return newEncoderError(friendlyName, err)
-			}
-			for k, v := range dict {
-				if err = stringEncoder(w, k); err != nil {
+			if len(dict) > 0 {
+				if err = longEncoder(w, int64(len(dict))); err != nil {
 					return newEncoderError(friendlyName, err)
 				}
-				if err = valuesCodec.ef(w, v); err != nil {
-					return newEncoderError(friendlyName, err)
+				for k, v := range dict {
+					if err = stringEncoder(w, k); err != nil {
+						return newEncoderError(friendlyName, err)
+					}
+					if err = valuesCodec.ef(w, v); err != nil {
+						return newEncoderError(friendlyName, err)
+					}
 				}
 			}
 			if err = longEncoder(w, int64(0)); err != nil {

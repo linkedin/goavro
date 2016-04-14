@@ -119,8 +119,8 @@ func checkCodecRoundTrip(t *testing.T, schema string, datum interface{}) {
 			t.Errorf("%v", err)
 			return
 		}
-		if string(actualJSON) != string(expectedJSON) {
-			t.Errorf("Actual: %#v; Expected: %#v", string(actualJSON), string(expectedJSON))
+		if !bytes.Equal(actualJSON, expectedJSON) {
+			t.Errorf("Actual: %q; Expected: %q", actualJSON, expectedJSON)
 		}
 	}
 	test(t, schema, datum, new(bytes.Buffer))
@@ -216,7 +216,6 @@ func TestCodecDecoderPrimitives(t *testing.T) {
 	checkCodecDecoderResult(t, `"long"`, []byte("\x88\x88\x88\x88\x88\x08"), int64(138521149956))
 	checkCodecDecoderResult(t, `"long"`, []byte("\x88\x88\x88\x88\x88\x88\x08"), int64(17730707194372))
 	checkCodecDecoderResult(t, `"long"`, []byte("\x88\x88\x88\x88\x88\x88\x88\x08"), int64(2269530520879620))
-
 	// float
 	checkCodecDecoderError(t, `"float"`, []byte(""), "cannot decode float: EOF")
 	checkCodecDecoderResult(t, `"float"`, []byte("\x00\x00\x60\x40"), float32(3.5))
@@ -388,6 +387,13 @@ func TestCodecEncoderUnionMap(t *testing.T) {
 	someMap := make(map[string]interface{})
 	someMap["superhero"] = "Batman"
 	checkCodecEncoderResult(t, `["null",{"type":"map","values":"string"}]`, someMap, []byte("\x02\x02\x12superhero\x0cBatman\x00"))
+	checkCodecRoundTrip(t, `["null",{"type":"map","values":"string"}]`, someMap)
+}
+
+func TestCodecEncoderUnionEmptyMap(t *testing.T) {
+	someMap := make(map[string]interface{})
+	checkCodecEncoderResult(t, `["null",{"type":"map","values":"double"}]`, someMap, []byte("\x02\x00"))
+	checkCodecRoundTrip(t, `["null",{"type":"map","values":"double"}]`, someMap)
 }
 
 func TestCodecDecoderUnionErrorYieldsName(t *testing.T) {
