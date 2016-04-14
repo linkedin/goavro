@@ -162,7 +162,7 @@ func longEncoder(w io.Writer, datum interface{}) error {
 	if !ok {
 		return newEncoderError("long", "expected: int64; received: %T", datum)
 	}
-	encoded := uint64((someInt << 1) ^ (someInt >> downShift))
+	encoded := ((uint64(someInt) << 1) ^ uint64(someInt>>downShift))
 	const maxByteSize = 10
 	return writeInt(w, maxByteSize, encoded)
 }
