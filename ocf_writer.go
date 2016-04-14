@@ -299,7 +299,9 @@ func (fw *Writer) writeHeader() (err error) {
 	// header metadata
 	hm := make(map[string]interface{})
 	hm["avro.schema"] = []byte(fw.dataCodec.Schema())
-	hm["avro.codec"] = []byte(fw.CompressionCodec)
+	if fw.CompressionCodec != CompressionNull {
+		hm["avro.codec"] = []byte(fw.CompressionCodec)
+	}
 	if err = metadataCodec.Encode(fw.w, hm); err != nil {
 		return
 	}
