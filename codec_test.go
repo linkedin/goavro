@@ -148,6 +148,7 @@ func TestCodecRoundTrip(t *testing.T) {
 	checkCodecRoundTrip(t, `"int"`, int32(8454660))
 	checkCodecRoundTrip(t, `"int"`, int32(2147483647))
 	checkCodecRoundTrip(t, `"int"`, int32(-2147483647))
+	checkCodecRoundTrip(t, `"int"`, int32(1455301406))
 	// long
 	checkCodecRoundTrip(t, `"long"`, int64(-2147483648))
 	checkCodecRoundTrip(t, `"long"`, int64(-3))
