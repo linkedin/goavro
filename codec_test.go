@@ -242,13 +242,13 @@ func TestCodecDecoderPrimitives(t *testing.T) {
 }
 
 func TestCodecDecoderFloatNaN(t *testing.T) {
-	decoder, err := NewCodec(`"float"`)
+	codec, err := NewCodec(`"float"`)
 	checkErrorFatal(t, err, nil)
 
 	// NOTE: NaN never equals NaN (math is fun)
 	bits := []byte("\x00\x00\xc0\u007f")
 	bb := bytes.NewBuffer(bits)
-	actual, err := decoder.Decode(bb)
+	actual, err := codec.Decode(bb)
 	checkErrorFatal(t, err, nil)
 
 	someFloat, ok := actual.(float32)
@@ -262,13 +262,13 @@ func TestCodecDecoderFloatNaN(t *testing.T) {
 }
 
 func TestCodecDecoderDoubleNaN(t *testing.T) {
-	decoder, err := NewCodec(`"double"`)
+	codec, err := NewCodec(`"double"`)
 	checkErrorFatal(t, err, nil)
 
 	// NOTE: NaN never equals NaN (math is fun)
 	bits := []byte("\x01\x00\x00\x00\x00\x00\xf8\u007f")
 	bb := bytes.NewBuffer(bits)
-	actual, err := decoder.Decode(bb)
+	actual, err := codec.Decode(bb)
 	checkErrorFatal(t, err, nil)
 
 	someFloat, ok := actual.(float64)
@@ -378,7 +378,7 @@ func TestCodecDecoderUnion(t *testing.T) {
 func TestCodecEncoderUnionArray(t *testing.T) {
 	checkCodecEncoderResult(t, `[{"type":"array","items":"int"},"string"]`, "filibuster", []byte("\x02\x14filibuster"))
 
-	someArray := make([]interface{}, 0)
+	var someArray []interface{}
 	someArray = append(someArray, int32(3))
 	someArray = append(someArray, int32(13))
 	checkCodecEncoderResult(t, `[{"type":"array","items":"int"},"string"]`, someArray, []byte("\x00\x04\x06\x1a\x00"))
@@ -523,11 +523,11 @@ func TestCodecDecoderArrayEOF(t *testing.T) {
 
 func TestCodecDecoderArrayEmpty(t *testing.T) {
 	schema := `{"type":"array","items":"string"}`
-	decoder, err := NewCodec(schema)
+	codec, err := NewCodec(schema)
 	checkErrorFatal(t, err, nil)
 
 	bb := bytes.NewBuffer([]byte{0})
-	actual, err := decoder.Decode(bb)
+	actual, err := codec.Decode(bb)
 	checkError(t, err, nil)
 
 	someArray, ok := actual.([]interface{})
@@ -541,11 +541,11 @@ func TestCodecDecoderArrayEmpty(t *testing.T) {
 
 func TestCodecDecoderArray(t *testing.T) {
 	schema := `{"type":"array","items":"int"}`
-	decoder, err := NewCodec(schema)
+	codec, err := NewCodec(schema)
 	checkErrorFatal(t, err, nil)
 
 	bb := bytes.NewBuffer([]byte("\x04\x06\x36\x00"))
-	actual, err := decoder.Decode(bb)
+	actual, err := codec.Decode(bb)
 	checkError(t, err, nil)
 
 	someArray, ok := actual.([]interface{})
@@ -590,12 +590,12 @@ func TestCodecDecoderArrayOfRecords(t *testing.T) {
   }
 }
 `
-	decoder, err := NewCodec(schema)
+	codec, err := NewCodec(schema)
 	checkErrorFatal(t, err, nil)
 
 	encoded := []byte("\x04\x0aHello\x1a\x0aWorld\x54\x00")
 	bb := bytes.NewBuffer(encoded)
-	actual, err := decoder.Decode(bb)
+	actual, err := codec.Decode(bb)
 	checkError(t, err, nil)
 
 	someArray, ok := actual.([]interface{})
@@ -635,11 +635,11 @@ func TestCodecDecoderArrayOfRecords(t *testing.T) {
 
 func TestCodecDecoderArrayMultipleBlocks(t *testing.T) {
 	schema := `{"type":"array","items":"int"}`
-	decoder, err := NewCodec(schema)
+	codec, err := NewCodec(schema)
 	checkErrorFatal(t, err, nil)
 
 	bb := bytes.NewBuffer([]byte("\x06\x06\x08\x0a\x03\x04\x36\x0c\x00"))
-	actual, err := decoder.Decode(bb)
+	actual, err := codec.Decode(bb)
 	checkError(t, err, nil)
 
 	someArray, ok := actual.([]interface{})
@@ -664,7 +664,7 @@ func TestCodecDecoderArrayMultipleBlocks(t *testing.T) {
 func TestCodecEncoderArray(t *testing.T) {
 	schema := `{"type":"array","items":{"type":"long"}}`
 
-	datum := make([]interface{}, 0)
+	var datum []interface{}
 	datum = append(datum, int64(-1))
 	datum = append(datum, int64(-2))
 	datum = append(datum, int64(-3))
@@ -707,11 +707,11 @@ func TestCodecDecoderMapEOF(t *testing.T) {
 }
 
 func TestCodecDecoderMapZeroBlocks(t *testing.T) {
-	decoder, err := NewCodec(`{"type":"map","values":"string"}`)
+	codec, err := NewCodec(`{"type":"map","values":"string"}`)
 	checkErrorFatal(t, err, nil)
 
 	bb := bytes.NewBuffer([]byte("\x00"))
-	actual, err := decoder.Decode(bb)
+	actual, err := codec.Decode(bb)
 	checkErrorFatal(t, err, nil)
 
 	someMap, ok := actual.(map[string]interface{})
@@ -724,11 +724,11 @@ func TestCodecDecoderMapZeroBlocks(t *testing.T) {
 }
 
 func TestCodecDecoderMapReturnsExpectedMap(t *testing.T) {
-	decoder, err := NewCodec(`{"type":"map","values":"string"}`)
+	codec, err := NewCodec(`{"type":"map","values":"string"}`)
 	checkErrorFatal(t, err, nil)
 
 	bb := bytes.NewBuffer([]byte("\x01\x04\x06\x66\x6f\x6f\x06\x42\x41\x52\x00"))
-	actual, err := decoder.Decode(bb)
+	actual, err := codec.Decode(bb)
 	checkErrorFatal(t, err, nil)
 
 	someMap, ok := actual.(map[string]interface{})
@@ -814,13 +814,13 @@ func TestCodecRecordChecksSchema(t *testing.T) {
 func TestCodecDecoderRecord(t *testing.T) {
 	recordSchemaJSON := `{"type":"record","name":"Foo","fields":[{"name":"age","type":"int"},{"name":"status","type":"string"}]}`
 
-	decoder, err := NewCodec(recordSchemaJSON)
+	codec, err := NewCodec(recordSchemaJSON)
 	checkErrorFatal(t, err, nil)
 
 	bits := []byte("\x80\x01\x0ahappy")
 	bb := bytes.NewBuffer(bits)
 
-	actual, err := decoder.Decode(bb)
+	actual, err := codec.Decode(bb)
 	checkErrorFatal(t, err, nil)
 
 	decoded, ok := actual.(*Record)
@@ -950,12 +950,12 @@ func bufferedEncoder(someSchemaJSON string, datum interface{}) (bits []byte, err
 		bits = bb.Bytes()
 	}()
 
-	var c Codec
-	c, err = NewCodec(someSchemaJSON)
+	var codec Codec
+	codec, err = NewCodec(someSchemaJSON)
 	if err != nil {
 		return
 	}
-	err = encodeWithBufferedWriter(c, bb, datum)
+	err = encodeWithBufferedWriter(codec, bb, datum)
 	return
 }
 
