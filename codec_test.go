@@ -385,7 +385,8 @@ func TestCodecEncoderUnionArray(t *testing.T) {
 
 func TestCodecEncoderUnionEnum(t *testing.T) {
 	checkCodecEncoderResult(t, `["null",{"type":"enum","name":"color_enum","symbols":["red","blue","green"]}]`, nil, []byte("\x00"))
-	checkCodecEncoderResult(t, `["null",{"type":"enum","name":"color_enum","symbols":["red","blue","green"]}]`, "blue", []byte("\x02\x02"))
+	checkCodecEncoderResult(t, `["null",{"type":"enum","name":"color_enum","symbols":["red","blue","green"]}]`, Enum{"color_enum", "blue"}, []byte("\x02\x02"))
+	checkCodecEncoderError(t, `["null",{"type":"enum","name":"color_enum","symbols":["red","blue","green"]}]`, Enum{"color_enum", "purple"}, "symbol not defined: purple")
 }
 
 func TestCodecEncoderUnionMap(t *testing.T) {
@@ -461,9 +462,10 @@ func TestCodecDecoderEnum(t *testing.T) {
 
 func TestCodecEncoderEnum(t *testing.T) {
 	schema := `{"type":"enum","name":"cards","symbols":["HEARTS","DIAMONDS","SPADES","CLUBS"]}`
-	checkCodecEncoderError(t, schema, []byte("\x01"), "expected: string; received: []uint8")
-	checkCodecEncoderError(t, schema, "some symbol not in schema", "symbol not defined")
-	checkCodecEncoderResult(t, schema, "SPADES", []byte("\x04"))
+	checkCodecEncoderResult(t, schema, Enum{"cards", "SPADES"}, []byte("\x04"))
+	checkCodecEncoderError(t, schema, Enum{"cards", "PINEAPPLE"}, "symbol not defined")
+	checkCodecEncoderError(t, schema, []byte("\x01"), "expected: Enum; received: []uint8")
+	checkCodecEncoderError(t, schema, "some symbol not in schema", "expected: Enum; received: string")
 }
 
 func TestCodecFixedChecksSchema(t *testing.T) {

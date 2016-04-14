@@ -42,7 +42,7 @@ func (e ErrNoSuchField) Error() string {
 // library's Decode method will return a Record initialized to the
 // record's values read from the io.Reader. Likewise, when using
 // Encode to convert data to an Avro record, it is necessary to create
-// and send a Record instance to the Encoder method.
+// and send a Record instance to the Encode method.
 type Record struct {
 	Name      string
 	Fields    []*recordField

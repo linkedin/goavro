@@ -400,9 +400,12 @@ func (st symtab) makeUnionCodec(enclosingNamespace string, schema interface{}) (
 				name = "array"
 			case nil:
 				name = "null"
+			case Enum:
+				name = datum.(Enum).Name
 			case *Record:
 				name = datum.(*Record).Name
 			}
+
 			ue, ok := nameToUnionEncoder[name]
 			if !ok {
 				return newEncoderError(friendlyName, invalidType+name)
@@ -416,6 +419,14 @@ func (st symtab) makeUnionCodec(enclosingNamespace string, schema interface{}) (
 			return nil
 		},
 	}, nil
+}
+
+// Enum is an abstract data type used to hold data corresponding to an Avro enum. Whenever an Avro
+// schema specifies an enum, this library's Decode method will return an Enum initialized to the
+// enum's name and value read from the io.Reader. Likewise, when using Encode to convert data to an
+// Avro record, it is necessary to crate and send an Enum instance to the Encode method.
+type Enum struct {
+	Name, Value string
 }
 
 func (st symtab) makeEnumCodec(enclosingNamespace string, schema interface{}) (*codec, error) {
@@ -467,10 +478,11 @@ func (st symtab) makeEnumCodec(enclosingNamespace string, schema interface{}) (*
 			return symtab[index], nil
 		},
 		ef: func(w io.Writer, datum interface{}) error {
-			someString, ok := datum.(string)
+			someEnum, ok := datum.(Enum)
 			if !ok {
-				return newEncoderError(friendlyName, "expected: string; received: %T", datum)
+				return newEncoderError(friendlyName, "expected: Enum; received: %T", datum)
 			}
+			someString := someEnum.Value
 			for idx, symbol := range symtab {
 				if symbol == someString {
 					if err := longEncoder(w, int64(idx)); err != nil {
