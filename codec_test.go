@@ -383,6 +383,11 @@ func TestCodecEncoderUnionArray(t *testing.T) {
 	checkCodecEncoderResult(t, `[{"type":"array","items":"int"},"string"]`, someArray, []byte("\x00\x04\x06\x1a\x00"))
 }
 
+func TestCodecEncoderUnionEnum(t *testing.T) {
+	checkCodecEncoderResult(t, `["null",{"type":"enum","name":"color_enum","symbols":["red","blue","green"]}]`, nil, []byte("\x00"))
+	checkCodecEncoderResult(t, `["null",{"type":"enum","name":"color_enum","symbols":["red","blue","green"]}]`, "blue", []byte("\x02\x02"))
+}
+
 func TestCodecEncoderUnionMap(t *testing.T) {
 	someMap := make(map[string]interface{})
 	someMap["superhero"] = "Batman"
