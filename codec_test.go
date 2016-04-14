@@ -353,6 +353,8 @@ func TestCodecUnionPrimitives(t *testing.T) {
 	checkCodecEncoderResult(t, `["null","int"]`, nil, []byte("\x00"))
 	checkCodecEncoderResult(t, `{"default": 1016, "name": "testField", "type": ["null", "int"]}`, int32(1016), []byte("\x02\xf0\x0f"))
 	checkCodecEncoderResult(t, `{"default": 1016, "name": "testField", "type": ["null", "int"]}`, nil, []byte("\x00"))
+	checkCodecEncoderResult(t, `{"default": 1016, "name": "testField", "type": ["int", "null"]}`, int32(1016), []byte("\x00\xf0\x0f"))
+	checkCodecEncoderResult(t, `{"default": 1016, "name": "testField", "type": ["int", "null"]}`, nil, []byte("\x02"))
 	checkCodecEncoderResult(t, `["boolean","int"]`, true, []byte("\x00\x01"))
 	checkCodecEncoderResult(t, `["boolean","int"]`, int32(3), []byte("\x02\x06"))
 	checkCodecEncoderResult(t, `["int",{"type":"boolean"}]`, int32(42), []byte("\x00\x54"))
