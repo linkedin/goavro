@@ -82,16 +82,16 @@ func checkErrorFatal(t *testing.T, actualError error, expectedError interface{})
 		if actualError == nil {
 			t.Fatalf("Actual: %#v; Expected: %#v", actualError, expectedError)
 		} else {
-			var expected error
+			var expected string
 			switch expectedError.(type) {
 			case string:
-				expected = fmt.Errorf(expectedError.(string))
+				expected = expectedError.(string)
 			case error:
-				expected = expectedError.(error)
+				expected = expectedError.(error).Error()
 			}
-			if !strings.Contains(actualError.Error(), expected.Error()) {
+			if !strings.Contains(actualError.Error(), expected) {
 				t.Fatalf("Actual: %#v; Expected to contain: %#v",
-					actualError.Error(), expected.Error())
+					actualError.Error(), expected)
 			}
 		}
 	}
