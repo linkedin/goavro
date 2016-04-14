@@ -162,7 +162,7 @@ func NewReader(setters ...ReaderSetter) (*Reader, error) {
 	}
 	fr.CompressionCodec, err = getHeaderString("avro.codec", meta)
 	if err != nil {
-		return nil, newReaderInitError("cannot read header metadata", err)
+		fr.CompressionCodec = "null"
 	}
 	if !IsCompressionCodecSupported(fr.CompressionCodec) {
 		return nil, newReaderInitError("unsupported codec: %s", fr.CompressionCodec)

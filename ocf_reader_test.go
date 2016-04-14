@@ -45,11 +45,6 @@ func TestNewReaderBailsBadHeader(t *testing.T) {
 	_, err = NewReader(FromReader(bytes.NewReader(bits)))
 	checkError(t, err, "cannot read header metadata")
 
-	// missing codec
-	bits = []byte("Obj\x01\x02\x16avro.schema\x0a\x22int\x22\x00\x21\x0f\xc7\xbb\x81\x86\x39\xac\x48\xa4\xc6\xaf\xa2\xf1\x58\x1a\x00\x00")
-	_, err = NewReader(FromReader(bytes.NewReader(bits)))
-	checkError(t, err, "header ought to have avro.codec key")
-
 	// unsupported codec
 	bits = []byte("Obj\x01\x04\x14avro.codec\x16UNSUPPORTED\x16avro.schema\x0a\x22int\x22\x00\x21\x0f\xc7\xbb\x81\x86\x39\xac\x48\xa4\xc6\xaf\xa2\xf1\x58\x1a\x00\x00")
 	_, err = NewReader(FromReader(bytes.NewReader(bits)))
@@ -69,6 +64,18 @@ func TestNewReaderBailsBadHeader(t *testing.T) {
 	bits = []byte("Obj\x01\x04\x14avro.codec\x08null\x16avro.schema\x0a\x22int\x22\x00")
 	_, err = NewReader(FromReader(bytes.NewReader(bits)))
 	checkError(t, err, "cannot read sync marker")
+}
+
+func TestNewReaderDefaultsToNullCodec(t *testing.T) {
+	bits := []byte("Obj\x01\x02\x16avro.schema\x0a\x22int\x22\x00\x21\x0f\xc7\xbb\x81\x86\x39\xac\x48\xa4\xc6\xaf\xa2\xf1\x58\x1a\x00\x00")
+	fr, err := NewReader(FromReader(bytes.NewReader(bits)))
+	checkErrorFatal(t, err, nil)
+	if available := fr.Scan(); available {
+		t.Errorf("Actual: %#v; Expected: %#v", available, false)
+	}
+	if err = fr.Close(); err != nil {
+		t.Errorf("Actual: %#v; Expected: %#v", err, nil)
+	}
 }
 
 func TestReaderScanShouldNotBlock(t *testing.T) {
