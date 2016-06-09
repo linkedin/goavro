@@ -82,6 +82,11 @@ func (r *Record) Get(fieldName string) (interface{}, error) {
 	return r.GetQualified(fn.n)
 }
 
+// GetSchema returns the schema of the Record
+func (r *Record) GetSchema() map[string]interface{} {
+	return r.schemaMap
+}
+
 // GetFieldSchema returns the schema of the specified Record field.
 func (r *Record) GetFieldSchema(fieldName string) (interface{}, error) {
 	// qualify fieldName searches based on record namespace
@@ -196,7 +201,7 @@ func NewRecord(setters ...RecordSetter) (*Record, error) {
 			return nil, newCodecBuildError("record", "aliases ought to be array of strings")
 		}
 	}
-	record.schemaMap = nil
+
 	return record, nil
 }
 

@@ -20,7 +20,9 @@ package goavro
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"reflect"
 	"testing"
 )
 
@@ -160,6 +162,53 @@ func TestRecordFieldUnionNullOrStringCanBeString(t *testing.T) {
 	bb := new(bytes.Buffer)
 	err = codec.Encode(bb, record)
 	checkError(t, err, nil)
+}
+
+func TestRecordGetSchema(t *testing.T) {
+	schema := `
+{
+  "type": "record",
+  "name": "TestRecord",
+  "fields": [
+    {
+      "name": "value",
+      "type": "int"
+    },
+    {
+      "name": "rec",
+      "type": {
+        "type": "array",
+        "items": {
+          "type": "record",
+          "name": "TestRecord2",
+          "fields": [
+            {
+              "name": "stringValue",
+              "type": "string"
+            },
+            {
+              "name": "intValue",
+              "type": "int"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
+`
+	record, err := NewRecord(RecordSchema(schema))
+	checkErrorFatal(t, err, nil)
+
+	expectedSchemaMap := map[string]interface{}{}
+	err = json.Unmarshal([]byte(schema), &expectedSchemaMap)
+	checkErrorFatal(t, err, nil)
+
+	actualSchemaMap := record.GetSchema()
+
+	if !reflect.DeepEqual(expectedSchemaMap, actualSchemaMap) {
+		t.Errorf("Expected: %#v; Actual: %#v", expectedSchemaMap, actualSchemaMap)
+	}
 }
 
 func TestRecordGetFieldSchema(t *testing.T) {
