@@ -10,6 +10,8 @@ import (
 var REMOTE_HASHES map[string][]byte
 var REMOTE_PROTOCOLS map[string]Protocol
 
+var META_WRITER Codec
+
 
 type Requestor struct {
 	// Base class for the client side of protocol interaction.
@@ -53,9 +55,9 @@ func (a *Requestor) Request(message_name string, request_datum  []byte) {
 	call_response := a.transport.Transceive(call_request)
 
 	// process the handshake and call response
-	buffer_decoder := new(bytes.Buffer)
-	if read_handshake_response(buffer_decoder) {
-		read_call_response(message_name, buffer_decoder)
+	buffer_decoder := bytes.NewBuffer(call_response)
+	if a.read_handshake_response(buffer_decoder) {
+		a.read_call_response(message_name, buffer_decoder)
 	} else {
 		a.Request(message_name, request_datum)
 	}
@@ -63,10 +65,11 @@ func (a *Requestor) Request(message_name string, request_datum  []byte) {
 
 func (a *Requestor) write_handshake_request( buffer io.Writer ) (err error) {
         local_hash :=a.transport.protocol.MD5
-         remote_name := a.transport.RemoteName
-        remote_hash := make([]byte,0)
+        remote_name := a.transport.RemoteName
+        remote_hash := REMOTE_HASHES[remote_name]
         if len(remote_hash)==0  {
                 remote_hash = local_hash
+		a.remote_protocol = a.local_protocol
         }
 
         record, err := NewRecord(RecordSchema(handshakeRequestshema))
@@ -76,20 +79,53 @@ func (a *Requestor) write_handshake_request( buffer io.Writer ) (err error) {
 
         record.Set("clientHash", local_hash)
         record.Set("serverHash", remote_hash)
-//      record.Set("clientProtocol", a.protocol.Name)
         codecHandshake, err := NewCodec(handshakeRequestshema)
         if err != nil {
                return err
         }
+
+	if a.send_protocol {
+		json, err := a.local_protocol.Json()
+		if err!=nil {		
+			return err
+		}
+		record.Set("clientProtocol", json)
+	}
 
         if err = codecHandshake.Encode(buffer, record); err !=nil {
                 return  fmt.Errorf("Encode handshakeRequest ",err)
         }
         return nil
 }
-func (a *Requestor) write_call_request(message_name string, request_datum []byte, buffer io.Writer) {
+func (a *Requestor) write_call_request(message_name string, request_datum []byte, buffer io.Writer) error {
+      // The format of a call request is:
+      //   * request metadata, a map with values of type bytes
+      //   * the message name, an Avro string, followed by
+      //   * the message parameters. Parameters are serialized according to
+      //     the message's request declaration.
 
+      // TODO request metadata (not yet implemented)
+	request_metadata := make(map[string]interface{})
+
+	// encode metadata
+        if err :=  META_WRITER.Encode(buffer, make(map[string]interface{})); err !=nil {
+                return  fmt.Errorf("Encode metadata ",err)
+        }
+	
+	message := a.local_protocol.Messages[message_name]
+	if message==nil {
+		fmt.Errorf("Unknown message: #{message_name}")
+	}
+	buffer.WriteString(message_name)
+	return nil
 } 
+
+func (a *Requestor) read_handshake_response(decder io.Writer) bool {
+	return false // TODO 
+}
+
+func (a *Requestor) read_call_response(message_name string, decoder io.Writer) {
+}
 
 
 
@@ -105,5 +141,5 @@ func NewTransport(sock *net.Conn) *Transport{
 	}
 }
 func (t *Transport) Transceive(request []byte) []byte{
-	
+	return new(bytes.Buffer).Bytes()
 }	

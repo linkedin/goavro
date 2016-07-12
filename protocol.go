@@ -115,3 +115,13 @@ func NewProtocol() (Protocol, error) {
 	result.MD5 = hasher.Sum(nil)
 	return result, err
 }
+
+func (p *Protocol) Json() (string, error) {
+	var result string
+	bb, err := json.Marshal(p)
+	if err != nil {
+		return result, err
+
+	}
+	return string(bb), nil
+}

@@ -18,3 +18,18 @@ func TestProtoParse(t *testing.T) {
 	}
 	t.Logf("proto %#v", proto)
 }
+
+func TestToJson(t *testing.T) {
+	protocol, err := NewProtocol()
+	if err!= nil {
+		t.Fatal("%#v", err)
+	}
+
+	json, err := protocol.Json()
+	if err !=nil {
+		t.Fatal("%#v", err)
+	}
+	if  json!= proto  {
+		t.Errorf("Proto to Json not equals; Expected %#v, actual %#v", proto, json)
+	}
+}
