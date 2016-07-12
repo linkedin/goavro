@@ -3,7 +3,6 @@ package goavro
 import (
 	"crypto/md5"
 	"encoding/json"
-	"encoding/hex"
 	"fmt"
 )
 
@@ -14,7 +13,7 @@ type Protocol struct {
 	Doc string		`json:"doc"`
 	Types []ProtocolType	`json:"types"`
 	Messages map[string]ProtocolMessage `json:"messages"`
-	MD5	string		`json:"-"`
+	MD5	[]byte		`json:"-"`
 }
 
 type ProtocolType struct {
@@ -113,6 +112,6 @@ func NewProtocol() (Protocol, error) {
 	result.Fullname = result.Namespace +"." +  result.Name
 	hasher := md5.New()
 	hasher.Write([]byte(proto))
-	result.MD5 = hex.EncodeToString(hasher.Sum(nil))
+	result.MD5 = hasher.Sum(nil)
 	return result, err
 }
