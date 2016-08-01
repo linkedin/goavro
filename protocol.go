@@ -6,12 +6,14 @@ import (
 	"fmt"
 )
 
+var TYPES_CACHE map[string]ProtocolType
+
 type Protocol struct {
+        Name string             `json:"protocol"`
 	Namespace string	`json:"namespace"`
-	Name string		`json:"protocol"`
 	Fullname string		`json:"-"`
 	Doc string		`json:"doc"`
-	Types []ProtocolType	`json:"types"`
+	Types []AbsType		`json:"types"`
 	Messages map[string]ProtocolMessage `json:"messages"`
 	MD5	[]byte		`json:"-"`
 }
@@ -27,15 +29,21 @@ type ProtocolType struct {
 
 type Field struct{
 	Name string     `json:"name"`
-//	TypeX ProtocolType	`json:"type"`
+	TypeX AbsType	`json:"type"`
+}
+
+type AbsType struct {
+	*ProtocolType
+	ref string 
 }
 
 type ProtocolMessage struct {
-	Doc	string `json:"doc,omitmepty"`
-//	Request []ProtocolType `json:"request"`
-	Response string `json:"response"`
-	Errors []string `json:"errors,omitempty"`
-	One_way bool 	`json:"one-way,omitempty"`
+	Name	string		`json:"-"`
+	Doc	string		`json:"doc,omitempty"`
+	Request []Field	`json:"request"`
+	Response string		`json:"response"`
+	Errors []string		`json:"errors,omitempty"`
+	One_way bool		`json:"one-way,omitempty"`
 }
 
 const proto = `
@@ -96,6 +104,38 @@ const proto = `
    }
 }
 `
+
+func init() {
+	TYPES_CACHE = make(map[string]ProtocolType)
+	TYPES_CACHE["bytes"] = ProtocolType{Name:"bytes", TypeX:"bytes"}
+}
+func (t *AbsType) UnmarshalJSON(data []byte) error {
+	var nameType	string
+	var protocolType ProtocolType
+	if err := json.Unmarshal(data, &nameType); err==nil {
+		protoType, ok := TYPES_CACHE[nameType]
+		if ok {
+			t.ref = nameType
+			t.ProtocolType = &protoType
+		} else {
+			return fmt.Errorf("Type %s not found on protocol type cache %#v", data, TYPES_CACHE)
+		}
+	} else if err := json.Unmarshal(data, &protocolType); err!=nil {
+		return fmt.Errorf("Fail to Parse AbsType, %s  %s", data,err )
+	}
+                t.ProtocolType = &protocolType
+                TYPES_CACHE[protocolType.Name] = protocolType
+	return nil
+}
+
+func (t *AbsType) MarshalJSON()([]byte, error) {
+	if len(t.ref)>0 {
+		return json.Marshal(t.ref)
+	} else {
+		return json.Marshal(t.ProtocolType)
+	}
+}
+
 func NewProtocol() (Protocol, error) {
 	var result Protocol 
 	err := json.Unmarshal([]byte(proto), &result)

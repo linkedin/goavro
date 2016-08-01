@@ -5,13 +5,15 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"log"
+	"os"
 )
 
 var REMOTE_HASHES map[string][]byte
 var REMOTE_PROTOCOLS map[string]Protocol
 
 var META_WRITER Codec
-
+var HANDSHAKE_REQUESTOR_READER Codec
 
 type Requestor struct {
 	// Base class for the client side of protocol interaction.
@@ -20,6 +22,18 @@ type Requestor struct {
 	remote_protocol 	Protocol
 	remote_hash		[]byte
 	send_protocol		bool
+}
+func init() {
+	var err error
+	HANDSHAKE_REQUESTOR_READER, err = NewCodec(handshakeResponseshema)
+	if  err!=nil {
+	log.Fatal(err)	
+	}
+	META_WRITER, err = NewCodec(metadataSchema)
+        if  err!=nil {
+        log.Fatal(err)
+        }
+
 }
 
 func NewRequestor(localProto Protocol, transport Transport) *Requestor {
@@ -43,7 +57,7 @@ func (a *Requestor) RemoteHash(hash []byte) {
 	REMOTE_HASHES[a.transport.RemoteName] = hash
 }
 
-func (a *Requestor) Request(message_name string, request_datum  []byte) {
+func (a *Requestor) Request(message_name string, request_datum  []byte)  error {
 	// wrtie a request message and reads a response or error message.
 	// build handshale and call request
 	buffer_writer := new(bytes.Buffer)
@@ -56,11 +70,15 @@ func (a *Requestor) Request(message_name string, request_datum  []byte) {
 
 	// process the handshake and call response
 	buffer_decoder := bytes.NewBuffer(call_response)
-	if a.read_handshake_response(buffer_decoder) {
+	ok, err := a.read_handshake_response(buffer_decoder)
+	if err!=nil {
+		return err
+	} else if ok {
 		a.read_call_response(message_name, buffer_decoder)
 	} else {
 		a.Request(message_name, request_datum)
 	}
+	return nil
 }
 
 func (a *Requestor) write_handshake_request( buffer io.Writer ) (err error) {
@@ -97,6 +115,7 @@ func (a *Requestor) write_handshake_request( buffer io.Writer ) (err error) {
         }
         return nil
 }
+
 func (a *Requestor) write_call_request(message_name string, request_datum []byte, buffer io.Writer) error {
       // The format of a call request is:
       //   * request metadata, a map with values of type bytes
@@ -108,23 +127,94 @@ func (a *Requestor) write_call_request(message_name string, request_datum []byte
 	request_metadata := make(map[string]interface{})
 
 	// encode metadata
-        if err :=  META_WRITER.Encode(buffer, make(map[string]interface{})); err !=nil {
+        if err :=  META_WRITER.Encode(buffer, request_metadata); err !=nil {
                 return  fmt.Errorf("Encode metadata ",err)
         }
 	
-	message := a.local_protocol.Messages[message_name]
-	if message==nil {
+	message, found := a.local_protocol.Messages[message_name]
+	if !found {
 		fmt.Errorf("Unknown message: #{message_name}")
 	}
-	buffer.WriteString(message_name)
+	fmt.Fprint(buffer, message_name)
+
 	return nil
+	return a.write_request(message.Request[0].TypeX, request_datum  , buffer)
 } 
 
-func (a *Requestor) read_handshake_response(decder io.Writer) bool {
-	return false // TODO 
+func (a *Requestor) write_request(request_schema AbsType, request_datum []byte, buffer io.Writer) (err error) {
+
+	codec, err := NewCodec(flumeSchema)
+	if err !=nil {
+		return
+	}
+	if err = codec.Encode(buffer, request_datum); err != nil {
+		return
+	}
+	return nil
+}
+
+func (a *Requestor) read_handshake_response(decoder io.Reader) (bool, error) {
+	datum, err := HANDSHAKE_REQUESTOR_READER.Decode(decoder)
+	if err != nil {
+		return false, err
+	}
+
+	record, ok := datum.(*Record)
+	if !ok {
+		return false, fmt.Errorf("Fail to decode handshake %T", datum)
+	}
+
+	var we_have_matching_schema  =false
+	match, err := record.Get("match")
+	if err!= nil {
+		return false, err
+	}
+	switch match {
+	case "BOTH":
+		a.send_protocol  = false
+		we_have_matching_schema =true
+	case "CLIENT":
+                err = fmt.Errorf("Handshake failure. match == CLIENT")
+		if a.send_protocol {
+			field , err := record.Get("serverProtocol")
+		        if err!= nil {
+		                return false, err
+		        }
+			a.remote_protocol = field.(Protocol)
+			field, err =  record.Get("serverHash")
+                        if err!= nil {
+                                return false, err
+                        }
+			a.remote_hash = field.([]byte)
+
+			a.send_protocol = false
+			we_have_matching_schema = true
+		}
+	case "NONE":
+		err = fmt.Errorf("Handshake failure. match == NONE")
+		if a.send_protocol {
+                        field , err := record.Get("serverProtocol")
+                        if err!= nil {
+                                return false, err
+                        }
+			a.remote_protocol = field.(Protocol)
+                        field, err =  record.Get("serverHash")
+                        if err!= nil {
+                                return false, err
+                        }
+			a.remote_hash = field.([]byte)
+
+			a.send_protocol = true
+		}
+	default: 
+		err = fmt.Errorf("Unexpected match: #{match}")
+	}
+
+	return we_have_matching_schema, nil 
 }
 
 func (a *Requestor) read_call_response(message_name string, decoder io.Writer) {
+	
 }
 
 
@@ -141,5 +231,6 @@ func NewTransport(sock *net.Conn) *Transport{
 	}
 }
 func (t *Transport) Transceive(request []byte) []byte{
+	fmt.Fprintf(os.Stdout, "Transceive %s", request)
 	return new(bytes.Buffer).Bytes()
 }	
