@@ -124,7 +124,42 @@ func (c codec) String() string {
 	return fmt.Sprintf("nm: %v, df: %v, ef: %v", c.nm, c.df, c.ef)
 }
 
-type symtab map[string]*codec // map full name to codec
+// NOTE: use Go type names because for runtime resolution of
+// union member, it gets the Go type name of the datum sent to
+// the union encoder, and uses that string as a key into the
+// encoders map
+func newSymbolTable() *symtab {
+	return &symtab{
+		name:         make(map[string]*codec),
+		nullCodec:    &codec{nm: &name{n: "null"}, df: nullDecoder, ef: nullEncoder},
+		booleanCodec: &codec{nm: &name{n: "bool"}, df: booleanDecoder, ef: booleanEncoder},
+		intCodec:     &codec{nm: &name{n: "int32"}, df: intDecoder, ef: intEncoder},
+		longCodec:    longCodec(),
+		floatCodec:   &codec{nm: &name{n: "float32"}, df: floatDecoder, ef: floatEncoder},
+		doubleCodec:  &codec{nm: &name{n: "float64"}, df: doubleDecoder, ef: doubleEncoder},
+		bytesCodec:   &codec{nm: &name{n: "[]uint8"}, df: bytesDecoder, ef: bytesEncoder},
+		stringCodec:  &codec{nm: &name{n: "string"}, df: stringDecoder, ef: stringEncoder},
+	}
+
+}
+
+func longCodec() *codec {
+	return &codec{nm: &name{n: "int64"}, df: longDecoder, ef: longEncoder}
+}
+
+type symtab struct {
+	name map[string]*codec // map full name to codec
+
+	//cache primitive codecs
+	nullCodec    *codec
+	booleanCodec *codec
+	intCodec     *codec
+	longCodec    *codec
+	floatCodec   *codec
+	doubleCodec  *codec
+	bytesCodec   *codec
+	stringCodec  *codec
+}
 
 // NewCodec creates a new object that supports both the Decode and
 // Encode methods. It requires an Avro schema, expressed as a JSON
@@ -179,7 +214,7 @@ func NewCodec(someJSONSchema string, setters ...CodecSetter) (Codec, error) {
 
 	// each codec gets a unified namespace of symbols to
 	// respective codecs
-	st := make(symtab)
+	st := newSymbolTable()
 
 	newCodec, err := st.buildCodec(nullNamespace, schema)
 	if err != nil {
@@ -236,25 +271,6 @@ func (c codec) NewWriter(setters ...WriterSetter) (*Writer, error) {
 	return NewWriter(setters...)
 }
 
-var (
-	nullCodec, booleanCodec, intCodec, longCodec, floatCodec, doubleCodec, bytesCodec, stringCodec *codec
-)
-
-func init() {
-	// NOTE: use Go type names because for runtime resolution of
-	// union member, it gets the Go type name of the datum sent to
-	// the union encoder, and uses that string as a key into the
-	// encoders map
-	nullCodec = &codec{nm: &name{n: "null"}, df: nullDecoder, ef: nullEncoder}
-	booleanCodec = &codec{nm: &name{n: "bool"}, df: booleanDecoder, ef: booleanEncoder}
-	intCodec = &codec{nm: &name{n: "int32"}, df: intDecoder, ef: intEncoder}
-	longCodec = &codec{nm: &name{n: "int64"}, df: longDecoder, ef: longEncoder}
-	floatCodec = &codec{nm: &name{n: "float32"}, df: floatDecoder, ef: floatEncoder}
-	doubleCodec = &codec{nm: &name{n: "float64"}, df: doubleDecoder, ef: doubleEncoder}
-	bytesCodec = &codec{nm: &name{n: "[]uint8"}, df: bytesDecoder, ef: bytesEncoder}
-	stringCodec = &codec{nm: &name{n: "string"}, df: stringDecoder, ef: stringEncoder}
-}
-
 func (st symtab) buildCodec(enclosingNamespace string, schema interface{}) (*codec, error) {
 	switch schemaType := schema.(type) {
 	case string:
@@ -290,21 +306,21 @@ func (st symtab) buildMap(enclosingNamespace string, schema map[string]interface
 func (st symtab) buildString(enclosingNamespace, typeName string, schema interface{}) (*codec, error) {
 	switch typeName {
 	case "null":
-		return nullCodec, nil
+		return st.nullCodec, nil
 	case "boolean":
-		return booleanCodec, nil
+		return st.booleanCodec, nil
 	case "int":
-		return intCodec, nil
+		return st.intCodec, nil
 	case "long":
-		return longCodec, nil
+		return st.longCodec, nil
 	case "float":
-		return floatCodec, nil
+		return st.floatCodec, nil
 	case "double":
-		return doubleCodec, nil
+		return st.doubleCodec, nil
 	case "bytes":
-		return bytesCodec, nil
+		return st.bytesCodec, nil
 	case "string":
-		return stringCodec, nil
+		return st.stringCodec, nil
 	case "record":
 		return st.makeRecordCodec(enclosingNamespace, schema)
 	case "enum":
@@ -320,7 +336,7 @@ func (st symtab) buildString(enclosingNamespace, typeName string, schema interfa
 		if err != nil {
 			return nil, newCodecBuildError(typeName, "could not normalize name: %q: %q: %s", enclosingNamespace, typeName, err)
 		}
-		c, ok := st[t.n]
+		c, ok := st.name[t.n]
 		if !ok {
 			return nil, newCodecBuildError("unknown", "unknown type name: %s", t.n)
 		}
@@ -494,7 +510,7 @@ func (st symtab) makeEnumCodec(enclosingNamespace string, schema interface{}) (*
 			return newEncoderError(friendlyName, "symbol not defined: %s", someString)
 		},
 	}
-	st[nm.n] = c
+	st.name[nm.n] = c
 	return c, nil
 }
 
@@ -555,7 +571,7 @@ func (st symtab) makeFixedCodec(enclosingNamespace string, schema interface{}) (
 			return nil
 		},
 	}
-	st[nm.n] = c
+	st.name[nm.n] = c
 	return c, nil
 }
 
@@ -626,7 +642,7 @@ func (st symtab) makeRecordCodec(enclosingNamespace string, schema interface{}) 
 			return nil
 		},
 	}
-	st[recordTemplate.Name] = c
+	st.name[recordTemplate.Name] = c
 	return c, nil
 }
 
@@ -751,7 +767,7 @@ func (st symtab) makeArrayCodec(enclosingNamespace string, schema interface{}) (
 	return &codec{
 		nm: nm,
 		df: func(r io.Reader) (interface{}, error) {
-			data := make([]interface{}, 0)
+			var data []interface{}
 
 			someValue, err := longDecoder(r)
 			if err != nil {

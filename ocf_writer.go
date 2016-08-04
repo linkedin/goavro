@@ -33,7 +33,7 @@ import (
 	"github.com/golang/snappy"
 )
 
-// DefaultWriterBlockSizeo specifies the default number of datum items
+// DefaultWriterBlockSize specifies the default number of datum items
 // in a block when writing.
 const DefaultWriterBlockSize = 10
 
@@ -267,7 +267,7 @@ func NewWriter(setters ...WriterSetter) (*Writer, error) {
 	go blocker(fw, fw.toBlock, toEncode)
 	go encoder(fw, toEncode, toCompress)
 	go compressor(fw, toCompress, toWrite)
-	go writer(fw, toWrite)
+	go writer(fw, longCodec(), toWrite)
 	return fw, nil
 }
 
@@ -423,13 +423,13 @@ func compressor(fw *Writer, toCompress <-chan *writerBlock, toWrite chan<- *writ
 	close(toWrite)
 }
 
-func writer(fw *Writer, toWrite <-chan *writerBlock) {
+func writer(fw *Writer, lcodec *codec, toWrite <-chan *writerBlock) {
 	for block := range toWrite {
 		if block.err == nil {
-			block.err = longCodec.Encode(fw.w, int64(len(block.items)))
+			block.err = lcodec.Encode(fw.w, int64(len(block.items)))
 		}
 		if block.err == nil {
-			block.err = longCodec.Encode(fw.w, int64(len(block.compressed)))
+			block.err = lcodec.Encode(fw.w, int64(len(block.compressed)))
 		}
 		if block.err == nil {
 			_, block.err = fw.w.Write(block.compressed)

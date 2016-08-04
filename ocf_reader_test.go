@@ -92,7 +92,7 @@ func TestReaderScanShouldNotBlock(t *testing.T) {
 
 func TestReadBlockCountAndSizeWithNothing(t *testing.T) {
 	bits := []byte("")
-	bc, bs, err := readBlockCountAndSize(bytes.NewReader(bits))
+	bc, bs, err := readBlockCountAndSize(bytes.NewReader(bits), longCodec())
 	if bc != 0 {
 		t.Errorf("Actual: %#v; Expected: %#v", bc, 0)
 	}
