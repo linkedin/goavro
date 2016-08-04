@@ -182,7 +182,7 @@ func NewReader(setters ...ReaderSetter) (*Reader, error) {
 	toDecompress := make(chan *readerBlock)
 	toDecode := make(chan *readerBlock)
 	fr.deblocked = make(chan Datum)
-	go read(fr, toDecompress)
+	go read(fr, longCodec(), toDecompress)
 	go decompress(fr, toDecompress, toDecode)
 	go decode(fr, toDecode)
 	return fr, nil
@@ -261,13 +261,13 @@ func newReaderError(a ...interface{}) *ErrReader {
 	return &ErrReader{message, err}
 }
 
-func read(fr *Reader, toDecompress chan<- *readerBlock) {
+func read(fr *Reader, lCodec *codec, toDecompress chan<- *readerBlock) {
 	// NOTE: these variables created outside loop to reduce churn
 	var lr io.Reader
 	var bits []byte
 	sync := make([]byte, syncLength)
 
-	blockCount, blockSize, err := readBlockCountAndSize(fr.r)
+	blockCount, blockSize, err := readBlockCountAndSize(fr.r, lCodec)
 	if err != nil {
 		fr.err = err
 		blockCount = 0
@@ -287,22 +287,22 @@ func read(fr *Reader, toDecompress chan<- *readerBlock) {
 			fr.err = newReaderError(fmt.Sprintf("sync marker mismatch: %#v != %#v", sync, fr.Sync))
 			break
 		}
-		if blockCount, blockSize, fr.err = readBlockCountAndSize(fr.r); fr.err != nil {
+		if blockCount, blockSize, fr.err = readBlockCountAndSize(fr.r, lCodec); fr.err != nil {
 			break
 		}
 	}
 	close(toDecompress)
 }
 
-func readBlockCountAndSize(r io.Reader) (int, int, error) {
-	bc, err := longCodec.Decode(r)
+func readBlockCountAndSize(r io.Reader, lcodec *codec) (int, int, error) {
+	bc, err := lcodec.Decode(r)
 	if err != nil {
 		if ed, ok := err.(*ErrDecoder); ok && ed.Err == io.EOF {
 			return 0, 0, nil // we're done
 		}
 		return 0, 0, &ErrReaderBlockCount{err}
 	}
-	bs, err := longCodec.Decode(r)
+	bs, err := lcodec.Decode(r)
 	if err != nil {
 		return 0, 0, &ErrReaderBlockCount{err}
 	}
