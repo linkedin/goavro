@@ -488,10 +488,10 @@ func TestCodecFixed(t *testing.T) {
 	schema := `{"type":"fixed","name":"fixed1","size":5}`
 	checkCodecDecoderError(t, schema, []byte(""), "EOF")
 	checkCodecDecoderError(t, schema, []byte("hap"), "buffer underrun")
-	checkCodecEncoderError(t, schema, "happy day", "expected: []byte; received: string")
-	checkCodecEncoderError(t, schema, []byte("day"), "expected: 5 bytes; received: 3")
-	checkCodecEncoderError(t, schema, []byte("happy day"), "expected: 5 bytes; received: 9")
-	checkCodecEncoderResult(t, schema, []byte("happy"), []byte("happy"))
+	checkCodecEncoderError(t, schema, "happy day", "expected: Fixed; received: string")
+	checkCodecEncoderError(t, schema, Fixed{Name: "fixed1", Value: []byte("day")}, "expected: 5 bytes; received: 3")
+	checkCodecEncoderError(t, schema, Fixed{Name: "fixed1", Value: []byte("happy day")}, "expected: 5 bytes; received: 9")
+	checkCodecEncoderResult(t, schema, Fixed{Name: "fixed1", Value: []byte("happy")}, []byte("happy"))
 }
 
 func TestCodecNamedTypesCheckSchema(t *testing.T) {
