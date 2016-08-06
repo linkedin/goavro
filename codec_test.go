@@ -494,11 +494,16 @@ func TestCodecFixed(t *testing.T) {
 	checkCodecEncoderResult(t, schema, []byte("happy"), []byte("happy"))
 }
 
-func TestCodecNamedTypes(t *testing.T) {
+func TestCodecNamedTypesCheckSchema(t *testing.T) {
 	schema := `{"name":"guid","type":{"type":"fixed","name":"fixed_16","size":16},"doc":"event unique id"}`
 	var err error
 	_, err = NewCodec(schema)
 	checkError(t, err, nil)
+}
+
+func TestCodecNamedTypes(t *testing.T) {
+	schema := `{"name":"guid","type":["null",{"type":"fixed","name":"fixed_16","size":16}],"doc":"event unique id"}`
+	checkCodecEncoderResult(t, schema, Fixed{Name: "fixed_16", Value: []byte("0123456789abcdef")}, append([]byte{0x2}, []byte("0123456789abcdef")...))
 }
 
 func TestCodecReferToNamedTypes(t *testing.T) {
