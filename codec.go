@@ -502,7 +502,7 @@ func (st symtab) makeEnumCodec(enclosingNamespace string, schema interface{}) (*
 
 // Fixed is an abstract data type used to hold data corresponding to an Avro
 // 'Fixed' type. Whenever an Avro schema specifies a "Fixed" type, this library's
-// Decode method will return a Fixed value  initialized to the Fixed naem, and
+// Decode method will return a Fixed value  initialized to the Fixed name, and
 // value read from the io.Reader. Likewise, when using Encode to convert data to
 // an Avro record, it is necessary to create and send a Fixed instance to the
 // Encode method.

@@ -503,6 +503,8 @@ func TestCodecNamedTypesCheckSchema(t *testing.T) {
 
 func TestCodecNamedTypes(t *testing.T) {
 	schema := `{"name":"guid","type":["null",{"type":"fixed","name":"fixed_16","size":16}],"doc":"event unique id"}`
+	// The 0x2 byte is an avro encoded int(1), which refers to the index of the
+	// `fixed_16` type in the schema's union array.
 	checkCodecEncoderResult(t, schema, Fixed{Name: "fixed_16", Value: []byte("0123456789abcdef")}, append([]byte{0x2}, []byte("0123456789abcdef")...))
 }
 
