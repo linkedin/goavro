@@ -988,7 +988,7 @@ type slowStartReader struct {
 	max int
 }
 
-func NewSlowStartReader(ior io.Reader) *slowStartReader {
+func newSlowStartReader(ior io.Reader) *slowStartReader {
 	ssr := &slowStartReader{max: 1}
 	ssr.buf, _ = ioutil.ReadAll(ior)
 	return ssr
@@ -1020,7 +1020,7 @@ func TestDecoderBytesPartialReads(t *testing.T) {
 		t.Fatalf("Actual: %#v; Expected: %#v", err, nil)
 	}
 
-	result, err := bytesDecoder(NewSlowStartReader(bb))
+	result, err := bytesDecoder(newSlowStartReader(bb))
 	if err != nil {
 		t.Errorf("Actual: %#v; Expected: %#v", err, nil)
 	}
@@ -1044,7 +1044,7 @@ func TestDecoderStringPartialReads(t *testing.T) {
 		t.Fatalf("Actual: %#v; Expected: %#v", err, nil)
 	}
 
-	result, err := stringDecoder(NewSlowStartReader(bb))
+	result, err := stringDecoder(newSlowStartReader(bb))
 	if err != nil {
 		t.Errorf("Actual: %#v; Expected: %#v", err, nil)
 	}

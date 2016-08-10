@@ -86,7 +86,7 @@ func TestRecordField(t *testing.T) {
 }
 
 func TestRecordBailsWithoutName(t *testing.T) {
-	recordFields := make([]*recordField, 0)
+	var recordFields []*recordField
 	{
 		schema := make(map[string]interface{})
 		schema["name"] = "someRecordField"
@@ -125,7 +125,7 @@ func TestRecordBailsWithoutFields(t *testing.T) {
 	_, err = NewRecord(recordSchemaRaw(schema), RecordPedantic())
 	checkError(t, err, fmt.Errorf("record fields ought to be non-empty array"))
 
-	fields := make([]interface{}, 0)
+	var fields []interface{}
 	fields = append(fields, "int")
 	schema["fields"] = fields
 	_, err = NewRecord(recordSchemaRaw(schema))
@@ -252,10 +252,10 @@ func TestNullableStringField(t *testing.T) {
 	decode, err := codec.Decode(buf)
 	checkErrorFatal(t, err, nil)
 
-	nil_or_string, err := decode.(*Record).Get("nil_or_string")
+	nilOrString, err := decode.(*Record).Get("nil_or_string")
 	checkErrorFatal(t, err, nil)
 
-	if nil_or_string != nil {
-		t.Fatalf("Expected nil, got (%T) - (%q)", nil_or_string, nil_or_string)
+	if nilOrString != nil {
+		t.Fatalf("Expected nil, got (%T) - (%q)", nilOrString, nilOrString)
 	}
 }

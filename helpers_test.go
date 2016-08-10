@@ -37,16 +37,16 @@ type simpleBuffer struct {
 	buf bytes.Buffer
 }
 
-func (self *simpleBuffer) Write(b []byte) (n int, err error) {
-	return self.buf.Write(b)
+func (sb *simpleBuffer) Write(b []byte) (n int, err error) {
+	return sb.buf.Write(b)
 }
 
-func (self *simpleBuffer) Bytes() []byte {
-	return self.buf.Bytes()
+func (sb *simpleBuffer) Bytes() []byte {
+	return sb.buf.Bytes()
 }
 
-func (self *simpleBuffer) Read(p []byte) (n int, err error) {
-	return self.buf.Read(p)
+func (sb *simpleBuffer) Read(p []byte) (n int, err error) {
+	return sb.buf.Read(p)
 }
 
 func checkError(t *testing.T, actualError error, expectedError interface{}) {
