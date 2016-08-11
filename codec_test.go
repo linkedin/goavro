@@ -488,17 +488,24 @@ func TestCodecFixed(t *testing.T) {
 	schema := `{"type":"fixed","name":"fixed1","size":5}`
 	checkCodecDecoderError(t, schema, []byte(""), "EOF")
 	checkCodecDecoderError(t, schema, []byte("hap"), "buffer underrun")
-	checkCodecEncoderError(t, schema, "happy day", "expected: []byte; received: string")
-	checkCodecEncoderError(t, schema, []byte("day"), "expected: 5 bytes; received: 3")
-	checkCodecEncoderError(t, schema, []byte("happy day"), "expected: 5 bytes; received: 9")
-	checkCodecEncoderResult(t, schema, []byte("happy"), []byte("happy"))
+	checkCodecEncoderError(t, schema, "happy day", "expected: Fixed; received: string")
+	checkCodecEncoderError(t, schema, Fixed{Name: "fixed1", Value: []byte("day")}, "expected: 5 bytes; received: 3")
+	checkCodecEncoderError(t, schema, Fixed{Name: "fixed1", Value: []byte("happy day")}, "expected: 5 bytes; received: 9")
+	checkCodecEncoderResult(t, schema, Fixed{Name: "fixed1", Value: []byte("happy")}, []byte("happy"))
 }
 
-func TestCodecNamedTypes(t *testing.T) {
+func TestCodecNamedTypesCheckSchema(t *testing.T) {
 	schema := `{"name":"guid","type":{"type":"fixed","name":"fixed_16","size":16},"doc":"event unique id"}`
 	var err error
 	_, err = NewCodec(schema)
 	checkError(t, err, nil)
+}
+
+func TestCodecNamedTypes(t *testing.T) {
+	schema := `{"name":"guid","type":["null",{"type":"fixed","name":"fixed_16","size":16}],"doc":"event unique id"}`
+	// The 0x2 byte is an avro encoded int(1), which refers to the index of the
+	// `fixed_16` type in the schema's union array.
+	checkCodecEncoderResult(t, schema, Fixed{Name: "fixed_16", Value: []byte("0123456789abcdef")}, append([]byte{0x2}, []byte("0123456789abcdef")...))
 }
 
 func TestCodecReferToNamedTypes(t *testing.T) {
