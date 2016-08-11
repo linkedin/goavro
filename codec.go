@@ -440,7 +440,7 @@ func (st symtab) makeUnionCodec(enclosingNamespace string, schema interface{}) (
 // Enum is an abstract data type used to hold data corresponding to an Avro enum. Whenever an Avro
 // schema specifies an enum, this library's Decode method will return an Enum initialized to the
 // enum's name and value read from the io.Reader. Likewise, when using Encode to convert data to an
-// Avro record, it is necessary to crate and send an Enum instance to the Encode method.
+// Avro record, it is necessary to create and send an Enum instance to the Encode method.
 type Enum struct {
 	Name, Value string
 }
