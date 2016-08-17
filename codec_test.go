@@ -503,7 +503,7 @@ func TestCodecDecoderEnum(t *testing.T) {
 	schema := `{"type":"enum","name":"cards","symbols":["HEARTS","DIAMONDS","SPADES","CLUBS"]}`
 	checkCodecDecoderError(t, schema, []byte("\x01"), "index must be between 0 and 3")
 	checkCodecDecoderError(t, schema, []byte("\x08"), "index must be between 0 and 3")
-	checkCodecDecoderResult(t, schema, []byte("\x04"), "SPADES")
+	checkCodecDecoderResult(t, schema, []byte("\x04"), Enum{"cards", "SPADES"})
 }
 
 func TestCodecEncoderEnum(t *testing.T) {

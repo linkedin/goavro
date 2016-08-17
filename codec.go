@@ -493,7 +493,7 @@ func (st symtab) makeEnumCodec(enclosingNamespace string, schema interface{}) (*
 			if index < 0 || index >= int64(len(symtab)) {
 				return nil, newDecoderError(friendlyName, "index must be between 0 and %d", len(symtab)-1)
 			}
-			return symtab[index], nil
+			return Enum{nm.n, symtab[index].(string)}, nil
 		},
 		ef: func(w io.Writer, datum interface{}) error {
 			someEnum, ok := datum.(Enum)
