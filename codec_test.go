@@ -55,6 +55,13 @@ func checkCodecDecoderResult(t *testing.T, schema string, bits []byte, datum int
 			if bytes.Compare(decoded.([]byte), datum.([]byte)) != 0 {
 				t.Errorf("Actual: %#v; Expected: %#v", decoded, datum)
 			}
+		case Fixed:
+			if actual, expected := decoded.(Fixed).Name, datum.(Fixed).Name; actual != expected {
+				t.Errorf("Actual: %#v; Expected: %#v", actual, expected)
+			}
+			if actual, expected := decoded.(Fixed).Value, datum.(Fixed).Value; bytes.Compare(actual, expected) != 0 {
+				t.Errorf("Actual: %#v; Expected: %#v", actual, expected)
+			}
 		default:
 			if decoded != datum {
 				t.Errorf("Actual: %v; Expected: %v", decoded, datum)
@@ -538,6 +545,23 @@ func TestCodecFixed(t *testing.T) {
 	checkCodecEncoderError(t, schema, Fixed{Name: "fixed1", Value: []byte("day")}, "expected: 5 bytes; received: 3")
 	checkCodecEncoderError(t, schema, Fixed{Name: "fixed1", Value: []byte("happy day")}, "expected: 5 bytes; received: 9")
 	checkCodecEncoderResult(t, schema, Fixed{Name: "fixed1", Value: []byte("happy")}, []byte("happy"))
+}
+
+func TestCodecFixedDecoder(t *testing.T) {
+	schema := `
+{
+    "name": "messageId",
+    "type": {
+        "type": "fixed",
+        "size": 16,
+        "name": "UUID",
+        "namespace": "com.example"
+    },
+    "doc": "A unique identifier for the message"
+}`
+	bits := []byte{0x12, 0x7f, 0xe9, 0xc0, 0x3b, 0x59, 0x41, 0xf5, 0x93, 0x6d, 0x77, 0x75, 0xeb, 0x84, 0xb3, 0xc7}
+	expected := Fixed{Name: "com.example.UUID", Value: bits}
+	checkCodecDecoderResult(t, schema, bits, expected)
 }
 
 func TestCodecNamedTypesCheckSchema(t *testing.T) {
