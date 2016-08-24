@@ -34,80 +34,27 @@ type Field struct{
 
 type AbsType struct {
 	*ProtocolType
-	ref string 
+	ref string 	`json:"-"`
 }
 
 type ProtocolMessage struct {
 	Name	string		`json:"-"`
 	Doc	string		`json:"doc,omitempty"`
-	Request []Field	`json:"request"`
+	Request []Field		`json:"request"`
 	Response string		`json:"response"`
 	Errors []string		`json:"errors,omitempty"`
 	One_way bool		`json:"one-way,omitempty"`
 }
 
 const proto = `
-{
-   "protocol":"AvroSourceProtocol",
-   "namespace":"org.apache.flume.source.avro",
-   "doc":"* Licensed to the Apache Software Foundation (ASF).",
-   "types":[
-      {
-         "type":"enum",
-         "name":"Status",
-         "symbols":[
-            "OK",
-            "FAILED",
-            "UNKNOWN"
-         ]
-      },
-      {
-         "type":"record",
-         "name":"AvroFlumeEvent",
-         "fields":[
-            {
-               "name":"headers",
-               "type":{
-                  "type":"map",
-                  "values":"string"
-               }
-            },
-            {
-               "name":"body",
-               "type":"bytes"
-            }
-         ]
-      }
-   ],
-   "messages":{
-      "append":{
-         "request":[
-            {
-               "name":"event",
-               "type":"AvroFlumeEvent"
-            }
-         ],
-         "response":"Status"
-      },
-      "appendBatch":{
-         "request":[
-            {
-               "name":"events",
-               "type":{
-                  "type":"array",
-                  "items":"AvroFlumeEvent"
-               }
-            }
-         ],
-         "response":"Status"
-      }
-   }
-}
+{"protocol":"AvroSourceProtocol","namespace":"org.apache.flume.source.avro","doc":"* Licensed to the Apache Software Foundation (ASF) under one\n * or more contributor license agreements.  See the NOTICE file\n * distributed with this work for additional information\n * regarding copyright ownership.  The ASF licenses this file\n * to you under the Apache License, Version 2.0 (the\n * \"License\"); you may not use this file except in compliance\n * with the License.  You may obtain a copy of the License at\n *\n * http://www.apache.org/licenses/LICENSE-2.0\n *\n * Unless required by applicable law or agreed to in writing,\n * software distributed under the License is distributed on an\n * \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY\n * KIND, either express or implied.  See the License for the\n * specific language governing permissions and limitations\n * under the License.","types":[{"type":"enum","name":"Status","symbols":["OK","FAILED","UNKNOWN"]},{"type":"record","name":"AvroFlumeEvent","fields":[{"name":"headers","type":{"type":"map","values":"string"}},{"name":"body","type":"bytes"}]}],"messages":{"append":{"request":[{"name":"event","type":"AvroFlumeEvent"}],"response":"Status"},"appendBatch":{"request":[{"name":"events","type":{"type":"array","items":"AvroFlumeEvent"}}],"response":"Status"}}}
 `
 
 func init() {
 	TYPES_CACHE = make(map[string]ProtocolType)
-	TYPES_CACHE["bytes"] = ProtocolType{Name:"bytes", TypeX:"bytes"}
+	TYPES_CACHE["bytes"] = ProtocolType{Name:"bytes"}
+	TYPES_CACHE["enum"] = ProtocolType{Name:"enum"}
+	TYPES_CACHE["record"] = ProtocolType{Name:"record"}
 }
 func (t *AbsType) UnmarshalJSON(data []byte) error {
 	var nameType	string
@@ -116,15 +63,15 @@ func (t *AbsType) UnmarshalJSON(data []byte) error {
 		protoType, ok := TYPES_CACHE[nameType]
 		if ok {
 			t.ref = nameType
-			t.ProtocolType = &protoType
+			protocolType = protoType
 		} else {
 			return fmt.Errorf("Type %s not found on protocol type cache %#v", data, TYPES_CACHE)
 		}
 	} else if err := json.Unmarshal(data, &protocolType); err!=nil {
 		return fmt.Errorf("Fail to Parse AbsType, %s  %s", data,err )
 	}
-                t.ProtocolType = &protocolType
-                TYPES_CACHE[protocolType.Name] = protocolType
+	t.ProtocolType = &protocolType
+	TYPES_CACHE[protocolType.Name] = protocolType
 	return nil
 }
 
@@ -137,7 +84,7 @@ func (t *AbsType) MarshalJSON()([]byte, error) {
 }
 
 func NewProtocol() (Protocol, error) {
-	var result Protocol 
+	var result Protocol
 	err := json.Unmarshal([]byte(proto), &result)
 
 	if err!=nil {
@@ -164,4 +111,26 @@ func (p *Protocol) Json() (string, error) {
 
 	}
 	return string(bb), nil
+}
+
+func (p *Protocol) getMessageRequestCodec(messageName string) (Codec, error) {
+	json, err := p.getMessageRequestJson(messageName)
+	if err!= nil {
+		return nil, err
+	}
+	return NewCodec(json)
+}
+func (p *Protocol) getMessageRequestJson(messageName string) (string, error) {
+	field := p.Messages[messageName].Request[0]
+	avroType := TYPES_CACHE[field.TypeX.ref]
+	json, err := json.Marshal(avroType)
+	return string(json), err
+}
+func (p *Protocol) getNewRecord(typeName string) (*Record, error) {
+	avroType := TYPES_CACHE[typeName]
+	json, err := json.Marshal(avroType)
+	if err!= nil {
+		return nil, err
+	}
+	return  NewRecord(RecordSchema(string(json)))
 }

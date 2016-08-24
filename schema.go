@@ -9,12 +9,11 @@ const handshakeRequestshema = `
     {"name": "clientHash",
      "type": {"type": "fixed", "name": "MD5", "size": 16}},
     {"name": "clientProtocol", "type": ["null", "string"]},
-    {"name": "serverHash", "type": "MD5"},
-    {"name": "meta", "type": ["null", {"type": "map", "values": "bytes"}]}
+    {"name": "serverHash", "type": "MD5"}
   ]
 }
 `
-
+//, {"name": "meta", "type": ["null", {"type": "map", "values": "bytes"}]}
 const handshakeResponseshema = `
 {
   "type": "record",
