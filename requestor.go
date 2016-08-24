@@ -142,7 +142,7 @@ func (a *Requestor) write_handshake_request( buffer io.Writer ) (err error) {
 }
 
 func (a *Requestor) write_call_request(message_name string, request_datum interface{}, frame io.Writer) (err error) {
-	codec, err := a.local_protocol.getMessageRequestCodec(message_name)
+	codec, err := a.local_protocol.MessageRequestCodec(message_name)
 
 	if err != nil {
 		return fmt.Errorf("fail to get codec for message %s:  %v", message_name, err)

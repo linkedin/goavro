@@ -118,20 +118,20 @@ func (p *Protocol) Json() (string, error) {
 	return string(bb), nil
 }
 
-func (p *Protocol) getMessageRequestCodec(messageName string) (Codec, error) {
-	json, err := p.getMessageRequestJson(messageName)
+func (p *Protocol) MessageRequestCodec(messageName string) (Codec, error) {
+	json, err := p.MessageRequestJson(messageName)
 	if err!= nil {
 		return nil, err
 	}
 	return NewCodec(json)
 }
-func (p *Protocol) getMessageRequestJson(messageName string) (string, error) {
+func (p *Protocol) MessageRequestJson(messageName string) (string, error) {
 	field := p.Messages[messageName].Request[0]
 	avroType := TYPES_CACHE[field.TypeX.ref]
 	json, err := json.Marshal(avroType)
 	return string(json), err
 }
-func (p *Protocol) getNewRecord(typeName string) (*Record, error) {
+func (p *Protocol) NewRecord(typeName string) (*Record, error) {
 	avroType := TYPES_CACHE[typeName]
 	json, err := json.Marshal(avroType)
 	if err!= nil {

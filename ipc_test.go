@@ -21,7 +21,7 @@ func TestRequestor(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	flumeRecord, errFlume := protocol.getNewRecord("AvroFlumeEvent")
+	flumeRecord, errFlume := protocol.NewRecord("AvroFlumeEvent")
 	if errFlume != nil {
 		t.Fatal(errFlume)
 	}

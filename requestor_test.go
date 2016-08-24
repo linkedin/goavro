@@ -66,7 +66,7 @@ func TestWrite_call_request(t *testing.T) {
 	requestor := NewRequestor(protocol, transceiver)
 
 	bb := new(bytes.Buffer)
-	datum, err := protocol.getNewRecord("AvroFlumeEvent")
+	datum, err := protocol.NewRecord("AvroFlumeEvent")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +83,7 @@ func TestWrite_call_request(t *testing.T) {
 	t.Logf("\nCall_request size %v %v\n",bb.Len(),  bb.Bytes())
 	t.Logf("\nCall_request %v\n", bb.String())
 
-	codec, err := protocol.getMessageRequestCodec("append")
+	codec, err := protocol.MessageRequestCodec("append")
 	if err != nil {
 		t.Fatal(err)
 	}

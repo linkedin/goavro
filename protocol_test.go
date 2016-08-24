@@ -93,7 +93,7 @@ func TestGetCodec(t *testing.T) {
 	}
 
 
-	flumeRecord, errFlume := protocol.getNewRecord("AvroFlumeEvent")
+	flumeRecord, errFlume := protocol.NewRecord("AvroFlumeEvent")
 	if errFlume != nil {
 		t.Fatal(errFlume)
 	}
@@ -103,7 +103,7 @@ func TestGetCodec(t *testing.T) {
 	flumeRecord.Set("headers", headers)
 	flumeRecord.Set("body", []byte("test"))
 	bb := new(bytes.Buffer)
-	codec, err := protocol.getMessageRequestCodec("append")
+	codec, err := protocol.MessageRequestCodec("append")
 	if err != nil {
 		t.Fatal(err)
 	}
