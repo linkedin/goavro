@@ -40,7 +40,7 @@ func (t NettyTransceiver) Transceive(requests []bytes.Buffer) ([]byte, error){
 	// Send request
 	_, err := t.sock.Write(nettyFrame.Bytes())
 	if err!=nil {
-		return nil, fmt.Errorf("Fail to write on socket")
+		return nil, fmt.Errorf("Fail to write on socket %v", err)
 	}
 	//sfmt.Fprintf(os.Stdout, "BufferSize %v", nettyFrame)
 	// Read Response
