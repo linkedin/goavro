@@ -97,9 +97,14 @@ func NewProtocol() (Protocol, error) {
 		err = fmt.Errorf("The namespace property must be a string.")
 	}
 	result.Fullname = result.Namespace +"." +  result.Name
-	hasher := md5.New()
-	hasher.Write([]byte(proto))
-	result.MD5 = hasher.Sum(nil)
+
+	bb, err := json.Marshal(result)
+
+	if err!=nil {
+		return result, err
+	}
+	hash := md5.Sum(bb)
+	result.MD5 = hash[:]
 	return result, err
 }
 

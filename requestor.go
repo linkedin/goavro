@@ -106,8 +106,6 @@ func (a *Requestor) Request(message_name string, request_datum  interface{})  er
 
 func (a *Requestor) write_handshake_request( buffer io.Writer ) (err error) {
         local_hash :=a.local_protocol.MD5
-
-	//local_hash :=[]byte("\x86\xaa\xda\xe2\xc4\x54\x74\xc0\xfe\x93\xff\xd0\xf2\x35\x0a\x65")
         remote_name := a.remote_protocol.Name
 	remote_hash := REMOTE_HASHES[remote_name]
         if len(remote_hash)==0  {
