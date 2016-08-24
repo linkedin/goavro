@@ -105,9 +105,9 @@ func (a *Requestor) Request(message_name string, request_datum  interface{})  er
 }
 
 func (a *Requestor) write_handshake_request( buffer io.Writer ) (err error) {
-        //local_hash :=a.local_protocol.MD5
+        local_hash :=a.local_protocol.MD5
 
-	local_hash :=[]byte("\x86\xaa\xda\xe2\xc4\x54\x74\xc0\xfe\x93\xff\xd0\xf2\x35\x0a\x65")
+	//local_hash :=[]byte("\x86\xaa\xda\xe2\xc4\x54\x74\xc0\xfe\x93\xff\xd0\xf2\x35\x0a\x65")
         remote_name := a.remote_protocol.Name
 	remote_hash := REMOTE_HASHES[remote_name]
         if len(remote_hash)==0  {
@@ -122,6 +122,7 @@ func (a *Requestor) write_handshake_request( buffer io.Writer ) (err error) {
 
         record.Set("clientHash", local_hash)
         record.Set("serverHash", remote_hash)
+	record.Set("meta", make(map[string]interface{}))
         codecHandshake, err := NewCodec(handshakeRequestshema)
         if err != nil {
                return fmt.Errorf("Avro fail to  get codec handshakeRequest %v",err)
@@ -161,14 +162,10 @@ func (a *Requestor) write_call_requestHeader(message_name string, frame1 io.Writ
 
 	// TODO request metadata (not yet implemented)
 	request_metadata := make(map[string]interface{})
-		metaBuffer := new(bytes.Buffer)
-		// encode metadata
-		if err := META_WRITER.Encode(metaBuffer, request_metadata); err != nil {
-			return fmt.Errorf("Encode metadata ", err)
-		}
-	longCodec.Encode(frame1, int64(metaBuffer.Len()))
-	frame1.Write(metaBuffer.Bytes())
-	longCodec.Encode(frame1, int64(0))
+	// encode metadata
+	if err := META_WRITER.Encode(frame1, request_metadata); err != nil {
+		return fmt.Errorf("Encode metadata ", err)
+	}
 
 
 	stringCodec.Encode(frame1,message_name)

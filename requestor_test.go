@@ -29,7 +29,7 @@ func TestWrite_handshake_request(t *testing.T) {
 	t.Logf("Handshake_request size %v %x\n",bb.Len(),  bb.Bytes())
 	t.Logf( "Handshake_request %v\n", bb.String())
 
-	refHandshake := []byte("\x86\xaa\xda\xe2\xc4\x54\x74\xc0\xfe\x93\xff\xd0\xf2\x35\x0a\x65\x00\x86\xaa\xda\xe2\xc4\x54\x74\xc0\xfe\x93\xff\xd0\xf2\x35\x0a\x65\x02")
+	refHandshake := []byte("\x86\xaa\xda\xe2\xc4\x54\x74\xc0\xfe\x93\xff\xd0\xf2\x35\x0a\x65\x00\x86\xaa\xda\xe2\xc4\x54\x74\xc0\xfe\x93\xff\xd0\xf2\x35\x0a\x65\x02\x00")
 	//bytes := bb.Bytes()
 	//if !reflect.DeepEqual(refHandshake, bytes) {
 	//	t.Fatalf("Handshake not equals to ref %n%x, %n%x", len(refHandshake), refHandshake, len(bytes), bytes)
@@ -117,7 +117,7 @@ func TestWrite_call_requestHeader(t *testing.T) {
 
 	requestor.write_call_requestHeader("append", bb)
 
-	refHeader := []byte("\x02\x00\x00\x0c\x61\x70\x70\x65\x6e\x64")
+	refHeader := []byte("\x00\x0c\x61\x70\x70\x65\x6e\x64")
 	bytes := bb.Bytes()
 	if !reflect.DeepEqual(refHeader, bytes) {
 		t.Fatalf("Request_Header not equals to ref %n%x, %n%x", len(refHeader), refHeader, len(bytes), bytes)
