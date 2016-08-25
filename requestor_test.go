@@ -48,6 +48,54 @@ func TestWrite_handshake_request(t *testing.T) {
 
 }
 
+func TestRead_handshake_reponse(t *testing.T) {
+	codecHandshake, err := NewCodec(handshakeResponseshema)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err := NewRecord(RecordSchema(handshakeResponseshema))
+	if err != nil {
+		t.Fatal(err)
+	}
+	record.Set("match", Enum{"match","BOTH"})
+	record.Set("serverProtocol", nil)
+	record.Set("serverHash", nil)
+	record.Set("meta", nil)
+
+	bb := new(bytes.Buffer)
+	err = codecHandshake.Encode(bb, record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("Encode HandshakeResponse %v", bb.Bytes())
+
+
+	_, err = codecHandshake.Decode(bytes.NewReader(bb.Bytes()))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rAddr, err := net.ResolveTCPAddr("tcp", "10.98.80.113:63001")
+	conn, err := net.DialTCP("tcp", nil, rAddr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+
+	transceiver := NewNettyTransceiver(conn)
+	protocol, err := NewProtocol()
+	if err != nil {
+		t.Fatal(err)
+	}
+	requestor := NewRequestor(protocol, transceiver)
+
+	_, err = requestor.read_handshake_response(bytes.NewReader(bb.Bytes()))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+}
+
 
 func TestWrite_call_request(t *testing.T) {
 	//t.SkipNow()

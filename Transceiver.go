@@ -5,10 +5,12 @@ import (
 	"net"
 	"encoding/binary"
 	"fmt"
+	"os"
+	"io"
 )
 
 type Transceiver interface {
-	Transceive(request []bytes.Buffer) ([]byte, error)
+	Transceive(request []bytes.Buffer) ([]io.Reader, error)
 	RemoteName() string
 	SetRemoteName(string)
 }
@@ -33,7 +35,7 @@ func (t NettyTransceiver) SetRemoteName(name string) {
 	t.remoteName = name
 }
 
-func (t NettyTransceiver) Transceive(requests []bytes.Buffer) ([]byte, error){
+func (t NettyTransceiver) Transceive(requests []bytes.Buffer) ([]io.Reader, error){
 	nettyFrame := new(bytes.Buffer)
 	t.Pack(nettyFrame, requests)
 
@@ -42,11 +44,14 @@ func (t NettyTransceiver) Transceive(requests []bytes.Buffer) ([]byte, error){
 	if err!=nil {
 		return nil, fmt.Errorf("Fail to write on socket %v", err)
 	}
-	//sfmt.Fprintf(os.Stdout, "BufferSize %v", nettyFrame)
+
 	// Read Response
 	bodyBytes := make([]byte, 1024)
-	t.sock.Read(bodyBytes)
-	return bodyBytes, nil
+	_, err = t.sock.Read(bodyBytes)
+	if err!=nil {
+		return nil, fmt.Errorf("Fail to read on socket %v", err)
+	}
+	return t.Unpack(bodyBytes)
 }
 
 func (t *NettyTransceiver) Pack(frame *bytes.Buffer, requests []bytes.Buffer) {
@@ -67,4 +72,26 @@ func (t *NettyTransceiver) Pack(frame *bytes.Buffer, requests []bytes.Buffer) {
 		frame.Write(requestSize)
 		frame.Write(request.Bytes())
 	}
+}
+
+func (t *NettyTransceiver) Unpack(frame []byte) ([]io.Reader, error) {
+
+	nettyNumberFame := binary.BigEndian.Uint32(frame[4:8])
+	result := make([]io.Reader, nettyNumberFame)
+	startFrame := uint32(8)
+	i:=uint32(0)
+	for i < nettyNumberFame  {
+
+
+		messageSize := uint32(binary.BigEndian.Uint32(frame[startFrame:startFrame+4]))
+		fmt.Fprintf(os.Stdout, "\nnettyNumberFrame %v %v ", startFrame, frame[startFrame:startFrame+4])
+		message := frame[startFrame+4:startFrame+4+messageSize]
+		fmt.Fprintf(os.Stdout, "\nmessage: %v", message)
+		startFrame = startFrame+4+messageSize
+		br := bytes.NewReader(message)
+		result[i] = br
+		i++
+	}
+
+	return  result, nil
 }

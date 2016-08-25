@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
+	"os"
 )
 
 var REMOTE_HASHES map[string][]byte
@@ -25,6 +25,7 @@ type Requestor struct {
 	remote_protocol 	Protocol
 	remote_hash		[]byte
 	send_protocol		bool
+	send_handshake		bool
 }
 func init() {
 	var err error
@@ -49,7 +50,8 @@ func NewRequestor(localProto Protocol, transceiver Transceiver) *Requestor {
 		transceiver: transceiver,
 //		remote_protocol: nil,
 //		remote_hash: nil,
-//		send_protocol: nil,
+		send_protocol: false,
+		send_handshake: true,
 	}
 }
 
@@ -86,25 +88,32 @@ func (a *Requestor) Request(message_name string, request_datum  interface{})  er
 
 	// sen the handshake and call request; block until call response
 	buffer_writers := []bytes.Buffer{*frame1, *frame2}
-	decoder, err := a.transceiver.Transceive(buffer_writers)
+	responses, err := a.transceiver.Transceive(buffer_writers)
+
 	if err!=nil {
 		return err
 	}
-	buffer_decoder := bytes.NewBuffer(decoder)
+	//buffer_decoder := bytes.NewBuffer(decoder)
 	// process the handshake and call response
-	//ok, err := a.read_handshake_response(buffer_decoder)
-	fmt.Sprintf("Response %v", buffer_decoder)
-	//if err!=nil {
-	//	return err
-	//} else if ok {
+	fmt.Fprintf(os.Stdout, "\nresponsee %#v", responses)
+	ok, err := a.read_handshake_response(responses[0])
+	if err!=nil {
+		return err
+	}
+	a.send_handshake= !ok
+
+	if ok {
 	//	a.read_call_response(message_name, buffer_decoder)
 	//} else {
 	//	a.Request(message_name, request_datum)
-	//}
+	}
 	return nil
 }
 
 func (a *Requestor) write_handshake_request( buffer io.Writer ) (err error) {
+	if !a.send_handshake {
+		return nil
+	}
         local_hash :=a.local_protocol.MD5
         remote_name := a.remote_protocol.Name
 	remote_hash := REMOTE_HASHES[remote_name]
@@ -180,11 +189,14 @@ func (a *Requestor) write_request(request_codec Codec, request_datum interface{}
 }
 
 func (a *Requestor) read_handshake_response(decoder io.Reader) (bool, error) {
-	resp, _ := ioutil.ReadAll(decoder)
+	if !a.send_handshake {
+		return true, nil
+	}
+
 	datum, err := HANDSHAKE_REQUESTOR_READER.Decode(decoder)
 	if err != nil {
 
-		return false,fmt.Errorf("Fail to decode %v with error %v", resp, err)
+		return false,fmt.Errorf("Fail to decode %v with error %v", decoder, err)
 	}
 
 	record, ok := datum.(*Record)

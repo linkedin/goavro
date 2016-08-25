@@ -35,5 +35,11 @@ func TestRequestor(t *testing.T) {
 	if err != nil {
 		t.Fatal("Request: ", err)
 	}
+
+	err = requestor.Request("append", flumeRecord)
+
+	if err != nil {
+		t.Fatal("Request: ", err)
+	}
 }
 
