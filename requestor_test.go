@@ -172,4 +172,45 @@ func TestWrite_call_requestHeader(t *testing.T) {
 	}
 }
 
+func TestRead_call_responseMessage(t *testing.T) {
+	//t.SkipNow()
+
+	rAddr, err := net.ResolveTCPAddr("tcp", "10.98.80.113:63001")
+	conn, err := net.DialTCP("tcp", nil, rAddr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+
+	transceiver := NewNettyTransceiver(conn)
+	protocol, err := NewProtocol()
+	if err != nil {
+		t.Fatal(err)
+	}
+	requestor := NewRequestor(protocol, transceiver)
+
+
+	codec, err := protocol.MessageResponseCodec("append")
+	if err != nil {
+		t.Fatal(err)
+	}
+	bb := new(bytes.Buffer)
+	codec.Encode(bb, Enum{"Status", "OK"})
+	t.Logf("Bytes for OK %x",bb.Bytes() )
+
+
+	err = requestor.read_call_responseMessage("append", bb)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	codec.Encode(bb, Enum{"Status", "FAILED"})
+	t.Logf("Bytes for FAILED %x",bb.Bytes() )
+	err = requestor.read_call_responseMessage("append", bb)
+	if err == nil || err.Error() != "Reponse failure. status == FAILED"{
+		t.Fatalf("Status FAILED can return error")
+	}
+
+}
+
 

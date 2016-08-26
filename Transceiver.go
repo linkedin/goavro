@@ -5,7 +5,6 @@ import (
 	"net"
 	"encoding/binary"
 	"fmt"
-	"os"
 	"io"
 )
 
@@ -75,18 +74,13 @@ func (t *NettyTransceiver) Pack(frame *bytes.Buffer, requests []bytes.Buffer) {
 }
 
 func (t *NettyTransceiver) Unpack(frame []byte) ([]io.Reader, error) {
-
 	nettyNumberFame := binary.BigEndian.Uint32(frame[4:8])
 	result := make([]io.Reader, nettyNumberFame)
 	startFrame := uint32(8)
 	i:=uint32(0)
 	for i < nettyNumberFame  {
-
-
 		messageSize := uint32(binary.BigEndian.Uint32(frame[startFrame:startFrame+4]))
-		fmt.Fprintf(os.Stdout, "\nnettyNumberFrame %v %v ", startFrame, frame[startFrame:startFrame+4])
 		message := frame[startFrame+4:startFrame+4+messageSize]
-		fmt.Fprintf(os.Stdout, "\nmessage: %v", message)
 		startFrame = startFrame+4+messageSize
 		br := bytes.NewReader(message)
 		result[i] = br

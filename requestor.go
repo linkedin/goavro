@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"os"
 )
 
 var REMOTE_HASHES map[string][]byte
@@ -95,7 +94,6 @@ func (a *Requestor) Request(message_name string, request_datum  interface{})  er
 	}
 	//buffer_decoder := bytes.NewBuffer(decoder)
 	// process the handshake and call response
-	fmt.Fprintf(os.Stdout, "\nresponsee %#v", responses)
 	ok, err := a.read_handshake_response(responses[0])
 	if err!=nil {
 		return err
@@ -103,8 +101,10 @@ func (a *Requestor) Request(message_name string, request_datum  interface{})  er
 	a.send_handshake= !ok
 
 	if ok {
-	//	a.read_call_response(message_name, buffer_decoder)
-	//} else {
+		a.read_call_responseCode(responses[1])
+		if err!=nil {
+			return err
+		}
 	//	a.Request(message_name, request_datum)
 	}
 	return nil
@@ -253,7 +253,7 @@ func (a *Requestor) read_handshake_response(decoder io.Reader) (bool, error) {
 	return we_have_matching_schema, nil 
 }
 
-func (a *Requestor) read_call_response(message_name string, decoder io.Writer) {
+func (a *Requestor) read_call_responseCode(decoder io.Reader) error {
 	// The format of a call response is:
 	//   * response metadata, a map with values of type bytes
 	//   * a one-byte error flag boolean, followed by either:
@@ -261,8 +261,49 @@ func (a *Requestor) read_call_response(message_name string, decoder io.Writer) {
 	//       the message response, serialized per the message's response schema.
 	//     * if the error flag is true,
 	//       the error, serialized per the message's error union schema.
-//	META_READER.Decode(decoder)
+	_, err := META_READER.Decode(decoder)
+
+	if  err != nil {
+		return fmt.Errorf("Decode metadata ", err)
+	}
+	return nil
+
 }
 
+
+func (a *Requestor) read_call_responseMessage(message_name string, decoder io.Reader ) error {
+	codec, err := a.local_protocol.MessageResponseCodec(message_name)
+
+	if err != nil {
+		return fmt.Errorf("fail to get response codec for message %s:  %v", message_name, err)
+	}
+
+	datum, err := codec.Decode(decoder);
+	if err != nil {
+
+		return fmt.Errorf("Fail to decode %v with error %v", decoder, err)
+	}
+	status, ok := datum.(string)
+	if !ok {
+		return fmt.Errorf("Fail to decode Status response %v", datum)
+	}
+
+	switch status {
+	case "OK":
+		err = nil
+	case "FAILED":
+		err = fmt.Errorf("Reponse failure. status == %v", status)
+
+	case "UNKNOWN":
+		err = fmt.Errorf("Reponse failure. match == %v", status)
+
+	default:
+		err = fmt.Errorf("Unexpected status: %v", status)
+	}
+
+	return err
+
+
+}
 
 

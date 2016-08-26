@@ -82,7 +82,7 @@ func TestToJson(t *testing.T) {
 		t.Fatal("%#v", err)
 	}
 	if result!= jsonCompact(proto)  {
-		t.Errorf("Proto to Json not equals; Expected %#v, actual %#v",jsonCompact(proto), result)
+		t.Errorf("Proto to Json not equals; Expected \n%#v\nactual \n%#v",jsonCompact(proto), result)
 	}
 }
 
