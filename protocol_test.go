@@ -98,7 +98,6 @@ func TestGetCodec(t *testing.T) {
 		t.Fatal(errFlume)
 	}
 	headers := make(map[string]interface{})
-	headers[AVRO_SCHEMA_LITERAL_HEADER] = stringSchema
 	headers["host_header"] = "127.0.0.1"
 	flumeRecord.Set("headers", headers)
 	flumeRecord.Set("body", []byte("test"))

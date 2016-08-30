@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"github.com/sebglon/goavro/transceiver"
 )
 
 var REMOTE_HASHES map[string][]byte
@@ -20,7 +21,7 @@ var HANDSHAKE_REQUESTOR_READER Codec
 type Requestor struct {
 	// Base class for the client side of protocol interaction.
 	local_protocol		Protocol
-	transceiver		Transceiver
+	transceiver		transceiver.Transceiver
 	remote_protocol 	Protocol
 	remote_hash		[]byte
 	send_protocol		bool
@@ -43,7 +44,7 @@ func init() {
 
 }
 
-func NewRequestor(localProto Protocol, transceiver Transceiver) *Requestor {
+func NewRequestor(localProto Protocol, transceiver transceiver.Transceiver) *Requestor {
 	return &Requestor{
 		local_protocol: localProto,
 		transceiver: transceiver,
@@ -57,12 +58,12 @@ func NewRequestor(localProto Protocol, transceiver Transceiver) *Requestor {
 
 func (a *Requestor) RemoteProtocol(proto Protocol) {
 	a.remote_protocol = proto
-	REMOTE_PROTOCOLS[a.transceiver.RemoteName()] = proto
+	REMOTE_PROTOCOLS[proto.Name] = proto
 }
 
 func (a *Requestor) RemoteHash(hash []byte) {
 	a.remote_hash =  hash
-	REMOTE_HASHES[a.transceiver.RemoteName()] = hash
+	REMOTE_HASHES[a.remote_protocol.Name] = hash
 }
 
 func (a *Requestor) Request(message_name string, request_datum  interface{})  error {
@@ -94,18 +95,21 @@ func (a *Requestor) Request(message_name string, request_datum  interface{})  er
 	}
 	//buffer_decoder := bytes.NewBuffer(decoder)
 	// process the handshake and call response
-	ok, err := a.read_handshake_response(responses[0])
-	if err!=nil {
-		return err
-	}
-	a.send_handshake= !ok
 
-	if ok {
-		a.read_call_responseCode(responses[1])
-		if err!=nil {
+	if len(responses) >0 {
+		ok, err := a.read_handshake_response(responses[0])
+		if err != nil {
 			return err
 		}
-	//	a.Request(message_name, request_datum)
+		a.send_handshake = !ok
+
+		if ok {
+			a.read_call_responseCode(responses[1])
+			if err != nil {
+				return err
+			}
+			//	a.Request(message_name, request_datum)
+		}
 	}
 	return nil
 }

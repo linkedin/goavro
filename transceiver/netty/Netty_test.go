@@ -1,4 +1,4 @@
-package goavro
+package netty
 
 import (
 	"testing"
@@ -6,8 +6,80 @@ import (
 	"bytes"
 	"reflect"
 	"io/ioutil"
+	"runtime"
+	"net"
 )
 
+const (
+	RECV_BUF_LEN = 1024
+)
+
+type Conn struct {
+	bytes.Buffer
+}
+
+func (c *Conn) Close() error {
+	return nil
+}
+
+func init() {
+	numProcs := runtime.NumCPU()
+	if numProcs < 2 {
+		numProcs = 2
+	}
+	runtime.GOMAXPROCS(numProcs)
+
+	listener, err := net.Listen("tcp", "0.0.0.0:6666")
+	if err != nil {
+		println("error listening:", err.Error())
+	}
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				println("Error accept:", err.Error())
+				return
+			}
+			go EchoFunc(conn)
+		}
+	}()
+}
+
+func EchoFunc(conn net.Conn) {
+	for {
+		buf := make([]byte, RECV_BUF_LEN)
+		n, err := conn.Read(buf)
+		if err != nil {
+			println("Error reading:", err.Error())
+			return
+		}
+		println("received ", n, " bytes of data =", string(buf))
+	}
+}
+
+func TestTransceive(t *testing.T) {
+	f := &NettyTransceiver{Config: Config{}, reconnecting: false}
+
+	buf := &Conn{}
+	f.Conn = buf
+
+	msg := "This is test writing."
+	bmsg := make([]bytes.Buffer, 1)
+	bmsg[0] = *bytes.NewBuffer([]byte(msg))
+
+	resp, err := f.Transceive(bmsg)
+	if err != nil {
+		t.Error(err)
+	}
+
+	brcv := make([]byte, len([]byte(msg)))
+	resp[0].Read(brcv)
+	rcv := string(brcv)
+	if rcv != msg {
+		t.Errorf("got %s, except %s", rcv, msg)
+	}
+
+}
 func TestPack(t *testing.T) {
 	transceiver := new(NettyTransceiver)
 	frame := new(bytes.Buffer)

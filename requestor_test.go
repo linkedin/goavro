@@ -5,6 +5,7 @@ import (
 	"net"
 	"bytes"
 	"reflect"
+	netty "github.com/sebglon/goavro/transceiver/netty"
 )
 
 func TestWrite_handshake_request(t *testing.T) {
@@ -16,7 +17,10 @@ func TestWrite_handshake_request(t *testing.T) {
 	}
 	defer conn.Close()
 
-	transceiver := NewNettyTransceiver(conn)
+	transceiver, err := netty.NewTransceiver(netty.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	protocol, err := NewProtocol()
 	if err != nil {
 		t.Fatal(err)
@@ -75,14 +79,12 @@ func TestRead_handshake_reponse(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	rAddr, err := net.ResolveTCPAddr("tcp", "10.98.80.113:63001")
-	conn, err := net.DialTCP("tcp", nil, rAddr)
+
+	transceiver, err := netty.NewTransceiver(netty.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer conn.Close()
 
-	transceiver := NewNettyTransceiver(conn)
 	protocol, err := NewProtocol()
 	if err != nil {
 		t.Fatal(err)
@@ -96,17 +98,21 @@ func TestRead_handshake_reponse(t *testing.T) {
 
 }
 
+type Conn struct {
+	bytes.Buffer
+}
+func (c *Conn) Close() error {
+	return nil
+}
 
 func TestWrite_call_request(t *testing.T) {
 	//t.SkipNow()
-	rAddr, err := net.ResolveTCPAddr("tcp", "10.98.80.113:63001")
-	conn, err := net.DialTCP("tcp", nil, rAddr)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer conn.Close()
 
-	transceiver := NewNettyTransceiver(conn)
+
+	transceiver, err := netty.NewTransceiver(netty.Config{})
+	buf := &Conn{}
+	transceiver.Conn = buf
+
 	protocol, err := NewProtocol()
 	if err != nil {
 		t.Fatal(err)
@@ -147,14 +153,10 @@ func TestWrite_call_request(t *testing.T) {
 
 func TestWrite_call_requestHeader(t *testing.T) {
 	//t.SkipNow()
-	rAddr, err := net.ResolveTCPAddr("tcp", "10.98.80.113:63001")
-	conn, err := net.DialTCP("tcp", nil, rAddr)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer conn.Close()
+	transceiver, err := netty.NewTransceiver(netty.Config{})
+	buf := &Conn{}
+	transceiver.Conn = buf
 
-	transceiver := NewNettyTransceiver(conn)
 	protocol, err := NewProtocol()
 	if err != nil {
 		t.Fatal(err)
@@ -173,16 +175,12 @@ func TestWrite_call_requestHeader(t *testing.T) {
 }
 
 func TestRead_call_responseMessage(t *testing.T) {
-	//t.SkipNow()
 
-	rAddr, err := net.ResolveTCPAddr("tcp", "10.98.80.113:63001")
-	conn, err := net.DialTCP("tcp", nil, rAddr)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer conn.Close()
 
-	transceiver := NewNettyTransceiver(conn)
+	transceiver, err := netty.NewTransceiver(netty.Config{})
+	buf := &Conn{}
+	transceiver.Conn = buf
+
 	protocol, err := NewProtocol()
 	if err != nil {
 		t.Fatal(err)
