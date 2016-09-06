@@ -136,3 +136,6 @@ func (p *Pool) Call(conn *Connection, pc *pool.PoolConn, req []byte) (resp []byt
 	}
 	return
 }
+func (t *Pool) Close() {
+	t.pool.Close()
+}

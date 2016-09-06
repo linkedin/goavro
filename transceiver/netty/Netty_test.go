@@ -68,6 +68,7 @@ func TestTransceive(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer f.Close()
 	f.InitHandshake(func()([]byte, error){return make([]byte,1), nil},func(io.Reader)(bool, error){return true, nil})
 
 

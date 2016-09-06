@@ -11,6 +11,7 @@ type ReadHandshake func(io.Reader) (bool, error)
 type Transceiver interface {
 	Transceive(request []bytes.Buffer) ([]io.Reader, error)
 	InitHandshake(WriteHandshake, ReadHandshake )
+	Close()
 
 
 

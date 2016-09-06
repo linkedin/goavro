@@ -35,6 +35,8 @@ func (t *NettyTransceiver) InitHandshake(writer transceiver.WriteHandshake,reade
 
 
 
+
+
 func (t *NettyTransceiver) Transceive(requests []bytes.Buffer) ([]io.Reader, error){
 	nettyFrame := new(bytes.Buffer)
 	t.Pack(nettyFrame, requests)
