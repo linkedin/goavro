@@ -76,10 +76,13 @@ func NewPool(config Config) (*Pool, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Pool{
+
+	pool := &Pool{
 		pool: p,
 		Config: config,
-	}, nil
+	}
+	log.Printf("%#v",pool.pool)
+	return pool, nil
 
 }
 

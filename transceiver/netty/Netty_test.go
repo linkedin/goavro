@@ -9,8 +9,8 @@ import (
 	"runtime"
 	"net"
 	"github.com/sebglon/goavro/transceiver"
-
 	"strconv"
+	"io"
 )
 
 const (
@@ -64,10 +64,11 @@ func EchoFunc(conn net.Conn) {
 }
 
 func TestTransceive(t *testing.T) {
-	f, err := NewTransceiver(transceiver.Config{Network:NETWORK, SocketPath:ADDR, Host:HOST, Port:PORT})
+	f, err := NewTransceiver(transceiver.Config{Network:NETWORK, Host:HOST, Port:PORT})
 	if err != nil {
 		t.Fatal(err)
 	}
+	f.InitHandshake(func()([]byte, error){return make([]byte,1), nil},func(io.Reader)(bool, error){return true, nil})
 
 
 	msg := "This is test writing."
@@ -127,3 +128,4 @@ func TestUnpack(t *testing.T) {
 	}
 
 }
+

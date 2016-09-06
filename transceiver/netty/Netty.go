@@ -7,11 +7,11 @@ import (
 	"sync"
 	"github.com/sebglon/goavro/transceiver"
 	"fmt"
+	"log"
 )
 
 type NettyTransceiver struct {
 	transceiver.Pool
-	pool           *transceiver.Pool
 	mu             sync.Mutex
 	pending        []byte
 	alreadyCalled  bool
@@ -20,20 +20,25 @@ type NettyTransceiver struct {
 }
 func NewTransceiver(config transceiver.Config) (f* NettyTransceiver, err error){
 	f = &NettyTransceiver{}
-	f.pool, err = transceiver.NewPool(config)
+	pool , err := transceiver.NewPool(config)
+	if err !=nil {
+		return
+	}
+	f.Pool =*pool
 	return
 }
 
-func (t NettyTransceiver) InitHandshake(writer transceiver.WriteHandshake,reader transceiver.ReadHandshake ) {
+func (t *NettyTransceiver) InitHandshake(writer transceiver.WriteHandshake,reader transceiver.ReadHandshake ) {
 	t.writeHandShake=writer
 	t.readHandshake=reader
 }
 
 
 
-func (t NettyTransceiver) Transceive(requests []bytes.Buffer) ([]io.Reader, error){
+func (t *NettyTransceiver) Transceive(requests []bytes.Buffer) ([]io.Reader, error){
 	nettyFrame := new(bytes.Buffer)
 	t.Pack(nettyFrame, requests)
+	log.Printf("%#v",t.Pool)
 	conn, pc, err := t.Pool.Conn()
 
 	if err!=nil {
@@ -43,6 +48,9 @@ func (t NettyTransceiver) Transceive(requests []bytes.Buffer) ([]io.Reader, erro
 
 	if !conn.IsChecked() {
 		frame0 := requests[0]
+		if t.writeHandShake ==nil {
+			return nil, fmt.Errorf("InitHandshake not called before Transceive")
+		}
 		handshake, err := t.writeHandShake()
 		if err!=nil {
 			return nil, err
@@ -55,7 +63,7 @@ func (t NettyTransceiver) Transceive(requests []bytes.Buffer) ([]io.Reader, erro
 		}
 	}
 
-	bodyBytes, err := t.pool.Call(conn, pc, nettyFrame.Bytes())
+	bodyBytes, err := t.Pool.Call(conn, pc, nettyFrame.Bytes())
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +75,7 @@ func (t NettyTransceiver) Transceive(requests []bytes.Buffer) ([]io.Reader, erro
 		return nil, err
 	}
 
-	if !conn.IsChecked() {
+	if !conn.IsChecked() && len(resps)>1{
 		ok, err := t.readHandshake(resps[0])
 		if err!=nil {
 			return nil, err
