@@ -8,19 +8,19 @@ import (
 	"io/ioutil"
 	"runtime"
 	"net"
+	"github.com/sebglon/goavro/transceiver"
+
+	"strconv"
 )
 
 const (
 	RECV_BUF_LEN = 1024
+	NETWORK = "tcp"
+	HOST = "127.0.0.1"
+	PORT=6666
+	ADDR="127.0.0.1:6666"
 )
 
-type Conn struct {
-	bytes.Buffer
-}
-
-func (c *Conn) Close() error {
-	return nil
-}
 
 func init() {
 	numProcs := runtime.NumCPU()
@@ -29,7 +29,7 @@ func init() {
 	}
 	runtime.GOMAXPROCS(numProcs)
 
-	listener, err := net.Listen("tcp", "0.0.0.0:6666")
+	listener, err := net.Listen(NETWORK, "0.0.0.0:"+strconv.Itoa(PORT))
 	if err != nil {
 		println("error listening:", err.Error())
 	}
@@ -54,14 +54,21 @@ func EchoFunc(conn net.Conn) {
 			return
 		}
 		println("received ", n, " bytes of data =", string(buf))
+		n, err = conn.Write(buf)
+		if err != nil {
+			println("Error writing:", err.Error())
+			return
+		}
+		println("sended ", n, " bytes of data =", string(buf))
 	}
 }
 
 func TestTransceive(t *testing.T) {
-	f := &NettyTransceiver{Config: Config{}, reconnecting: false}
+	f, err := NewTransceiver(transceiver.Config{Network:NETWORK, SocketPath:ADDR, Host:HOST, Port:PORT})
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	buf := &Conn{}
-	f.Conn = buf
 
 	msg := "This is test writing."
 	bmsg := make([]bytes.Buffer, 1)
@@ -69,9 +76,8 @@ func TestTransceive(t *testing.T) {
 
 	resp, err := f.Transceive(bmsg)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err.Error())
 	}
-
 	brcv := make([]byte, len([]byte(msg)))
 	resp[0].Read(brcv)
 	rcv := string(brcv)

@@ -45,7 +45,8 @@ func init() {
 }
 
 func NewRequestor(localProto Protocol, transceiver transceiver.Transceiver) *Requestor {
-	return &Requestor{
+
+	r := &Requestor{
 		local_protocol: localProto,
 		transceiver: transceiver,
 //		remote_protocol: nil,
@@ -53,6 +54,8 @@ func NewRequestor(localProto Protocol, transceiver transceiver.Transceiver) *Req
 		send_protocol: false,
 		send_handshake: true,
 	}
+	transceiver.InitHandshake(r.write_handshake_request, r.read_handshake_response)
+	return r
 }
 
 
@@ -72,12 +75,7 @@ func (a *Requestor) Request(message_name string, request_datum  interface{})  er
 	frame1 := new(bytes.Buffer)
 	frame2 := new(bytes.Buffer)
 
-	err := a.write_handshake_request(frame1)
-	if err!=nil {
-		return err
-	}
-
-	err = a.write_call_requestHeader(message_name, frame1)
+	err := a.write_call_requestHeader(message_name, frame1)
 	if err!=nil {
 		return err
 	}
@@ -91,33 +89,24 @@ func (a *Requestor) Request(message_name string, request_datum  interface{})  er
 	responses, err := a.transceiver.Transceive(buffer_writers)
 
 	if err!=nil {
-		return err
+		return fmt.Errorf("Fail to transceive %v", err)
 	}
 	//buffer_decoder := bytes.NewBuffer(decoder)
 	// process the handshake and call response
 
 	if len(responses) >0 {
-		ok, err := a.read_handshake_response(responses[0])
+		a.read_call_responseCode(responses[1])
 		if err != nil {
 			return err
 		}
-		a.send_handshake = !ok
-
-		if ok {
-			a.read_call_responseCode(responses[1])
-			if err != nil {
-				return err
-			}
-			//	a.Request(message_name, request_datum)
-		}
+		//	a.Request(message_name, request_datum)
 	}
 	return nil
 }
 
-func (a *Requestor) write_handshake_request( buffer io.Writer ) (err error) {
-	if !a.send_handshake {
-		return nil
-	}
+func (a *Requestor) write_handshake_request() (handshake []byte ,err error) {
+	buffer := new(bytes.Buffer)
+	defer 	buffer.Write(handshake)
         local_hash :=a.local_protocol.MD5
         remote_name := a.remote_protocol.Name
 	remote_hash := REMOTE_HASHES[remote_name]
@@ -128,7 +117,8 @@ func (a *Requestor) write_handshake_request( buffer io.Writer ) (err error) {
 
         record, err := NewRecord(RecordSchema(handshakeRequestshema))
         if err != nil {
-                return fmt.Errorf("Avro fail to  init record handshakeRequest %v",err)
+                err = fmt.Errorf("Avro fail to  init record handshakeRequest %v",err)
+		return
         }
 
         record.Set("clientHash", local_hash)
@@ -136,22 +126,27 @@ func (a *Requestor) write_handshake_request( buffer io.Writer ) (err error) {
 	record.Set("meta", make(map[string]interface{}))
         codecHandshake, err := NewCodec(handshakeRequestshema)
         if err != nil {
-               return fmt.Errorf("Avro fail to  get codec handshakeRequest %v",err)
+               err = fmt.Errorf("Avro fail to  get codec handshakeRequest %v",err)
+		return
         }
 
 	if a.send_protocol {
 		json, err := a.local_protocol.Json()
 		if err!=nil {		
-			return err
+			return nil ,err
 		}
 		record.Set("clientProtocol", json)
 	}
 
+
+
         if err = codecHandshake.Encode(buffer, record); err !=nil {
-                return  fmt.Errorf("Encode handshakeRequest ",err)
+                err =  fmt.Errorf("Encode handshakeRequest ",err)
+		return
         }
 
-        return nil
+
+        return
 }
 
 func (a *Requestor) write_call_request(message_name string, request_datum interface{}, frame io.Writer) (err error) {

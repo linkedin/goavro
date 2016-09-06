@@ -8,7 +8,7 @@ import (
 
 func main() {
 	//t.SkipNow()
-	transceiver,err := netty.NewTransceiver(netty.Config{AsyncConnect:true, NettyHost:"10.98.80.113"})
+	transceiver,err := netty.NewTransceiver(netty.Config{AsyncConnect:false, NettyHost:"192.168.11.152"})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -24,20 +24,27 @@ func main() {
 	headers := make(map[string]interface{})
 	headers["host_header"] = "127.0.0.1"
 	flumeRecord.Set("headers", headers)
-	flumeRecord.Set("body", []byte("2016-08-02 14:45:38|flume.composantTechnique_IS_UNDEFINED|flume.application_IS_UNDEFINED|flume.client_IS_UNDEFINED|flume.plateforme_IS_UNDEFINED|instance_IS_UNDEFINED|logname_IS_UNDEFINED|WARN |test.LogGenerator|test !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"))
+
 	requestor := goavro.NewRequestor(protocol, transceiver)
 
-
+	flumeRecord.Set("body", []byte("test 1"))
 	err = requestor.Request("append", flumeRecord)
 
 	if err != nil {
-		log.Fatal("Request: ", err)
+		log.Fatal("Request 1: ", err)
 	}
+
+	log.Printf("Test 1 OK")
+
+
 	time.Sleep(5 * time.Second)
+	flumeRecord.Set("body", []byte("test 2"))
 	err = requestor.Request("append", flumeRecord)
 
 	if err != nil {
-		log.Fatal("Request: ", err)
+		log.Fatal("Request 2: ", err)
 	}
+	log.Printf("Test 2 OK")
+
 }
 
