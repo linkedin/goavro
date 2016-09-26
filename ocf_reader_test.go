@@ -20,6 +20,7 @@ package goavro
 
 import (
 	"bytes"
+	"io"
 	"testing"
 )
 
@@ -106,67 +107,72 @@ func TestReadBlockCountAndSizeWithNothing(t *testing.T) {
 
 func TestFileReadNullCodecBs1(t *testing.T) {
 	fr, err := NewReader(FromReader(bytes.NewReader([]byte(nullCodecSample))))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		if err := fr.Close(); err != nil {
-			t.Fatal(err)
-		}
-	}()
-	var count int
-	for fr.Scan() {
-		datum, err := fr.Read()
-		if err != nil {
-			t.Errorf("Actual: %#v; Expected: %#v", err, nil)
-		}
-		_, ok := datum.(*Record)
-		if !ok {
-			t.Errorf("Actual: %T; Expected: *Record", datum)
-		}
-		count++
-	}
-	datum, err := fr.Read()
-	t.Logf("datum: %#v; err: %#v", datum, err)
-	if want := 5; count != want {
-		t.Errorf("Actual: %#v; Expected: %#v", count, want)
-	}
+	checkErrorFatal(t, err, nil)
+	testFileReader(t, fr)
 }
 
 func TestFileReadNullCodecBs2(t *testing.T) {
 	fr, err := NewReader(FromReader(bytes.NewReader([]byte(nullCodecSampleBs2))))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		if err := fr.Close(); err != nil {
-			t.Fatal(err)
-		}
-	}()
-	var count int
-	for fr.Scan() {
-		datum, err := fr.Read()
-		if err != nil {
-			t.Errorf("Actual: %#v; Expected: %#v", err, nil)
-		}
-		_, ok := datum.(*Record)
-		if !ok {
-			t.Errorf("Actual: %T; Expected: *Record", datum)
-		}
-		count++
-	}
-	datum, err := fr.Read()
-	t.Logf("datum: %#v; err: %#v", datum, err)
-	if want := 5; count != want {
-		t.Errorf("Actual: %#v; Expected: %#v", count, want)
-	}
+	checkErrorFatal(t, err, nil)
+	testFileReader(t, fr)
+}
+
+func TestFileReadNullCodecShortRead(t *testing.T) {
+	// Simulate short read by using a reader that read one byte at a time
+	fr, err := NewReader(FromReader(&shortReader{bytes.NewReader([]byte(nullCodecSample))}))
+	checkErrorFatal(t, err, nil)
+	testFileReader(t, fr)
 }
 
 func TestFileReadDeflateCodec(t *testing.T) {
 	fr, err := NewReader(FromReader(bytes.NewReader([]byte(deflateCodecSample))))
-	if err != nil {
-		t.Fatal(err)
+	checkErrorFatal(t, err, nil)
+	testFileReader(t, fr)
+}
+
+func TestFileReadSnappyCodec(t *testing.T) {
+	fr, err := NewReader(FromReader(bytes.NewReader([]byte(snappyCodecSample))))
+	checkErrorFatal(t, err, nil)
+	testFileReader(t, fr)
+}
+
+func TestFileReadNullCodecPrematureEOF(t *testing.T) {
+	//              Obj       +-map(2 entries)----------------------------------------+                                                       blockCount(1)   blockSize(2)
+	//              |     01  |     avro.codec:null       avro.schema:------"int"     |   +-sync[16]--------------------------------------------------+   |   |   serialized objects (should be 2 bytes)
+	//              |     |   |    /               \     /                       \    |   |                                                           |   |   |   |
+	bits := []byte("Obj\x01\x04\x14avro.codec\x08null\x16avro.schema\x0a\x22int\x22\x00\x21\x0f\xc7\xbb\x81\x86\x39\xac\x48\xa4\xc6\xaf\xa2\xf1\x58\x1a\x02\x04\x00")
+	fr, err := NewReader(FromReader(bytes.NewReader(bits)))
+	checkErrorFatal(t, err, nil)
+	if available := fr.Scan(); available {
+		t.Errorf("Actual: %#v; Expected: %#v", available, false)
 	}
+	err = fr.Close()
+	// Read only 1 byte, expected 2
+	checkError(t, err, "cannot read block: unexpected EOF")
+}
+
+func TestFileReadSnappyCodecCorruptedBlock(t *testing.T) {
+	//                                                                                                                                                          blockSize(1)
+	//              Obj       +-map(2 entries)------------------------------------------+                                                       blockCount(1)   |   serialized objects (should be > 4 bytes with Snappy)
+	//              |     01  |     avro.codec:snappy       avro.schema:------"int"     |   +-sync[16]--------------------------------------------------+   |   |   |   +-sync[16]--------------------------------------------------+
+	//              |     |   |    /                 \     /                       \    |   |                                                           |   |   |   |   |                                                           |
+	bits := []byte("Obj\x01\x04\x14avro.codec\x0Csnappy\x16avro.schema\x0a\x22int\x22\x00\x21\x0f\xc7\xbb\x81\x86\x39\xac\x48\xa4\xc6\xaf\xa2\xf1\x58\x1a\x02\x02\x00\x21\x0f\xc7\xbb\x81\x86\x39\xac\x48\xa4\xc6\xaf\xa2\xf1\x58\x1a")
+	fr, err := NewReader(FromReader(bytes.NewReader(bits)))
+	checkErrorFatal(t, err, nil)
+	if available := fr.Scan(); !available {
+		t.Errorf("Actual: %#v; Expected: %#v", available, false)
+	}
+	_, err = fr.Read()
+	// Found a block size of 1 byte but expected at least 4
+	checkError(t, err, "too small of a block (1 bytes)")
+	if available := fr.Scan(); available {
+		t.Errorf("Actual: %#v; Expected: %#v", available, false)
+	}
+	err = fr.Close()
+	checkError(t, err, nil)
+}
+
+func testFileReader(t *testing.T, fr *Reader) {
 	defer func() {
 		if err := fr.Close(); err != nil {
 			t.Fatal(err)
@@ -189,29 +195,11 @@ func TestFileReadDeflateCodec(t *testing.T) {
 	}
 }
 
-func TestFileReadSnappyCodec(t *testing.T) {
-	fr, err := NewReader(FromReader(bytes.NewReader([]byte(snappyCodecSample))))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		if err := fr.Close(); err != nil {
-			t.Fatal(err)
-		}
-	}()
-	var count int
-	for fr.Scan() {
-		datum, err := fr.Read()
-		if err != nil {
-			t.Errorf("Actual: %#v; Expected: %#v", err, nil)
-		}
-		_, ok := datum.(*Record)
-		if !ok {
-			t.Errorf("Actual: %T; Expected: *Record", datum)
-		}
-		count++
-	}
-	if want := 5; count != want {
-		t.Errorf("Actual: %#v; Expected: %#v", count, want)
-	}
+type shortReader struct {
+	r io.Reader
+}
+
+func (obr *shortReader) Read(p []byte) (int, error) {
+	// Read up to 1 byte at a time
+	return obr.r.Read(p[:1])
 }
