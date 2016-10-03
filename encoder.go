@@ -24,11 +24,13 @@ import (
 	"math"
 )
 
+// ByteWriter is the interface implemented by any object that bytes can be written to.
 type ByteWriter interface {
 	Grow(int)
 	WriteByte(byte) error
 }
 
+// StringWriter is the interface implemented by any object that strings can be written to.
 type StringWriter interface {
 	WriteString(string) (int, error)
 }

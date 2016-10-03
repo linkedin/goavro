@@ -236,12 +236,10 @@ func RecordSchema(recordSchemaJSON string) RecordSetter {
 	}
 
 	return func(r *Record) error {
-		if err != nil {
-			return err
-		} else {
+		if err == nil {
 			r.schemaMap = schema
-			return nil
 		}
+		return err
 	}
 }
 

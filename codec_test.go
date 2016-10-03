@@ -21,6 +21,7 @@ package goavro
 import (
 	"bufio"
 	"bytes"
+	"encoding/binary"
 	"encoding/json"
 	"io"
 	"io/ioutil"
@@ -53,6 +54,13 @@ func checkCodecDecoderResult(t *testing.T, schema string, bits []byte, datum int
 		case []byte:
 			if bytes.Compare(decoded.([]byte), datum.([]byte)) != 0 {
 				t.Errorf("Actual: %#v; Expected: %#v", decoded, datum)
+			}
+		case Fixed:
+			if actual, expected := decoded.(Fixed).Name, datum.(Fixed).Name; actual != expected {
+				t.Errorf("Actual: %#v; Expected: %#v", actual, expected)
+			}
+			if actual, expected := decoded.(Fixed).Value, datum.(Fixed).Value; bytes.Compare(actual, expected) != 0 {
+				t.Errorf("Actual: %#v; Expected: %#v", actual, expected)
 			}
 		default:
 			if decoded != datum {
@@ -127,6 +135,48 @@ func checkCodecRoundTrip(t *testing.T, schema string, datum interface{}) {
 	test(t, schema, datum, new(simpleBuffer))
 }
 
+func checkCodecRoundTripLong(t *testing.T, number int64) {
+	schema := `"long"`
+	checkCodecRoundTrip(t, schema, number)
+
+	codec, err := NewCodec(schema)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// 1. encode number using goavro, then ensure result decodes using binary.Varint
+	{
+		buf := new(bytes.Buffer)
+
+		err = codec.Encode(buf, number)
+		if err != nil {
+			t.Fatal(err)
+		}
+		decoded, c := binary.Varint(buf.Bytes())
+		if c != buf.Len() {
+			t.Errorf("Actual: %#v; Expected: %#v", c, buf.Len())
+		}
+		if number != decoded {
+			t.Errorf("Actual: %#v; Expected: %#v", decoded, number)
+		}
+	}
+
+	// 2. encode number using varint, then ensure result decodes using goavro
+	{
+		buf := make([]byte, 100)
+		_ = binary.PutVarint(buf, number) // ignore count here because we compare both byte slices below
+
+		decoded, err := codec.Decode(bytes.NewReader(buf))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if decoded != number {
+			t.Errorf("Actual: %#v; Expected: %#v", decoded, number)
+		}
+	}
+}
+
 ////////////////////////////////////////
 
 func TestCodecRoundTrip(t *testing.T) {
@@ -150,22 +200,23 @@ func TestCodecRoundTrip(t *testing.T) {
 	checkCodecRoundTrip(t, `"int"`, int32(-2147483647))
 	checkCodecRoundTrip(t, `"int"`, int32(1455301406))
 	// long
-	checkCodecRoundTrip(t, `"long"`, int64(-2147483648))
-	checkCodecRoundTrip(t, `"long"`, int64(-3))
-	checkCodecRoundTrip(t, `"long"`, int64(-65))
-	checkCodecRoundTrip(t, `"long"`, int64(0))
-	checkCodecRoundTrip(t, `"long"`, int64(1082196484))
-	checkCodecRoundTrip(t, `"long"`, int64(138521149956))
-	checkCodecRoundTrip(t, `"long"`, int64(17730707194372))
-	checkCodecRoundTrip(t, `"long"`, int64(2147483647))
-	checkCodecRoundTrip(t, `"long"`, int64(2269530520879620))
-	checkCodecRoundTrip(t, `"long"`, int64(3))
-	checkCodecRoundTrip(t, `"long"`, int64(64))
+	checkCodecRoundTripLong(t, int64(-2147483648))
+	checkCodecRoundTripLong(t, int64(-3))
+	checkCodecRoundTripLong(t, int64(-65))
+	checkCodecRoundTripLong(t, int64(0))
+	checkCodecRoundTripLong(t, int64(1082196484))
+	checkCodecRoundTripLong(t, int64(138521149956))
+	checkCodecRoundTripLong(t, int64(17730707194372))
+	checkCodecRoundTripLong(t, int64(2147483647))
+	checkCodecRoundTripLong(t, int64(2269530520879620))
+	checkCodecRoundTripLong(t, int64(3))
+	checkCodecRoundTripLong(t, int64(64))
 
-	checkCodecRoundTrip(t, `"long"`, int64(-(1 << 63)))
-	checkCodecRoundTrip(t, `"long"`, int64((1<<63)-1))
-	checkCodecRoundTrip(t, `"long"`, int64(5959107741628848600))
-	checkCodecRoundTrip(t, `"long"`, int64(1359702038045356208))
+	checkCodecRoundTripLong(t, int64(-(1 << 63)))
+	checkCodecRoundTripLong(t, int64((1<<63)-1))
+	checkCodecRoundTripLong(t, int64(5959107741628848600))
+	checkCodecRoundTripLong(t, int64(1359702038045356208))
+	checkCodecRoundTripLong(t, int64(-5513458701470791632)) // https://github.com/linkedin/goavro/issues/49
 
 	// float
 	checkCodecRoundTrip(t, `"float"`, float32(3.5))
@@ -216,6 +267,7 @@ func TestCodecDecoderPrimitives(t *testing.T) {
 	checkCodecDecoderResult(t, `"long"`, []byte("\x88\x88\x88\x88\x88\x08"), int64(138521149956))
 	checkCodecDecoderResult(t, `"long"`, []byte("\x88\x88\x88\x88\x88\x88\x08"), int64(17730707194372))
 	checkCodecDecoderResult(t, `"long"`, []byte("\x88\x88\x88\x88\x88\x88\x88\x08"), int64(2269530520879620))
+	checkCodecDecoderResult(t, `"long"`, []byte("\x9f\xdf\x9f\x8f\xc7\xde\xde\x83\x99\x01"), int64(-5513458701470791632)) // https://github.com/linkedin/goavro/issues/49
 	// float
 	checkCodecDecoderError(t, `"float"`, []byte(""), "cannot decode float: EOF")
 	checkCodecDecoderResult(t, `"float"`, []byte("\x00\x00\x60\x40"), float32(3.5))
@@ -313,6 +365,7 @@ func TestCodecEncoderPrimitives(t *testing.T) {
 	checkCodecEncoderResult(t, `"long"`, int64(2269530520879620), []byte("\x88\x88\x88\x88\x88\x88\x88\x08"))
 	checkCodecEncoderResult(t, `"long"`, int64(3), []byte("\x06"))
 	checkCodecEncoderResult(t, `"long"`, int64(64), []byte("\x80\x01"))
+	checkCodecEncoderResult(t, `"long"`, int64(-5513458701470791632), []byte("\x9f\xdf\x9f\x8f\xc7\xde\xde\x83\x99\x01")) // https://github.com/linkedin/goavro/issues/49
 	// float
 	checkCodecEncoderResult(t, `"float"`, float32(3.5), []byte("\x00\x00\x60\x40"))
 	checkCodecEncoderResult(t, `"float"`, float32(math.Inf(-1)), []byte("\x00\x00\x80\xff"))
@@ -457,7 +510,7 @@ func TestCodecDecoderEnum(t *testing.T) {
 	schema := `{"type":"enum","name":"cards","symbols":["HEARTS","DIAMONDS","SPADES","CLUBS"]}`
 	checkCodecDecoderError(t, schema, []byte("\x01"), "index must be between 0 and 3")
 	checkCodecDecoderError(t, schema, []byte("\x08"), "index must be between 0 and 3")
-	checkCodecDecoderResult(t, schema, []byte("\x04"), "SPADES")
+	checkCodecDecoderResult(t, schema, []byte("\x04"), Enum{"cards", "SPADES"})
 }
 
 func TestCodecEncoderEnum(t *testing.T) {
@@ -488,17 +541,41 @@ func TestCodecFixed(t *testing.T) {
 	schema := `{"type":"fixed","name":"fixed1","size":5}`
 	checkCodecDecoderError(t, schema, []byte(""), "EOF")
 	checkCodecDecoderError(t, schema, []byte("hap"), "buffer underrun")
-	checkCodecEncoderError(t, schema, "happy day", "expected: []byte; received: string")
-	checkCodecEncoderError(t, schema, []byte("day"), "expected: 5 bytes; received: 3")
-	checkCodecEncoderError(t, schema, []byte("happy day"), "expected: 5 bytes; received: 9")
-	checkCodecEncoderResult(t, schema, []byte("happy"), []byte("happy"))
+	checkCodecEncoderError(t, schema, "happy day", "expected: Fixed; received: string")
+	checkCodecEncoderError(t, schema, Fixed{Name: "fixed1", Value: []byte("day")}, "expected: 5 bytes; received: 3")
+	checkCodecEncoderError(t, schema, Fixed{Name: "fixed1", Value: []byte("happy day")}, "expected: 5 bytes; received: 9")
+	checkCodecEncoderResult(t, schema, Fixed{Name: "fixed1", Value: []byte("happy")}, []byte("happy"))
 }
 
-func TestCodecNamedTypes(t *testing.T) {
+func TestCodecFixedDecoder(t *testing.T) {
+	schema := `
+{
+    "name": "messageId",
+    "type": {
+        "type": "fixed",
+        "size": 16,
+        "name": "UUID",
+        "namespace": "com.example"
+    },
+    "doc": "A unique identifier for the message"
+}`
+	bits := []byte{0x12, 0x7f, 0xe9, 0xc0, 0x3b, 0x59, 0x41, 0xf5, 0x93, 0x6d, 0x77, 0x75, 0xeb, 0x84, 0xb3, 0xc7}
+	expected := Fixed{Name: "com.example.UUID", Value: bits}
+	checkCodecDecoderResult(t, schema, bits, expected)
+}
+
+func TestCodecNamedTypesCheckSchema(t *testing.T) {
 	schema := `{"name":"guid","type":{"type":"fixed","name":"fixed_16","size":16},"doc":"event unique id"}`
 	var err error
 	_, err = NewCodec(schema)
 	checkError(t, err, nil)
+}
+
+func TestCodecNamedTypes(t *testing.T) {
+	schema := `{"name":"guid","type":["null",{"type":"fixed","name":"fixed_16","size":16}],"doc":"event unique id"}`
+	// The 0x2 byte is an avro encoded int(1), which refers to the index of the
+	// `fixed_16` type in the schema's union array.
+	checkCodecEncoderResult(t, schema, Fixed{Name: "fixed_16", Value: []byte("0123456789abcdef")}, append([]byte{0x2}, []byte("0123456789abcdef")...))
 }
 
 func TestCodecReferToNamedTypes(t *testing.T) {
@@ -988,7 +1065,7 @@ type slowStartReader struct {
 	max int
 }
 
-func NewSlowStartReader(ior io.Reader) *slowStartReader {
+func newSlowStartReader(ior io.Reader) *slowStartReader {
 	ssr := &slowStartReader{max: 1}
 	ssr.buf, _ = ioutil.ReadAll(ior)
 	return ssr
@@ -1020,7 +1097,7 @@ func TestDecoderBytesPartialReads(t *testing.T) {
 		t.Fatalf("Actual: %#v; Expected: %#v", err, nil)
 	}
 
-	result, err := bytesDecoder(NewSlowStartReader(bb))
+	result, err := bytesDecoder(newSlowStartReader(bb))
 	if err != nil {
 		t.Errorf("Actual: %#v; Expected: %#v", err, nil)
 	}
@@ -1044,7 +1121,7 @@ func TestDecoderStringPartialReads(t *testing.T) {
 		t.Fatalf("Actual: %#v; Expected: %#v", err, nil)
 	}
 
-	result, err := stringDecoder(NewSlowStartReader(bb))
+	result, err := stringDecoder(newSlowStartReader(bb))
 	if err != nil {
 		t.Errorf("Actual: %#v; Expected: %#v", err, nil)
 	}

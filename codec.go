@@ -418,6 +418,8 @@ func (st symtab) makeUnionCodec(enclosingNamespace string, schema interface{}) (
 				name = "null"
 			case Enum:
 				name = datum.(Enum).Name
+			case Fixed:
+				name = datum.(Fixed).Name
 			case *Record:
 				name = datum.(*Record).Name
 			}
@@ -440,7 +442,7 @@ func (st symtab) makeUnionCodec(enclosingNamespace string, schema interface{}) (
 // Enum is an abstract data type used to hold data corresponding to an Avro enum. Whenever an Avro
 // schema specifies an enum, this library's Decode method will return an Enum initialized to the
 // enum's name and value read from the io.Reader. Likewise, when using Encode to convert data to an
-// Avro record, it is necessary to crate and send an Enum instance to the Encode method.
+// Avro record, it is necessary to create and send an Enum instance to the Encode method.
 type Enum struct {
 	Name, Value string
 }
@@ -491,7 +493,7 @@ func (st symtab) makeEnumCodec(enclosingNamespace string, schema interface{}) (*
 			if index < 0 || index >= int64(len(symtab)) {
 				return nil, newDecoderError(friendlyName, "index must be between 0 and %d", len(symtab)-1)
 			}
-			return symtab[index], nil
+			return Enum{nm.n, symtab[index].(string)}, nil
 		},
 		ef: func(w io.Writer, datum interface{}) error {
 			someEnum, ok := datum.(Enum)
@@ -512,6 +514,17 @@ func (st symtab) makeEnumCodec(enclosingNamespace string, schema interface{}) (*
 	}
 	st.name[nm.n] = c
 	return c, nil
+}
+
+// Fixed is an abstract data type used to hold data corresponding to an Avro
+// 'Fixed' type. Whenever an Avro schema specifies a "Fixed" type, this library's
+// Decode method will return a Fixed value  initialized to the Fixed name, and
+// value read from the io.Reader. Likewise, when using Encode to convert data to
+// an Avro record, it is necessary to create and send a Fixed instance to the
+// Encode method.
+type Fixed struct {
+	Name  string
+	Value []byte
 }
 
 func (st symtab) makeFixedCodec(enclosingNamespace string, schema interface{}) (*codec, error) {
@@ -551,17 +564,17 @@ func (st symtab) makeFixedCodec(enclosingNamespace string, schema interface{}) (
 			if n < int(size) {
 				return nil, newDecoderError(friendlyName, "buffer underrun")
 			}
-			return buf, nil
+			return Fixed{Name: nm.n, Value: buf}, nil
 		},
 		ef: func(w io.Writer, datum interface{}) error {
-			someBytes, ok := datum.([]byte)
+			someFixed, ok := datum.(Fixed)
 			if !ok {
-				return newEncoderError(friendlyName, "expected: []byte; received: %T", datum)
+				return newEncoderError(friendlyName, "expected: Fixed; received: %T", datum)
 			}
-			if len(someBytes) != int(size) {
-				return newEncoderError(friendlyName, "expected: %d bytes; received: %d", size, len(someBytes))
+			if len(someFixed.Value) != int(size) {
+				return newEncoderError(friendlyName, "expected: %d bytes; received: %d", size, len(someFixed.Value))
 			}
-			n, err := w.Write(someBytes)
+			n, err := w.Write(someFixed.Value)
 			if err != nil {
 				return newEncoderError(friendlyName, err)
 			}
