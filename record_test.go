@@ -78,6 +78,7 @@ func TestRecordField(t *testing.T) {
 	schema["name"] = "someRecordField"
 	schema["type"] = "int"
 	schema["doc"] = "contans some integer"
+	schema["aliases"] = []interface{}{"alias1", "alias2"}
 	someRecordField, err := newRecordField(schema)
 	checkError(t, err, nil)
 	if someRecordField.Name != "someRecordField" {
