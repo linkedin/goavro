@@ -496,11 +496,15 @@ func (st symtab) makeEnumCodec(enclosingNamespace string, schema interface{}) (*
 			return Enum{nm.n, symtab[index].(string)}, nil
 		},
 		ef: func(w io.Writer, datum interface{}) error {
-			someEnum, ok := datum.(Enum)
-			if !ok {
-				return newEncoderError(friendlyName, "expected: Enum; received: %T", datum)
+			var someString string
+			switch datum.(type) {
+			case Enum:
+				someString = datum.(Enum).Value
+			case string:
+				someString = datum.(string)
+			default:
+				return newEncoderError(friendlyName, "expected: Enum or string; received: %T", datum)
 			}
-			someString := someEnum.Value
 			for idx, symbol := range symtab {
 				if symbol == someString {
 					if err := longEncoder(w, int64(idx)); err != nil {
