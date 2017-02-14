@@ -149,6 +149,14 @@ func (n name) namespace() string {
 	return n.n[:li]
 }
 
+func (n name) basename() string {
+	li := strings.LastIndex(n.n, ".")
+	if li == -1 {
+		return n.n
+	}
+	return n.n[li+1:]
+}
+
 func (n name) GoString() string {
 	return n.n
 }
