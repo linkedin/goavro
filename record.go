@@ -56,7 +56,13 @@ type Record struct {
 
 func (r Record) getField(fieldName string) (*recordField, error) {
 	for _, field := range r.Fields {
-		if field.Name == fieldName {
+		// Lookups could be for a fullname or relative name
+		baseName := field.Name
+		li := strings.LastIndex(baseName, ".")
+		if li != -1 {
+			baseName = baseName[li+1:]
+		}
+		if field.Name == fieldName || baseName == fieldName {
 			return field, nil
 		}
 	}
