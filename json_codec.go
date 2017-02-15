@@ -24,7 +24,6 @@
 package goavro
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -397,16 +396,12 @@ func (st symtabJSON) makeUnionCodec(enclosingNamespace string, schema interface{
 
 			// 4. Recursively encode the json_value
 			var buff bytes.Buffer
-			buffWriter := bufio.NewWriter(&buff)
-			if err := ue.ef(buffWriter, datum); err != nil {
-				return newEncoderError(friendlyName, "union json encode error: %v", err)
-			}
-			if err := buffWriter.Flush(); err != nil {
+			if err := ue.ef(&buff, datum); err != nil {
 				return newEncoderError(friendlyName, "union json encode error: %v", err)
 			}
 
 			// 5. Create a json map {"union type name" -> avro_json_value}
-			value, err := jsonDecode(bufio.NewReader(&buff), friendlyName)
+			value, err := jsonDecode(&buff, friendlyName)
 			if err != nil {
 				return err
 			}
@@ -642,15 +637,11 @@ func (st symtabJSON) makeRecordCodec(enclosingNamespace string, schema interface
 				// Avro encode each field value and then unmarshal back as we to finally stick
 				// it in a JSON map which gets marshalled out. Too many marshal and unmarshals!
 				var buff bytes.Buffer
-				tmpWriter := bufio.NewWriter(&buff)
-				err = fieldCodecs[idx].Encode(tmpWriter, value)
+				err = fieldCodecs[idx].Encode(&buff, value)
 				if err != nil {
 					return newEncoderError(friendlyName, err)
 				}
-				if err := tmpWriter.Flush(); err != nil {
-					return newEncoderError(friendlyName, "record json encode error: %v", err)
-				}
-				jsonValue, err := jsonDecode(bufio.NewReader(&buff), friendlyName)
+				jsonValue, err := jsonDecode(&buff, friendlyName)
 				if err != nil {
 					return newEncoderError(friendlyName, err)
 				}
@@ -738,15 +729,10 @@ func (st symtabJSON) makeMapCodec(enclosingNamespace string, schema interface{})
 			avroMap := make(map[string]interface{})
 			for k, v := range jsonMap {
 				var buff bytes.Buffer
-				writer := bufio.NewWriter(&buff)
-				if err := valuesCodec.Encode(writer, v); err != nil {
+				if err := valuesCodec.Encode(&buff, v); err != nil {
 					return newEncoderError(friendlyName, err)
 				}
-				err := writer.Flush()
-				if err != nil {
-					return newEncoderError(friendlyName, err)
-				}
-				avroValue, err := jsonDecode(bufio.NewReader(&buff), friendlyName)
+				avroValue, err := jsonDecode(&buff, friendlyName)
 				if err != nil {
 					return newEncoderError(friendlyName, err)
 				}
@@ -823,14 +809,10 @@ func (st symtabJSON) makeArrayCodec(enclosingNamespace string, schema interface{
 			var avroArray []interface{}
 			for _, someValue := range someArray {
 				var buff bytes.Buffer
-				writer := bufio.NewWriter(&buff)
-				if err := valuesCodec.Encode(writer, someValue); err != nil {
+				if err := valuesCodec.Encode(&buff, someValue); err != nil {
 					return newEncoderError(friendlyName, err)
 				}
-				if err := writer.Flush(); err != nil {
-					return newEncoderError(friendlyName, "array json encode error: %v", err)
-				}
-				avroValue, err := jsonDecode(bufio.NewReader(&buff), friendlyName)
+				avroValue, err := jsonDecode(&buff, friendlyName)
 				if err != nil {
 					return newEncoderError(friendlyName, err)
 				}
