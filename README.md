@@ -258,7 +258,7 @@ specification.
 
 ### Kafka Streams
 
-[Kakfa](http://kafka.apache.org) is the reason goavro was
+[Kafka](http://kafka.apache.org) is the reason goavro was
 written. Similar to Avro Object Container Files being a layer of
 abstraction above Avro Data Serialization format, Kafka's use of Avro
 is a layer of abstraction that also sits above Avro Data Serialization
