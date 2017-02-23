@@ -517,8 +517,8 @@ func TestCodecEncoderEnum(t *testing.T) {
 	schema := `{"type":"enum","name":"cards","symbols":["HEARTS","DIAMONDS","SPADES","CLUBS"]}`
 	checkCodecEncoderResult(t, schema, Enum{"cards", "SPADES"}, []byte("\x04"))
 	checkCodecEncoderError(t, schema, Enum{"cards", "PINEAPPLE"}, "symbol not defined")
-	checkCodecEncoderError(t, schema, []byte("\x01"), "expected: Enum; received: []uint8")
-	checkCodecEncoderError(t, schema, "some symbol not in schema", "expected: Enum; received: string")
+	checkCodecEncoderError(t, schema, []byte("\x01"), "expected: Enum or string; received: []uint8")
+	checkCodecEncoderError(t, schema, "some symbol not in schema", "symbol not defined")
 }
 
 func TestCodecFixedChecksSchema(t *testing.T) {
