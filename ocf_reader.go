@@ -105,7 +105,7 @@ type Reader struct {
 	dataCodec        Codec
 	datum            Datum
 	deblocked        chan Datum
-	err              error
+	readErr          chan error
 	r                io.Reader
 }
 
@@ -138,7 +138,7 @@ type Reader struct {
 //     }
 func NewReader(setters ...ReaderSetter) (*Reader, error) {
 	var err error
-	fr := &Reader{}
+	fr := &Reader{readErr: make(chan error, 1)}
 	for _, setter := range setters {
 		err = setter(fr)
 		if err != nil {
@@ -198,7 +198,13 @@ func NewReader(setters ...ReaderSetter) (*Reader, error) {
 
 // Close releases resources and returns any Reader errors.
 func (fr *Reader) Close() error {
-	return fr.err
+	for e := range fr.readErr {
+		if e != nil {
+			return e
+		}
+	}
+
+	return nil
 }
 
 // Scan returns true if more data is ready to be read.
@@ -275,29 +281,33 @@ func read(fr *Reader, lCodec *codec, toDecompress chan<- *readerBlock) {
 
 	blockCount, blockSize, err := readBlockCountAndSize(fr.r, lCodec)
 	if err != nil {
-		fr.err = err
+		fr.readErr <- err
 		blockCount = 0
 	}
 	for blockCount != 0 {
 		// Use a new buffer for every block because it will be shared with other goroutines
 		bits := make([]byte, blockSize)
 		if _, err = io.ReadFull(fr.r, bits); err != nil {
-			fr.err = newReaderError("cannot read block", err)
+			fr.readErr <- newReaderError("cannot read block", err)
 			break
 		}
 		toDecompress <- &readerBlock{datumCount: blockCount, r: bytes.NewReader(bits)}
 		if _, err := io.ReadFull(fr.r, sync); err != nil {
-			fr.err = newReaderError("cannot read sync marker", err)
+			fr.readErr <- newReaderError("cannot read sync marker", err)
 			break
 		}
 		if !bytes.Equal(fr.Sync, sync) {
-			fr.err = newReaderError(fmt.Sprintf("sync marker mismatch: %#v != %#v", sync, fr.Sync))
+			fr.readErr <- newReaderError(fmt.Sprintf("sync marker mismatch: %#v != %#v", sync, fr.Sync))
 			break
 		}
-		if blockCount, blockSize, fr.err = readBlockCountAndSize(fr.r, lCodec); fr.err != nil {
+		var e error
+		if blockCount, blockSize, e = readBlockCountAndSize(fr.r, lCodec); e != nil {
+			fr.readErr <- e
 			break
 		}
 	}
+
+	close(fr.readErr)
 	close(toDecompress)
 }
 
