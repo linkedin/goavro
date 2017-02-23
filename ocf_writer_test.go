@@ -190,3 +190,32 @@ func TestWriteWithSnappyCodec(t *testing.T) {
 		t.Errorf("Actual: %q; Expected: %q", actual, option1)
 	}
 }
+
+func TestWriteOtherMetaData(t *testing.T) {
+	bb := new(bytes.Buffer)
+	fw, err := NewWriter(
+		BlockSize(2),
+		Metadata(map[string][]byte{"foo": []byte("BOING")}),
+		WriterSchema(`"int"`),
+		ToWriter(bb))
+
+	if err != nil {
+		t.Fatalf("Actual: %v; Expected: %#v", err, nil)
+	}
+
+	fw.Write(int32(13))
+	fw.Write(int32(42))
+	fw.Write(int32(54))
+	fw.Write(int32(99))
+	fw.Close()
+
+	fr, err := NewReader(FromReader(bb))
+	if err != nil {
+		t.Fatalf("Actual: %v; Expected: %#v", err, nil)
+	}
+
+	if string(fr.Metadata["foo"]) != "BOING" {
+		t.Fatalf("Actual: %v; Expected: %#v", fr.Metadata["foo"], []byte("BOING"))
+	}
+
+}

@@ -101,6 +101,7 @@ type Reader struct {
 	CompressionCodec string
 	DataSchema       string
 	Sync             []byte
+	Metadata         map[string][]byte
 	dataCodec        Codec
 	datum            Datum
 	deblocked        chan Datum
@@ -160,6 +161,13 @@ func NewReader(setters ...ReaderSetter) (*Reader, error) {
 	if err != nil {
 		return nil, newReaderInitError("cannot read header metadata", err)
 	}
+
+	fr.Metadata = make(map[string][]byte)
+
+	for key, value := range meta {
+		fr.Metadata[key] = value.([]byte)
+	}
+
 	fr.CompressionCodec, err = getHeaderString("avro.codec", meta)
 	if err != nil {
 		fr.CompressionCodec = CompressionNull
