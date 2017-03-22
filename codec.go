@@ -736,7 +736,7 @@ func (st symtab) makeMapCodec(enclosingNamespace string, schema interface{}) (*c
 				return newEncoderError(friendlyName, "expected: map[string]interface{}; received: %T", datum)
 			}
 			if len(dict) > 0 {
-				if err = longEncoder(w, int64(len(dict))); err != nil {
+				if err := longEncoder(w, int64(len(dict))); err != nil {
 					return newEncoderError(friendlyName, err)
 				}
 				for k, v := range dict {
@@ -748,7 +748,7 @@ func (st symtab) makeMapCodec(enclosingNamespace string, schema interface{}) (*c
 					}
 				}
 			}
-			if err = longEncoder(w, int64(0)); err != nil {
+			if err := longEncoder(w, int64(0)); err != nil {
 				return newEncoderError(friendlyName, err)
 			}
 			return nil
