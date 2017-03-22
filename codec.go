@@ -722,7 +722,7 @@ func (st symtab) makeMapCodec(enclosingNamespace string, schema interface{}) (*c
 					data[mapKey] = datum
 				}
 				// decode next blockcount
-				someValue, err = longDecoder(r)
+				someValue, err := longDecoder(r)
 				if err != nil {
 					return nil, newDecoderError(friendlyName, err)
 				}
@@ -740,10 +740,10 @@ func (st symtab) makeMapCodec(enclosingNamespace string, schema interface{}) (*c
 					return newEncoderError(friendlyName, err)
 				}
 				for k, v := range dict {
-					if err = stringEncoder(w, k); err != nil {
+					if err := stringEncoder(w, k); err != nil {
 						return newEncoderError(friendlyName, err)
 					}
-					if err = valuesCodec.ef(w, v); err != nil {
+					if err := valuesCodec.ef(w, v); err != nil {
 						return newEncoderError(friendlyName, err)
 					}
 				}
