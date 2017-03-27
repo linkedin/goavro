@@ -332,5 +332,5 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ### Google Snappy
 
-Goavro links with [Google Snappy](https://code.google.com/p/snappy/)
+Goavro links with [Google Snappy](http://google.github.io/snappy/)
 to provide Snappy compression and decompression support.
