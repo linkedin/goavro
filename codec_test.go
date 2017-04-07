@@ -425,6 +425,19 @@ func TestCodecUnionPrimitives(t *testing.T) {
 	checkCodecEncoderResult(t, `["string","null"]`, nil, []byte("\x02"))
 }
 
+func TestCodecDecodeDefaults(t *testing.T) {
+	checkCodecEncoderResult(t, `{"default": true, "name": "testField", "type":"boolean"}`, nil, []byte("\x01"))
+	checkCodecEncoderResult(t, `{"default": 1016, "name": "testField", "type":"int"}`, nil, []byte("\xf0\x0f"))
+	checkCodecEncoderResult(t, `{"default": 9007199254740992, "name": "testField", "type":"long"}`, nil, []byte{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x20})
+	checkCodecEncoderResult(t, `{"default": 3.14159265359, "name": "testField", "type":"float"}`, nil, []byte{0xdb, 0xf, 0x49, 0x40})
+	checkCodecEncoderResult(t, `{"default": 3.14159265359, "name": "testField", "type":"double"}`, nil, []byte{0xea, 0x2e, 0x44, 0x54, 0xfb, 0x21, 0x9, 0x40})
+	checkCodecEncoderResult(t, `{"default": "RickAstley", "name": "testField", "type":"string"}`, nil, []byte{0x14, 0x52, 0x69, 0x63, 0x6b, 0x41, 0x73, 0x74, 0x6c, 0x65, 0x79})
+
+	checkCodecEncoderResult(t, `{"default":"blue","name":"color_enum","type":"enum","symbols":["red","blue","green"]}`, nil, []byte("\x02"))
+	// Type is map
+	checkCodecEncoderResult(t, `{"default": "blue","name":"color","type":{"name":"color_enum","type":"enum","symbols":["red","blue"]}}`, nil, []byte("\x02"))
+}
+
 func TestCodecDecoderUnion(t *testing.T) {
 	checkCodecDecoderResult(t, `["string","float"]`, []byte("\x00\x14filibuster"), "filibuster")
 	checkCodecDecoderResult(t, `["string","int"]`, []byte("\x02\x1a"), int32(13))

@@ -216,7 +216,7 @@ func NewCodec(someJSONSchema string, setters ...CodecSetter) (Codec, error) {
 	// respective codecs
 	st := newSymbolTable()
 
-	newCodec, err := st.buildCodec(nullNamespace, schema)
+	newCodec, err := st.buildCodec(nullNamespace, schema, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -271,60 +271,116 @@ func (c codec) NewWriter(setters ...WriterSetter) (*Writer, error) {
 	return NewWriter(setters...)
 }
 
-func (st symtab) buildCodec(enclosingNamespace string, schema interface{}) (*codec, error) {
+func (st symtab) buildCodec(enclosingNamespace string, schema interface{}, defaultValue interface{}) (*codec, error) {
 	switch schemaType := schema.(type) {
 	case string:
-		return st.buildString(enclosingNamespace, schemaType, schema)
+		return st.buildString(enclosingNamespace, schemaType, schema, defaultValue)
 	case []interface{}:
 		return st.makeUnionCodec(enclosingNamespace, schema)
 	case map[string]interface{}:
-		return st.buildMap(enclosingNamespace, schema.(map[string]interface{}))
+		return st.buildMap(enclosingNamespace, schema.(map[string]interface{}), defaultValue)
 	default:
 		return nil, newCodecBuildError("unknown", "schema type: %T", schema)
 	}
 }
 
-func (st symtab) buildMap(enclosingNamespace string, schema map[string]interface{}) (*codec, error) {
+func (st symtab) buildMap(enclosingNamespace string, schema map[string]interface{}, defaultValue interface{}) (*codec, error) {
 	t, ok := schema["type"]
 	if !ok {
 		return nil, newCodecBuildError("map", "ought have type: %v", schema)
 	}
+
+	// If a map schema has a default value, save it and pass it on to subsequent
+	// codec builders. The codec builder will use the default value in leue of nil
+	// values for the field.
+	if def, exists := schema["default"]; exists {
+		defaultValue = def
+	}
+
 	switch t.(type) {
 	case string:
 		// EXAMPLE: "type":"int"
 		// EXAMPLE: "type":"enum"
-		return st.buildString(enclosingNamespace, t.(string), schema)
+		return st.buildString(enclosingNamespace, t.(string), schema, defaultValue)
 	case map[string]interface{}, []interface{}:
 		// EXAMPLE: "type":{"type":fixed","name":"fixed_16","size":16}
 		// EXAMPLE: "type":["null","int"]
-		return st.buildCodec(enclosingNamespace, t)
+		return st.buildCodec(enclosingNamespace, t, defaultValue)
 	default:
 		return nil, newCodecBuildError("map", "type ought to be either string, map[string]interface{}, or []interface{}; received: %T", t)
 	}
 }
 
-func (st symtab) buildString(enclosingNamespace, typeName string, schema interface{}) (*codec, error) {
+func (st symtab) buildString(enclosingNamespace, typeName string, schema interface{}, defaultValue interface{}) (*codec, error) {
+	// When encoding, if a record contains a nil value for a field which has a
+	// default value, attempt to use the default value. When decoding, if nil is
+	// returned for a given field, use the default value.
+	defaultCodec := func(c *codec, def interface{}) (*codec, error) {
+		return &codec{
+			nm: c.nm,
+			df: func(r io.Reader) (interface{}, error) {
+				return c.df(r)
+			},
+			ef: func(w io.Writer, datum interface{}) error {
+				err := c.ef(w, datum)
+				if err != nil && datum == nil {
+					// If default value can't be properly encoded, return the original
+					// error.
+					if errDefault := c.ef(w, def); errDefault == nil {
+						return nil
+					}
+				}
+				return err
+			},
+		}, nil
+	}
+
 	switch typeName {
 	case "null":
 		return st.nullCodec, nil
 	case "boolean":
+		if defaultValue != nil {
+			return defaultCodec(st.booleanCodec, defaultValue)
+		}
 		return st.booleanCodec, nil
 	case "int":
+		if defaultFloat, ok := defaultValue.(float64); ok {
+			return defaultCodec(st.intCodec, int32(defaultFloat))
+		}
 		return st.intCodec, nil
 	case "long":
+		if defaultFloat, ok := defaultValue.(float64); ok {
+			return defaultCodec(st.longCodec, int64(defaultFloat))
+		}
 		return st.longCodec, nil
 	case "float":
+		if defaultFloat, ok := defaultValue.(float64); ok {
+			return defaultCodec(st.floatCodec, float32(defaultFloat))
+		}
 		return st.floatCodec, nil
 	case "double":
+		if defaultValue != nil {
+			return defaultCodec(st.doubleCodec, defaultValue)
+		}
 		return st.doubleCodec, nil
 	case "bytes":
 		return st.bytesCodec, nil
 	case "string":
+		if defaultValue != nil {
+			return defaultCodec(st.stringCodec, defaultValue)
+		}
 		return st.stringCodec, nil
 	case "record":
 		return st.makeRecordCodec(enclosingNamespace, schema)
 	case "enum":
-		return st.makeEnumCodec(enclosingNamespace, schema)
+		codec, err := st.makeEnumCodec(enclosingNamespace, schema)
+		if err != nil {
+			return nil, err
+		}
+		if defaultValue != nil {
+			return defaultCodec(codec, defaultValue)
+		}
+		return codec, nil
 	case "fixed":
 		return st.makeFixedCodec(enclosingNamespace, schema)
 	case "map":
@@ -371,7 +427,7 @@ func (st symtab) makeUnionCodec(enclosingNamespace string, schema interface{}) (
 	allowedNames := make([]string, len(schemaArray))
 
 	for idx, unionMemberSchema := range schemaArray {
-		c, err := st.buildCodec(enclosingNamespace, unionMemberSchema)
+		c, err := st.buildCodec(enclosingNamespace, unionMemberSchema, nil)
 		if err != nil {
 			return nil, newCodecBuildError(friendlyName, "member ought to be decodable: %s", err)
 		}
@@ -612,7 +668,7 @@ func (st symtab) makeRecordCodec(enclosingNamespace string, schema interface{}) 
 	fieldCodecs := make([]*codec, len(recordTemplate.Fields))
 	for idx, field := range recordTemplate.Fields {
 		var err error
-		fieldCodecs[idx], err = st.buildCodec(recordTemplate.n.namespace(), field.schema)
+		fieldCodecs[idx], err = st.buildCodec(recordTemplate.n.namespace(), field.schema, nil)
 		if err != nil {
 			return nil, newCodecBuildError(friendlyName, "record field ought to be codec: %+v", st, err)
 		}
@@ -670,7 +726,7 @@ func (st symtab) makeMapCodec(enclosingNamespace string, schema interface{}) (*c
 	if !ok {
 		return nil, newCodecBuildError(friendlyName, "ought to have values key")
 	}
-	valuesCodec, err := st.buildCodec(enclosingNamespace, v)
+	valuesCodec, err := st.buildCodec(enclosingNamespace, v, nil)
 	if err != nil {
 		return nil, newCodecBuildError(friendlyName, err)
 	}
@@ -763,7 +819,7 @@ func (st symtab) makeArrayCodec(enclosingNamespace string, schema interface{}) (
 	if !ok {
 		return nil, newCodecBuildError(friendlyName, "ought to have items key")
 	}
-	valuesCodec, err := st.buildCodec(enclosingNamespace, v)
+	valuesCodec, err := st.buildCodec(enclosingNamespace, v, nil)
 	if err != nil {
 		return nil, newCodecBuildError(friendlyName, err)
 	}
