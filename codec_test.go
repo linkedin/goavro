@@ -425,7 +425,7 @@ func TestCodecUnionPrimitives(t *testing.T) {
 	checkCodecEncoderResult(t, `["string","null"]`, nil, []byte("\x02"))
 }
 
-func TestCodecDecodeDefaults(t *testing.T) {
+func TestCodecEncodeDefaults(t *testing.T) {
 	checkCodecEncoderResult(t, `{"default": true, "name": "testField", "type":"boolean"}`, nil, []byte("\x01"))
 	checkCodecEncoderResult(t, `{"default": 1016, "name": "testField", "type":"int"}`, nil, []byte("\xf0\x0f"))
 	checkCodecEncoderResult(t, `{"default": 9007199254740992, "name": "testField", "type":"long"}`, nil, []byte{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x20})
@@ -436,6 +436,18 @@ func TestCodecDecodeDefaults(t *testing.T) {
 	checkCodecEncoderResult(t, `{"default":"blue","name":"color_enum","type":"enum","symbols":["red","blue","green"]}`, nil, []byte("\x02"))
 	// Type is map
 	checkCodecEncoderResult(t, `{"default": "blue","name":"color","type":{"name":"color_enum","type":"enum","symbols":["red","blue"]}}`, nil, []byte("\x02"))
+}
+
+func TestCodecDecodeDefaults(t *testing.T) {
+	checkCodecDecoderResult(t, `{"default": true, "name": "testField", "type":"boolean"}`, []byte{}, true)
+	checkCodecDecoderResult(t, `{"default": 1016, "name": "testField", "type":"int"}`, []byte{}, int32(1016))
+	checkCodecDecoderResult(t, `{"default": 9007199254740992, "name": "testField", "type":"long"}`, []byte{}, int64(9007199254740992))
+	checkCodecDecoderResult(t, `{"default": 3.14159265359, "name": "testField", "type":"float"}`, []byte{}, float32(3.14159265359))
+	checkCodecDecoderResult(t, `{"default": 3.14159265359, "name": "testField", "type":"double"}`, []byte{}, float64(3.14159265359))
+	checkCodecDecoderResult(t, `{"default": "RickAstley", "name": "testField", "type":"string"}`, []byte{}, "RickAstley")
+	checkCodecDecoderResult(t, `{"default":"blue","name":"color_enum","type":"enum","symbols":["red","blue","green"]}`, []byte{}, "blue")
+	// Type is map
+	checkCodecDecoderResult(t, `{"default": "blue","name":"color","type":{"name":"color_enum","type":"enum","symbols":["red","blue"]}}`, []byte{}, "blue")
 }
 
 func TestCodecDecoderUnion(t *testing.T) {

@@ -319,7 +319,11 @@ func (st symtab) buildString(enclosingNamespace, typeName string, schema interfa
 		return &codec{
 			nm: c.nm,
 			df: func(r io.Reader) (interface{}, error) {
-				return c.df(r)
+				i, err := c.df(r)
+				if err != nil && def != nil {
+					return def, nil
+				}
+				return i, err
 			},
 			ef: func(w io.Writer, datum interface{}) error {
 				err := c.ef(w, datum)
