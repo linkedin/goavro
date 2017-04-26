@@ -642,7 +642,7 @@ func (st symtab) makeRecordCodec(enclosingNamespace string, schema interface{}) 
 				return newEncoderError(friendlyName, "expected: %v; received: %v", recordTemplate.Name, someRecord.Name)
 			}
 			for idx, field := range someRecord.Fields {
-				err = fieldCodecs[idx].Encode(w, field.Datum)
+				err := fieldCodecs[idx].Encode(w, field.Datum)
 				if err != nil {
 					return newEncoderError(friendlyName, err)
 				}
