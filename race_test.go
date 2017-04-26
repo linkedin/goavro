@@ -3,8 +3,61 @@ package goavro
 import (
 	"bytes"
 	"fmt"
+	"sync"
 	"testing"
 )
+
+func TestRaceEncodeEncodeRecord(t *testing.T) {
+	recordSchemaJSON := `{"type":"record","name":"record1","fields":[{"type":"long","name":"field1"}]}`
+	codec, _ := NewCodec(recordSchemaJSON)
+	done := make(chan error, 10)
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 10000; i++ {
+			rec, err := NewRecord(RecordSchema(recordSchemaJSON))
+			if err != nil {
+				done <- err
+				return
+			}
+
+			rec.Set("field1", int64(i))
+
+			bb := new(bytes.Buffer)
+			if err := codec.Encode(bb, rec); err != nil {
+				done <- err
+				return
+			}
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 10000; i++ {
+			rec, err := NewRecord(RecordSchema(recordSchemaJSON))
+			if err != nil {
+				done <- err
+				return
+			}
+
+			rec.Set("field1", int64(i))
+			bb := new(bytes.Buffer)
+			if err := codec.Encode(bb, rec); err != nil {
+				done <- err
+				return
+			}
+		}
+
+	}()
+
+	wg.Wait()
+	close(done)
+	for err := range done {
+		t.Errorf("%v", err)
+	}
+}
 
 func TestRaceCodecConstructionDecode(t *testing.T) {
 
