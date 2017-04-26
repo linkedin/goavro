@@ -389,54 +389,63 @@ func (st symtab) makeUnionCodec(enclosingNamespace string, schema interface{}) (
 
 	return &codec{
 		nm: nm,
-		df: func(r io.Reader) (interface{}, error) {
-			i, err := intDecoder(r)
-			if err != nil {
-				return nil, newEncoderError(friendlyName, err)
-			}
-			idx, ok := i.(int32)
-			if !ok {
-				return nil, newEncoderError(friendlyName, "expected: int; received: %T", i)
-			}
-			index := int(idx)
-			if index < 0 || index >= len(indexToDecoder) {
-				return nil, newEncoderError(friendlyName, "index must be between 0 and %d; read index: %d", len(indexToDecoder)-1, index)
-			}
-			return indexToDecoder[index](r)
-		},
-		ef: func(w io.Writer, datum interface{}) error {
-			var err error
-			var name string
-			switch datum.(type) {
-			default:
-				name = reflect.TypeOf(datum).String()
-			case map[string]interface{}:
-				name = "map"
-			case []interface{}:
-				name = "array"
-			case nil:
-				name = "null"
-			case Enum:
-				name = datum.(Enum).Name
-			case Fixed:
-				name = datum.(Fixed).Name
-			case *Record:
-				name = datum.(*Record).Name
-			}
-
-			ue, ok := nameToUnionEncoder[name]
-			if !ok {
-				return newEncoderError(friendlyName, invalidType+name)
-			}
-			if err = intEncoder(w, ue.index); err != nil {
-				return newEncoderError(friendlyName, err)
-			}
-			if err = ue.ef(w, datum); err != nil {
-				return newEncoderError(friendlyName, err)
-			}
-			return nil
-		},
+		df: unionDecoderFunc(friendlyName, indexToDecoder),
+		ef: unionEncoderFunc(friendlyName, invalidType, nameToUnionEncoder),
 	}, nil
+}
+
+func unionDecoderFunc(friendlyName string, indexToDecoder []decoderFunction) decoderFunction {
+	return func(r io.Reader) (interface{}, error) {
+		i, err := intDecoder(r)
+		if err != nil {
+			return nil, newEncoderError(friendlyName, err)
+		}
+		idx, ok := i.(int32)
+		if !ok {
+			return nil, newEncoderError(friendlyName, "expected: int; received: %T", i)
+		}
+		index := int(idx)
+		if index < 0 || index >= len(indexToDecoder) {
+			return nil, newEncoderError(friendlyName, "index must be between 0 and %d; read index: %d", len(indexToDecoder)-1, index)
+		}
+		return indexToDecoder[index](r)
+	}
+
+}
+
+func unionEncoderFunc(friendlyName string, invalidType string, nameToUnionEncoder map[string]unionEncoder) encoderFunction {
+	return func(w io.Writer, datum interface{}) error {
+		var err error
+		var name string
+		switch datum.(type) {
+		default:
+			name = reflect.TypeOf(datum).String()
+		case map[string]interface{}:
+			name = "map"
+		case []interface{}:
+			name = "array"
+		case nil:
+			name = "null"
+		case Enum:
+			name = datum.(Enum).Name
+		case Fixed:
+			name = datum.(Fixed).Name
+		case *Record:
+			name = datum.(*Record).Name
+		}
+
+		ue, ok := nameToUnionEncoder[name]
+		if !ok {
+			return newEncoderError(friendlyName, invalidType+name)
+		}
+		if err = intEncoder(w, ue.index); err != nil {
+			return newEncoderError(friendlyName, err)
+		}
+		if err = ue.ef(w, datum); err != nil {
+			return newEncoderError(friendlyName, err)
+		}
+		return nil
+	}
 }
 
 // Enum is an abstract data type used to hold data corresponding to an Avro enum. Whenever an Avro
@@ -481,43 +490,51 @@ func (st symtab) makeEnumCodec(enclosingNamespace string, schema interface{}) (*
 	}
 	c := &codec{
 		nm: nm,
-		df: func(r io.Reader) (interface{}, error) {
-			someValue, err := longDecoder(r)
-			if err != nil {
-				return nil, newDecoderError(friendlyName, err)
-			}
-			index, ok := someValue.(int64)
-			if !ok {
-				return nil, newDecoderError(friendlyName, "expected long; received: %T", someValue)
-			}
-			if index < 0 || index >= int64(len(symtab)) {
-				return nil, newDecoderError(friendlyName, "index must be between 0 and %d", len(symtab)-1)
-			}
-			return Enum{nm.n, symtab[index].(string)}, nil
-		},
-		ef: func(w io.Writer, datum interface{}) error {
-			var someString string
-			switch datum.(type) {
-			case Enum:
-				someString = datum.(Enum).Value
-			case string:
-				someString = datum.(string)
-			default:
-				return newEncoderError(friendlyName, "expected: Enum or string; received: %T", datum)
-			}
-			for idx, symbol := range symtab {
-				if symbol == someString {
-					if err := longEncoder(w, int64(idx)); err != nil {
-						return newEncoderError(friendlyName, err)
-					}
-					return nil
-				}
-			}
-			return newEncoderError(friendlyName, "symbol not defined: %s", someString)
-		},
+		df: enumDecoderFunc(nm.n, friendlyName, symtab),
+		ef: enumEncoderFunc(friendlyName, symtab),
 	}
 	st.name[nm.n] = c
 	return c, nil
+}
+
+func enumDecoderFunc(name string, friendlyName string, symtab []interface{}) decoderFunction {
+	return func(r io.Reader) (interface{}, error) {
+		someValue, err := longDecoder(r)
+		if err != nil {
+			return nil, newDecoderError(friendlyName, err)
+		}
+		index, ok := someValue.(int64)
+		if !ok {
+			return nil, newDecoderError(friendlyName, "expected long; received: %T", someValue)
+		}
+		if index < 0 || index >= int64(len(symtab)) {
+			return nil, newDecoderError(friendlyName, "index must be between 0 and %d", len(symtab)-1)
+		}
+		return Enum{name, symtab[index].(string)}, nil
+	}
+}
+
+func enumEncoderFunc(friendlyName string, symtab []interface{}) encoderFunction {
+	return func(w io.Writer, datum interface{}) error {
+		var someString string
+		switch datum.(type) {
+		case Enum:
+			someString = datum.(Enum).Value
+		case string:
+			someString = datum.(string)
+		default:
+			return newEncoderError(friendlyName, "expected: Enum or string; received: %T", datum)
+		}
+		for idx, symbol := range symtab {
+			if symbol == someString {
+				if err := longEncoder(w, int64(idx)); err != nil {
+					return newEncoderError(friendlyName, err)
+				}
+				return nil
+			}
+		}
+		return newEncoderError(friendlyName, "symbol not defined: %s", someString)
+	}
 }
 
 // Fixed is an abstract data type used to hold data corresponding to an Avro
@@ -559,37 +576,45 @@ func (st symtab) makeFixedCodec(enclosingNamespace string, schema interface{}) (
 	size := int32(fs)
 	c := &codec{
 		nm: nm,
-		df: func(r io.Reader) (interface{}, error) {
-			buf := make([]byte, size)
-			n, err := r.Read(buf)
-			if err != nil {
-				return nil, newDecoderError(friendlyName, err)
-			}
-			if n < int(size) {
-				return nil, newDecoderError(friendlyName, "buffer underrun")
-			}
-			return Fixed{Name: nm.n, Value: buf}, nil
-		},
-		ef: func(w io.Writer, datum interface{}) error {
-			someFixed, ok := datum.(Fixed)
-			if !ok {
-				return newEncoderError(friendlyName, "expected: Fixed; received: %T", datum)
-			}
-			if len(someFixed.Value) != int(size) {
-				return newEncoderError(friendlyName, "expected: %d bytes; received: %d", size, len(someFixed.Value))
-			}
-			n, err := w.Write(someFixed.Value)
-			if err != nil {
-				return newEncoderError(friendlyName, err)
-			}
-			if n != int(size) {
-				return newEncoderError(friendlyName, "buffer underrun")
-			}
-			return nil
-		},
+		df: fixedDecoderFunc(nm.n, friendlyName, size),
+		ef: fixedEncoderFunc(friendlyName, size),
 	}
 	st.name[nm.n] = c
 	return c, nil
+}
+
+func fixedDecoderFunc(name string, friendlyName string, size int32) decoderFunction {
+	return func(r io.Reader) (interface{}, error) {
+		buf := make([]byte, size)
+		n, err := r.Read(buf)
+		if err != nil {
+			return nil, newDecoderError(friendlyName, err)
+		}
+		if n < int(size) {
+			return nil, newDecoderError(friendlyName, "buffer underrun")
+		}
+		return Fixed{Name: name, Value: buf}, nil
+	}
+}
+
+func fixedEncoderFunc(friendlyName string, size int32) encoderFunction {
+	return func(w io.Writer, datum interface{}) error {
+		someFixed, ok := datum.(Fixed)
+		if !ok {
+			return newEncoderError(friendlyName, "expected: Fixed; received: %T", datum)
+		}
+		if len(someFixed.Value) != int(size) {
+			return newEncoderError(friendlyName, "expected: %d bytes; received: %d", size, len(someFixed.Value))
+		}
+		n, err := w.Write(someFixed.Value)
+		if err != nil {
+			return newEncoderError(friendlyName, err)
+		}
+		if n != int(size) {
+			return newEncoderError(friendlyName, "buffer underrun")
+		}
+		return nil
+	}
 }
 
 func (st symtab) makeRecordCodec(enclosingNamespace string, schema interface{}) (*codec, error) {
@@ -622,36 +647,44 @@ func (st symtab) makeRecordCodec(enclosingNamespace string, schema interface{}) 
 
 	c := &codec{
 		nm: recordTemplate.n,
-		df: func(r io.Reader) (interface{}, error) {
-			someRecord, _ := NewRecord(recordSchemaRaw(schema), RecordEnclosingNamespace(enclosingNamespace))
-			for idx, codec := range fieldCodecs {
-				value, err := codec.Decode(r)
-				if err != nil {
-					return nil, newDecoderError(friendlyName, err)
-				}
-				someRecord.Fields[idx].Datum = value
-			}
-			return someRecord, nil
-		},
-		ef: func(w io.Writer, datum interface{}) error {
-			someRecord, ok := datum.(*Record)
-			if !ok {
-				return newEncoderError(friendlyName, "expected: Record; received: %T", datum)
-			}
-			if someRecord.Name != recordTemplate.Name {
-				return newEncoderError(friendlyName, "expected: %v; received: %v", recordTemplate.Name, someRecord.Name)
-			}
-			for idx, field := range someRecord.Fields {
-				err := fieldCodecs[idx].Encode(w, field.Datum)
-				if err != nil {
-					return newEncoderError(friendlyName, err)
-				}
-			}
-			return nil
-		},
+		df: recordDecoderFunc(friendlyName, enclosingNamespace, fieldCodecs, schema),
+		ef: recordEncoderFunc(friendlyName, recordTemplate.Name, fieldCodecs),
 	}
 	st.name[recordTemplate.Name] = c
 	return c, nil
+}
+
+func recordDecoderFunc(friendlyName string, enclosingNamespace string, fieldCodecs []*codec, schema interface{}) decoderFunction {
+	return func(r io.Reader) (interface{}, error) {
+		someRecord, _ := NewRecord(recordSchemaRaw(schema), RecordEnclosingNamespace(enclosingNamespace))
+		for idx, codec := range fieldCodecs {
+			value, err := codec.Decode(r)
+			if err != nil {
+				return nil, newDecoderError(friendlyName, err)
+			}
+			someRecord.Fields[idx].Datum = value
+		}
+		return someRecord, nil
+	}
+}
+
+func recordEncoderFunc(friendlyName string, recordTemplateName string, fieldCodecs []*codec) encoderFunction {
+	return func(w io.Writer, datum interface{}) error {
+		someRecord, ok := datum.(*Record)
+		if !ok {
+			return newEncoderError(friendlyName, "expected: Record; received: %T", datum)
+		}
+		if someRecord.Name != recordTemplateName {
+			return newEncoderError(friendlyName, "expected: %v; received: %v", recordTemplateName, someRecord.Name)
+		}
+		for idx, field := range someRecord.Fields {
+			err := fieldCodecs[idx].Encode(w, field.Datum)
+			if err != nil {
+				return newEncoderError(friendlyName, err)
+			}
+		}
+		return nil
+	}
 }
 
 func (st symtab) makeMapCodec(enclosingNamespace string, schema interface{}) (*codec, error) {
@@ -680,75 +713,84 @@ func (st symtab) makeMapCodec(enclosingNamespace string, schema interface{}) (*c
 
 	return &codec{
 		nm: nm,
-		df: func(r io.Reader) (interface{}, error) {
-			data := make(map[string]interface{})
+		df: mapDecoderFunc(friendlyName, valuesCodec.df),
+		ef: mapEncoderFunc(friendlyName, valuesCodec.ef),
+	}, nil
+}
+
+func mapDecoderFunc(friendlyName string, valuesDecoder decoderFunction) decoderFunction {
+	return func(r io.Reader) (interface{}, error) {
+		data := make(map[string]interface{})
+		someValue, err := longDecoder(r)
+		if err != nil {
+			return nil, newDecoderError(friendlyName, err)
+		}
+		blockCount := someValue.(int64)
+
+		for blockCount != 0 {
+			if blockCount < 0 {
+				blockCount = -blockCount
+				// next long is size of block, for which we have no use
+				_, err := longDecoder(r)
+				if err != nil {
+					return nil, newDecoderError(friendlyName, err)
+				}
+			}
+			for i := int64(0); i < blockCount; i++ {
+				someValue, err := stringDecoder(r)
+				if err != nil {
+					return nil, newDecoderError(friendlyName, err)
+				}
+				mapKey, ok := someValue.(string)
+				if !ok {
+					return nil, newDecoderError(friendlyName, "map key ought to be string")
+				}
+				datum, err := valuesDecoder(r)
+				if err != nil {
+					return nil, err
+				}
+				data[mapKey] = datum
+			}
+			// decode next blockcount
 			someValue, err := longDecoder(r)
 			if err != nil {
 				return nil, newDecoderError(friendlyName, err)
 			}
-			blockCount := someValue.(int64)
+			blockCount = someValue.(int64)
+		}
+		return data, nil
+	}
+}
 
-			for blockCount != 0 {
-				if blockCount < 0 {
-					blockCount = -blockCount
-					// next long is size of block, for which we have no use
-					_, err := longDecoder(r)
-					if err != nil {
-						return nil, newDecoderError(friendlyName, err)
-					}
-				}
-				for i := int64(0); i < blockCount; i++ {
-					someValue, err := stringDecoder(r)
-					if err != nil {
-						return nil, newDecoderError(friendlyName, err)
-					}
-					mapKey, ok := someValue.(string)
-					if !ok {
-						return nil, newDecoderError(friendlyName, "map key ought to be string")
-					}
-					datum, err := valuesCodec.df(r)
-					if err != nil {
-						return nil, err
-					}
-					data[mapKey] = datum
-				}
-				// decode next blockcount
-				someValue, err := longDecoder(r)
-				if err != nil {
-					return nil, newDecoderError(friendlyName, err)
-				}
-				blockCount = someValue.(int64)
-			}
-			return data, nil
-		},
-		ef: func(w io.Writer, datum interface{}) error {
-			dict, ok := datum.(map[string]interface{})
-			if !ok {
-				return newEncoderError(friendlyName, "expected: map[string]interface{}; received: %T", datum)
-			}
-			if len(dict) > 0 {
-				if err := longEncoder(w, int64(len(dict))); err != nil {
-					return newEncoderError(friendlyName, err)
-				}
-				for k, v := range dict {
-					if err := stringEncoder(w, k); err != nil {
-						return newEncoderError(friendlyName, err)
-					}
-					if err := valuesCodec.ef(w, v); err != nil {
-						return newEncoderError(friendlyName, err)
-					}
-				}
-			}
-			if err := longEncoder(w, int64(0)); err != nil {
+func mapEncoderFunc(friendlyName string, valuesEncoderFunc encoderFunction) encoderFunction {
+	return func(w io.Writer, datum interface{}) error {
+		dict, ok := datum.(map[string]interface{})
+		if !ok {
+			return newEncoderError(friendlyName, "expected: map[string]interface{}; received: %T", datum)
+		}
+		if len(dict) > 0 {
+			if err := longEncoder(w, int64(len(dict))); err != nil {
 				return newEncoderError(friendlyName, err)
 			}
-			return nil
-		},
-	}, nil
+			for k, v := range dict {
+				if err := stringEncoder(w, k); err != nil {
+					return newEncoderError(friendlyName, err)
+				}
+				if err := valuesEncoderFunc(w, v); err != nil {
+					return newEncoderError(friendlyName, err)
+				}
+			}
+		}
+		if err := longEncoder(w, int64(0)); err != nil {
+			return newEncoderError(friendlyName, err)
+		}
+		return nil
+	}
 }
 
 func (st symtab) makeArrayCodec(enclosingNamespace string, schema interface{}) (*codec, error) {
 	errorNamespace := "null namespace"
+
 	if enclosingNamespace != nullNamespace {
 		errorNamespace = enclosingNamespace
 	}
@@ -774,62 +816,70 @@ func (st symtab) makeArrayCodec(enclosingNamespace string, schema interface{}) (
 
 	return &codec{
 		nm: nm,
-		df: func(r io.Reader) (interface{}, error) {
-			var data []interface{}
+		df: arrayDecoderFunc(friendlyName, valuesCodec.df),
+		ef: arrayEncoderFunc(friendlyName, itemsPerArrayBlock, valuesCodec.ef),
+	}, nil
+}
 
+func arrayDecoderFunc(friendlyName string, valuesDecoderFunc decoderFunction) decoderFunction {
+	return func(r io.Reader) (interface{}, error) {
+		var data []interface{}
+
+		someValue, err := longDecoder(r)
+		if err != nil {
+			return nil, newDecoderError(friendlyName, err)
+		}
+		blockCount := someValue.(int64)
+
+		for blockCount != 0 {
+			if blockCount < 0 {
+				blockCount = -blockCount
+				// read and discard number of bytes in block
+				_, err = longDecoder(r)
+				if err != nil {
+					return nil, newDecoderError(friendlyName, err)
+				}
+			}
+			for i := int64(0); i < blockCount; i++ {
+				datum, err := valuesDecoderFunc(r)
+				if err != nil {
+					return nil, newDecoderError(friendlyName, err)
+				}
+				data = append(data, datum)
+			}
 			someValue, err := longDecoder(r)
 			if err != nil {
 				return nil, newDecoderError(friendlyName, err)
 			}
-			blockCount := someValue.(int64)
+			blockCount = someValue.(int64)
+		}
+		return data, nil
+	}
+}
 
-			for blockCount != 0 {
-				if blockCount < 0 {
-					blockCount = -blockCount
-					// read and discard number of bytes in block
-					_, err = longDecoder(r)
-					if err != nil {
-						return nil, newDecoderError(friendlyName, err)
-					}
-				}
-				for i := int64(0); i < blockCount; i++ {
-					datum, err := valuesCodec.df(r)
-					if err != nil {
-						return nil, newDecoderError(friendlyName, err)
-					}
-					data = append(data, datum)
-				}
-				someValue, err := longDecoder(r)
-				if err != nil {
-					return nil, newDecoderError(friendlyName, err)
-				}
-				blockCount = someValue.(int64)
+func arrayEncoderFunc(friendlyName string, itemsPerArrayBlock int, valuesEncoderFunc encoderFunction) encoderFunction {
+	return func(w io.Writer, datum interface{}) error {
+		someArray, ok := datum.([]interface{})
+		if !ok {
+			return newEncoderError(friendlyName, "expected: []interface{}; received: %T", datum)
+		}
+		for leftIndex := 0; leftIndex < len(someArray); leftIndex += itemsPerArrayBlock {
+			rightIndex := leftIndex + itemsPerArrayBlock
+			if rightIndex > len(someArray) {
+				rightIndex = len(someArray)
 			}
-			return data, nil
-		},
-		ef: func(w io.Writer, datum interface{}) error {
-			someArray, ok := datum.([]interface{})
-			if !ok {
-				return newEncoderError(friendlyName, "expected: []interface{}; received: %T", datum)
+			items := someArray[leftIndex:rightIndex]
+			err := longEncoder(w, int64(len(items)))
+			if err != nil {
+				return newEncoderError(friendlyName, err)
 			}
-			for leftIndex := 0; leftIndex < len(someArray); leftIndex += itemsPerArrayBlock {
-				rightIndex := leftIndex + itemsPerArrayBlock
-				if rightIndex > len(someArray) {
-					rightIndex = len(someArray)
-				}
-				items := someArray[leftIndex:rightIndex]
-				err := longEncoder(w, int64(len(items)))
+			for _, item := range items {
+				err = valuesEncoderFunc(w, item)
 				if err != nil {
 					return newEncoderError(friendlyName, err)
 				}
-				for _, item := range items {
-					err = valuesCodec.ef(w, item)
-					if err != nil {
-						return newEncoderError(friendlyName, err)
-					}
-				}
 			}
-			return longEncoder(w, int64(0))
-		},
-	}, nil
+		}
+		return longEncoder(w, int64(0))
+	}
 }
