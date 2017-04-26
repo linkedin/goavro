@@ -799,7 +799,7 @@ func (st symtab) makeArrayCodec(enclosingNamespace string, schema interface{}) (
 					}
 					data = append(data, datum)
 				}
-				someValue, err = longDecoder(r)
+				someValue, err := longDecoder(r)
 				if err != nil {
 					return nil, newDecoderError(friendlyName, err)
 				}
@@ -818,7 +818,7 @@ func (st symtab) makeArrayCodec(enclosingNamespace string, schema interface{}) (
 					rightIndex = len(someArray)
 				}
 				items := someArray[leftIndex:rightIndex]
-				err = longEncoder(w, int64(len(items)))
+				err := longEncoder(w, int64(len(items)))
 				if err != nil {
 					return newEncoderError(friendlyName, err)
 				}
