@@ -382,9 +382,17 @@ func newRecordField(schema interface{}, setters ...recordFieldSetter) (*recordFi
 	}
 
 	if val, ok = schemaMap["aliases"]; ok {
-		rf.aliases, ok = val.([]string)
+		aliases, ok := schemaMap["aliases"].([]interface{})
 		if !ok {
 			return nil, newCodecBuildError("record field", "record field aliases ought to be array of strings")
+		}
+
+		for _, alias := range aliases {
+			aliasStr, ok := alias.(string)
+			if !ok {
+				return nil, newCodecBuildError("record field", "record field aliases ought to be array of strings")
+			}
+			rf.aliases = append(rf.aliases, aliasStr)
 		}
 	}
 
