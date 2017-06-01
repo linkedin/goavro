@@ -1,5 +1,31 @@
 # goavro
 
+## NOTICE
+
+This goavro library has been rewritten to correct a large number of
+shortcomings:
+
+https://github.com/linkedin/goavro/issues/8
+https://github.com/linkedin/goavro/issues/36
+https://github.com/linkedin/goavro/issues/45
+https://github.com/linkedin/goavro/issues/55
+https://github.com/linkedin/goavro/issues/71
+https://github.com/linkedin/goavro/issues/72
+
+I ernestly want to replace this library with the newer version, but
+there is an API difference: rather than reading from `io.Reader`
+streams, decoding reads from byte slices, and rather than writing to
+`io.Writer` streams, encoding appends to byte slices. The performance
+benefit seems worth the trouble of upgrading: 3x encoding performance
+and 4x decoding performance on some hefty payloads used at LinkedIn.
+
+Until the migration is complete, if your program is not able to encode
+or decode Avro payloads due to schema issues, or perhaps you are
+looking for a more performant implementation, I recommend looking at
+the newer goavro engine hosted in a different repository
+
+https://github.com/karrick/goavro
+
 ## Description
 
 Goavro is a golang library that implements encoding and decoding of
