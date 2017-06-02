@@ -11,7 +11,7 @@ type ErrNotRecord struct {
 }
 
 // Error returns a string representation of the ErrNotRecord error.
-func (e ErrNotRecord) Error() string {
+func (e *ErrNotRecord) Error() string {
 	return fmt.Sprintf("expected to find *goavro.Record, but found %T", e.datum)
 }
 
@@ -70,14 +70,14 @@ func (rc *RecordCache) Get(name string) (interface{}, error) {
 		}
 		rc.db[parentName] = parent
 		if _, ok := parent.(*Record); !ok {
-			return nil, ErrNotRecord{datum: parent}
+			return nil, &ErrNotRecord{datum: parent}
 		}
 		name = childName
 	}
 
 	val, err = parent.(*Record).GetQualified(name)
 	if err != nil {
-		if nerr, ok := err.(ErrNoSuchField); ok {
+		if nerr, ok := err.(*ErrNoSuchField); ok {
 			nerr.path = parentName
 			return nil, nerr
 		}

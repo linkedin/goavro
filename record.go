@@ -30,7 +30,7 @@ type ErrNoSuchField struct {
 }
 
 // Error returns the string representation of an ErrNoSuchField error.
-func (e ErrNoSuchField) Error() string {
+func (e *ErrNoSuchField) Error() string {
 	if e.path != "" {
 		return fmt.Sprintf("no such field: %q in %q", e.field, e.path)
 	}
@@ -54,17 +54,17 @@ type Record struct {
 	pedantic  bool
 }
 
-func (r Record) getField(fieldName string) (*recordField, error) {
+func (r *Record) getField(fieldName string) (*recordField, error) {
 	for _, field := range r.Fields {
 		if field.Name == fieldName {
 			return field, nil
 		}
 	}
-	return nil, ErrNoSuchField{field: fieldName}
+	return nil, &ErrNoSuchField{field: fieldName}
 }
 
 // GetQualified returns the datum of the specified Record field, without attempting to qualify the name
-func (r Record) GetQualified(qualifiedName string) (interface{}, error) {
+func (r *Record) GetQualified(qualifiedName string) (interface{}, error) {
 	field, err := r.getField(qualifiedName)
 	if err != nil {
 		return nil, err
@@ -73,7 +73,7 @@ func (r Record) GetQualified(qualifiedName string) (interface{}, error) {
 }
 
 // Get returns the datum of the specified Record field.
-func (r Record) Get(fieldName string) (interface{}, error) {
+func (r *Record) Get(fieldName string) (interface{}, error) {
 	// qualify fieldName searches based on record namespace
 	fn, err := newName(nameName(fieldName), nameNamespace(r.n.ns))
 	if err != nil {
@@ -82,8 +82,13 @@ func (r Record) Get(fieldName string) (interface{}, error) {
 	return r.GetQualified(fn.n)
 }
 
+// GetSchema returns the schema of the Record
+func (r *Record) GetSchema() map[string]interface{} {
+	return r.schemaMap
+}
+
 // GetFieldSchema returns the schema of the specified Record field.
-func (r Record) GetFieldSchema(fieldName string) (interface{}, error) {
+func (r *Record) GetFieldSchema(fieldName string) (interface{}, error) {
 	// qualify fieldName searches based on record namespace
 	fn, err := newName(nameName(fieldName), nameNamespace(r.n.ns))
 	if err != nil {
@@ -97,7 +102,7 @@ func (r Record) GetFieldSchema(fieldName string) (interface{}, error) {
 }
 
 // SetQualified updates the datum of the specified Record field, without attempting to qualify the name
-func (r Record) SetQualified(qualifiedName string, value interface{}) error {
+func (r *Record) SetQualified(qualifiedName string, value interface{}) error {
 	field, err := r.getField(qualifiedName)
 	if err != nil {
 		return err
@@ -107,7 +112,7 @@ func (r Record) SetQualified(qualifiedName string, value interface{}) error {
 }
 
 // Set updates the datum of the specified Record field.
-func (r Record) Set(fieldName string, value interface{}) error {
+func (r *Record) Set(fieldName string, value interface{}) error {
 	// qualify fieldName searches based on record namespace
 	fn, err := newName(nameName(fieldName), nameNamespace(r.n.ns))
 	if err != nil {
@@ -117,7 +122,7 @@ func (r Record) Set(fieldName string, value interface{}) error {
 }
 
 // String returns a string representation of the Record.
-func (r Record) String() string {
+func (r *Record) String() string {
 	fields := make([]string, len(r.Fields))
 	for idx, f := range r.Fields {
 		fields[idx] = fmt.Sprintf("%v", f)
@@ -196,7 +201,7 @@ func NewRecord(setters ...RecordSetter) (*Record, error) {
 			return nil, newCodecBuildError("record", "aliases ought to be array of strings")
 		}
 	}
-	record.schemaMap = nil
+
 	return record, nil
 }
 
@@ -268,7 +273,7 @@ type recordField struct {
 	ens        string
 }
 
-func (rf recordField) String() string {
+func (rf *recordField) String() string {
 	return fmt.Sprintf("%s: %v", rf.Name, rf.Datum)
 }
 

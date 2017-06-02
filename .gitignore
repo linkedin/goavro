@@ -1,1 +1,5 @@
 *.test
+goavro
+glide.lock
+glide.yaml
+vendor/
