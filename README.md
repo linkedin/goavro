@@ -11,6 +11,7 @@ shortcomings:
 * https://github.com/linkedin/goavro/issues/55
 * https://github.com/linkedin/goavro/issues/71
 * https://github.com/linkedin/goavro/issues/72
+* https://github.com/linkedin/goavro/issues/81
 
 I ernestly want to replace this library with the newer version, but
 there is an API difference: rather than reading from `io.Reader`
