@@ -176,6 +176,19 @@ func WriterSchema(someSchema string) WriterSetter {
 	}
 }
 
+//Metadata is used to set metadata information in the header
+func Metadata(meta map[string][]byte) WriterSetter {
+	return func(fw *Writer) (err error) {
+		if meta == nil {
+			return fmt.Errorf("invalid metadata")
+		}
+
+		fw.metadata = meta
+
+		return nil
+	}
+}
+
 // Writer structure contains data necessary to write Avro files.
 type Writer struct {
 	CompressionCodec string
@@ -188,6 +201,7 @@ type Writer struct {
 	w                io.Writer
 	writerDone       chan struct{}
 	blockTick        time.Duration
+	metadata         map[string][]byte
 }
 
 // NewWriter returns a object to write data to an io.Writer using the
@@ -229,7 +243,7 @@ type Writer struct {
 //     }
 func NewWriter(setters ...WriterSetter) (*Writer, error) {
 	var err error
-	fw := &Writer{CompressionCodec: CompressionNull, blockSize: DefaultWriterBlockSize}
+	fw := &Writer{CompressionCodec: CompressionNull, blockSize: DefaultWriterBlockSize, metadata: make(map[string][]byte)}
 	for _, setter := range setters {
 		err = setter(fw)
 		if err != nil {
@@ -298,10 +312,15 @@ func (fw *Writer) writeHeader() (err error) {
 	}
 	// header metadata
 	hm := make(map[string]interface{})
+	for key, value := range fw.metadata {
+		hm[key] = value
+	}
+
 	hm["avro.schema"] = []byte(fw.dataCodec.Schema())
 	if fw.CompressionCodec != CompressionNull {
 		hm["avro.codec"] = []byte(fw.CompressionCodec)
 	}
+
 	if err = metadataCodec.Encode(fw.w, hm); err != nil {
 		return
 	}
