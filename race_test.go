@@ -1,169 +1,167 @@
-package goavro
+// Copyright [2017] LinkedIn Corp. Licensed under the Apache License, Version
+// 2.0 (the "License"); you may not use this file except in compliance with the
+// License.  You may obtain a copy of the License at
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+// WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+
+package goavro_test
 
 import (
-	"bytes"
 	"fmt"
 	"sync"
 	"testing"
+
+	"github.com/linkedin/goavro"
 )
 
 func TestRaceEncodeEncodeArray(t *testing.T) {
-	recordSchemaJSON := `{"type":"record","name":"record1","fields":[{"type":"array", "items":"long","name":"field1"}]}`
-	codec, _ := NewCodec(recordSchemaJSON)
-	done := make(chan error, 10)
-	var wg sync.WaitGroup
-	wg.Add(2)
-
-	go func() {
-		defer wg.Done()
-		for i := 0; i < 10000; i++ {
-			rec, err := NewRecord(RecordSchema(recordSchemaJSON))
-			if err != nil {
-				done <- err
-				return
-			}
-
-			rec.Set("field1", []interface{}{int64(i)})
-
-			bb := new(bytes.Buffer)
-			if err := codec.Encode(bb, rec); err != nil {
-				done <- err
-				return
-			}
-		}
-	}()
-
-	go func() {
-		defer wg.Done()
-		for i := 0; i < 10000; i++ {
-			rec, err := NewRecord(RecordSchema(recordSchemaJSON))
-			if err != nil {
-				done <- err
-				return
-			}
-
-			rec.Set("field1", []interface{}{int64(i)})
-			bb := new(bytes.Buffer)
-			if err := codec.Encode(bb, rec); err != nil {
-				done <- err
-				return
-			}
-		}
-
-	}()
-
-	wg.Wait()
-	close(done)
-	for err := range done {
-		t.Errorf("%v", err)
-	}
-}
-func TestRaceEncodeEncodeRecord(t *testing.T) {
-	recordSchemaJSON := `{"type":"record","name":"record1","fields":[{"type":"long","name":"field1"}]}`
-	codec, _ := NewCodec(recordSchemaJSON)
-	done := make(chan error, 10)
-	var wg sync.WaitGroup
-	wg.Add(2)
-
-	go func() {
-		defer wg.Done()
-		for i := 0; i < 10000; i++ {
-			rec, err := NewRecord(RecordSchema(recordSchemaJSON))
-			if err != nil {
-				done <- err
-				return
-			}
-
-			rec.Set("field1", int64(i))
-
-			bb := new(bytes.Buffer)
-			if err := codec.Encode(bb, rec); err != nil {
-				done <- err
-				return
-			}
-		}
-	}()
-
-	go func() {
-		defer wg.Done()
-		for i := 0; i < 10000; i++ {
-			rec, err := NewRecord(RecordSchema(recordSchemaJSON))
-			if err != nil {
-				done <- err
-				return
-			}
-
-			rec.Set("field1", int64(i))
-			bb := new(bytes.Buffer)
-			if err := codec.Encode(bb, rec); err != nil {
-				done <- err
-				return
-			}
-		}
-
-	}()
-
-	wg.Wait()
-	close(done)
-	for err := range done {
-		t.Errorf("%v", err)
-	}
-}
-
-func TestRaceCodecConstructionDecode(t *testing.T) {
-
-	recordSchemaJSON := `{"type": "long"}`
-	codec, _ := NewCodec(recordSchemaJSON)
-	comms := make(chan []byte, 1000)
-	done := make(chan error, 10)
-
-	go func() {
-
-		for i := 0; i < 10000; i++ {
-
-			//Completely unrelated stateful objects were causing races
-			if i%100 == 0 {
-				recordSchemaJSON := `{"type": "long"}`
-				NewCodec(recordSchemaJSON)
-			}
-
-			bb := new(bytes.Buffer)
-			if err := codec.Encode(bb, int64(i)); err != nil {
-				done <- err
-				return
-			}
-
-			comms <- bb.Bytes()
-		}
-		close(comms)
-	}()
-
-	go func() {
-		i := 0
-		for encoded := range comms {
-			bb := bytes.NewBuffer(encoded)
-			decoded, err := codec.Decode(bb)
-			if err != nil {
-				done <- err
-				return
-			}
-			result := decoded.(int64)
-			if result != int64(i) {
-				done <- fmt.Errorf("didnt match %v %v", i, result)
-				return
-			}
-
-			i++
-		}
-
-		close(done)
-	}()
-
-	err := <-done
+	codec, err := goavro.NewCodec(`{"type":"record","name":"record1","fields":[{"name":"field1","type":"array","items":"long"}]}`)
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	var consumers, producers sync.WaitGroup
+	consumers.Add(1)
+	producers.Add(2)
+
+	done := make(chan error, 10)
+	go func() {
+		defer consumers.Done()
+		for err := range done {
+			t.Error(err)
+		}
+	}()
+
+	go func() {
+		defer producers.Done()
+		for i := 0; i < 10000; i++ {
+			if _, err := codec.BinaryFromNative(nil, map[string]interface{}{"field1": []int{i}}); err != nil {
+				done <- err
+				return
+			}
+		}
+	}()
+
+	go func() {
+		defer producers.Done()
+		for i := 0; i < 10000; i++ {
+			rec := map[string]interface{}{
+				"field1": []interface{}{i},
+			}
+			if _, err := codec.BinaryFromNative(nil, rec); err != nil {
+				done <- err
+				return
+			}
+		}
+	}()
+
+	producers.Wait()
+	close(done)
+	consumers.Wait()
+}
+
+func TestRaceEncodeEncodeRecord(t *testing.T) {
+	codec, err := goavro.NewCodec(`{"type":"record","name":"record1","fields":[{"type":"long","name":"field1"}]}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var consumers, producers sync.WaitGroup
+	consumers.Add(1)
+	producers.Add(2)
+
+	done := make(chan error, 10)
+	go func() {
+		defer consumers.Done()
+		for err := range done {
+			t.Error(err)
+		}
+	}()
+
+	go func() {
+		defer producers.Done()
+		for i := 0; i < 10000; i++ {
+			rec := map[string]interface{}{"field1": i}
+			if _, err := codec.BinaryFromNative(nil, rec); err != nil {
+				done <- err
+				return
+			}
+		}
+	}()
+
+	go func() {
+		defer producers.Done()
+		for i := 0; i < 10000; i++ {
+			rec := map[string]interface{}{"field1": i}
+			if _, err := codec.BinaryFromNative(nil, rec); err != nil {
+				done <- err
+				return
+			}
+		}
+	}()
+
+	producers.Wait()
+	close(done)
+	consumers.Wait()
+}
+
+func TestRaceCodecConstructionDecode(t *testing.T) {
+	codec, err := goavro.NewCodec(`{"type": "long"}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	comms := make(chan []byte, 1000)
+
+	var consumers sync.WaitGroup
+	consumers.Add(1)
+
+	done := make(chan error, 10)
+	go func() {
+		defer consumers.Done()
+		for err := range done {
+			t.Error(err)
+		}
+	}()
+
+	go func() {
+		defer close(comms)
+		for i := 0; i < 10000; i++ {
+			// Completely unrelated stateful objects were causing races
+			if i%100 == 0 {
+				_, _ = goavro.NewCodec(`{"type": "long"}`)
+			}
+			buf, err := codec.BinaryFromNative(nil, i)
+			if err != nil {
+				done <- err
+				return
+			}
+
+			comms <- buf
+		}
+	}()
+
+	go func() {
+		defer close(done)
+		var i int64
+		for buf := range comms {
+			datum, _, err := codec.NativeFromBinary(buf)
+			if err != nil {
+				done <- err
+				return
+			}
+			result := datum.(int64) // Avro long values always decoded as int64
+			if result != i {
+				done <- fmt.Errorf("Actual: %v; Expected: %v", result, i)
+				return
+			}
+			i++
+		}
+	}()
+
+	consumers.Wait()
 }
 
 func TestRaceCodecConstruction(t *testing.T) {
@@ -172,48 +170,48 @@ func TestRaceCodecConstruction(t *testing.T) {
 	done := make(chan error, 10)
 
 	go func() {
+		defer close(comms)
 		recordSchemaJSON := `{"type": "long"}`
-		codec, _ := NewCodec(recordSchemaJSON)
+		codec, err := goavro.NewCodec(recordSchemaJSON)
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		for i := 0; i < 10000; i++ {
-
-			bb := new(bytes.Buffer)
-			if err := codec.Encode(bb, int64(i)); err != nil {
-				done <- err
-				return
-			}
-
-			comms <- bb.Bytes()
-		}
-		close(comms)
-	}()
-
-	go func() {
-		recordSchemaJSON := `{"type": "long"}`
-		codec, _ := NewCodec(recordSchemaJSON)
-		i := 0
-		for encoded := range comms {
-			bb := bytes.NewBuffer(encoded)
-			decoded, err := codec.Decode(bb)
+			buf, err := codec.BinaryFromNative(nil, i)
 			if err != nil {
 				done <- err
 				return
 			}
-			result := decoded.(int64)
-			if result != int64(i) {
-				done <- fmt.Errorf("didnt match %v %v", i, result)
+			comms <- buf
+		}
+	}()
+
+	go func() {
+		defer close(done)
+		recordSchemaJSON := `{"type": "long"}`
+		codec, err := goavro.NewCodec(recordSchemaJSON)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var i int64
+		for encoded := range comms {
+			decoded, _, err := codec.NativeFromBinary(encoded)
+			if err != nil {
+				done <- err
 				return
 			}
-
+			result := decoded.(int64) // Avro long values always decoded as int64
+			if result != i {
+				done <- fmt.Errorf("Actual: %v; Expected: %v", result, i)
+				return
+			}
 			i++
 		}
-
-		close(done)
 	}()
 
 	err := <-done
 	if err != nil {
 		t.Fatal(err)
 	}
-
 }

@@ -1,205 +1,103 @@
-// Copyright 2015 LinkedIn Corp. Licensed under the Apache License,
-// Version 2.0 (the "License"); you may not use this file except in
-// compliance with the License.  You may obtain a copy of the License
-// at http://www.apache.org/licenses/LICENSE-2.0
+// Copyright [2017] LinkedIn Corp. Licensed under the Apache License, Version
+// 2.0 (the "License"); you may not use this file except in compliance with the
+// License.  You may obtain a copy of the License at
+// http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
-//  distributed under the License is distributed on an "AS IS" BASIS,
-//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-// implied.Copyright [201X] LinkedIn Corp. Licensed under the Apache
-// License, Version 2.0 (the "License"); you may not use this file
-// except in compliance with the License.  You may obtain a copy of
-// the License at http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-//  distributed under the License is distributed on an "AS IS" BASIS,
-//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-// implied.
+// distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+// WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
-package goavro
+package goavro_test
 
 import (
 	"bytes"
-	"io"
 	"testing"
+
+	"github.com/linkedin/goavro"
 )
 
-const (
-	nullCodecSample = "\x4f\x62\x6a\x01\x04\x16\x61\x76\x72\x6f\x2e\x73\x63\x68\x65\x6d\x61\xf2\x02\x7b\x22\x64\x6f\x63\x22\x3a\x22\x41\x20\x77\x65\x61\x74\x68\x65\x72\x20\x72\x65\x61\x64\x69\x6e\x67\x2e\x22\x2c\x22\x66\x69\x65\x6c\x64\x73\x22\x3a\x5b\x7b\x22\x6e\x61\x6d\x65\x22\x3a\x22\x73\x74\x61\x74\x69\x6f\x6e\x22\x2c\x22\x74\x79\x70\x65\x22\x3a\x22\x73\x74\x72\x69\x6e\x67\x22\x7d\x2c\x7b\x22\x6e\x61\x6d\x65\x22\x3a\x22\x74\x69\x6d\x65\x22\x2c\x22\x74\x79\x70\x65\x22\x3a\x22\x6c\x6f\x6e\x67\x22\x7d\x2c\x7b\x22\x6e\x61\x6d\x65\x22\x3a\x22\x74\x65\x6d\x70\x22\x2c\x22\x74\x79\x70\x65\x22\x3a\x22\x69\x6e\x74\x22\x7d\x5d\x2c\x22\x6e\x61\x6d\x65\x22\x3a\x22\x57\x65\x61\x74\x68\x65\x72\x22\x2c\x22\x6e\x61\x6d\x65\x73\x70\x61\x63\x65\x22\x3a\x22\x74\x65\x73\x74\x22\x2c\x22\x74\x79\x70\x65\x22\x3a\x22\x72\x65\x63\x6f\x72\x64\x22\x7d\x14\x61\x76\x72\x6f\x2e\x63\x6f\x64\x65\x63\x08\x6e\x75\x6c\x6c\x00\x8c\xa4\x7b\xa7\x53\x89\x3a\x98\x1f\x34\xfe\x57\xf7\x68\x5e\x37\x0a\xcc\x01\x18\x30\x31\x31\x39\x39\x30\x2d\x39\x39\x39\x39\x39\xff\xa3\x90\xe8\x87\x24\x00\x18\x30\x31\x31\x39\x39\x30\x2d\x39\x39\x39\x39\x39\xff\x81\xfb\xd6\x87\x24\x2c\x18\x30\x31\x31\x39\x39\x30\x2d\x39\x39\x39\x39\x39\xff\xa5\xae\xc2\x87\x24\x15\x18\x30\x31\x32\x36\x35\x30\x2d\x39\x39\x39\x39\x39\xff\xb7\xa2\x8b\x94\x26\xde\x01\x18\x30\x31\x32\x36\x35\x30\x2d\x39\x39\x39\x39\x39\xff\xdb\xd5\xf6\x93\x26\x9c\x01\x8c\xa4\x7b\xa7\x53\x89\x3a\x98\x1f\x34\xfe\x57\xf7\x68\x5e\x37"
+// readOCFHeader, magic bytes
 
-	nullCodecSampleBs2 = "\x4f\x62\x6a\x01\x04\x16\x61\x76\x72\x6f\x2e\x73\x63\x68\x65\x6d\x61\xf2\x02\x7b\x22\x64\x6f\x63\x22\x3a\x22\x41\x20\x77\x65\x61\x74\x68\x65\x72\x20\x72\x65\x61\x64\x69\x6e\x67\x2e\x22\x2c\x22\x66\x69\x65\x6c\x64\x73\x22\x3a\x5b\x7b\x22\x6e\x61\x6d\x65\x22\x3a\x22\x73\x74\x61\x74\x69\x6f\x6e\x22\x2c\x22\x74\x79\x70\x65\x22\x3a\x22\x73\x74\x72\x69\x6e\x67\x22\x7d\x2c\x7b\x22\x6e\x61\x6d\x65\x22\x3a\x22\x74\x69\x6d\x65\x22\x2c\x22\x74\x79\x70\x65\x22\x3a\x22\x6c\x6f\x6e\x67\x22\x7d\x2c\x7b\x22\x6e\x61\x6d\x65\x22\x3a\x22\x74\x65\x6d\x70\x22\x2c\x22\x74\x79\x70\x65\x22\x3a\x22\x69\x6e\x74\x22\x7d\x5d\x2c\x22\x6e\x61\x6d\x65\x22\x3a\x22\x57\x65\x61\x74\x68\x65\x72\x22\x2c\x22\x6e\x61\x6d\x65\x73\x70\x61\x63\x65\x22\x3a\x22\x74\x65\x73\x74\x22\x2c\x22\x74\x79\x70\x65\x22\x3a\x22\x72\x65\x63\x6f\x72\x64\x22\x7d\x14\x61\x76\x72\x6f\x2e\x63\x6f\x64\x65\x63\x08\x6e\x75\x6c\x6c\x00\x58\x4c\x47\xa7\x3a\xa8\x95\xf8\x24\xa2\x4a\x1a\x4d\x96\x2c\x41\x04\x50\x18\x30\x31\x31\x39\x39\x30\x2d\x39\x39\x39\x39\x39\xff\xa3\x90\xe8\x87\x24\x00\x18\x30\x31\x31\x39\x39\x30\x2d\x39\x39\x39\x39\x39\xff\x81\xfb\xd6\x87\x24\x2c\x58\x4c\x47\xa7\x3a\xa8\x95\xf8\x24\xa2\x4a\x1a\x4d\x96\x2c\x41\x04\x52\x18\x30\x31\x31\x39\x39\x30\x2d\x39\x39\x39\x39\x39\xff\xa5\xae\xc2\x87\x24\x15\x18\x30\x31\x32\x36\x35\x30\x2d\x39\x39\x39\x39\x39\xff\xb7\xa2\x8b\x94\x26\xde\x01\x58\x4c\x47\xa7\x3a\xa8\x95\xf8\x24\xa2\x4a\x1a\x4d\x96\x2c\x41\x02\x2a\x18\x30\x31\x32\x36\x35\x30\x2d\x39\x39\x39\x39\x39\xff\xdb\xd5\xf6\x93\x26\x9c\x01\x58\x4c\x47\xa7\x3a\xa8\x95\xf8\x24\xa2\x4a\x1a\x4d\x96\x2c\x41"
+func TestReadOCFHeaderMagicBytes(t *testing.T) {
+	_, err := goavro.NewOCFReader(bytes.NewBuffer([]byte("Obj"))) // missing fourth byte
+	ensureError(t, err, "cannot create OCF")
 
-	deflateCodecSample = "\x4f\x62\x6a\x01\x04\x16\x61\x76\x72\x6f\x2e\x73\x63\x68\x65\x6d\x61\xf2\x02\x7b\x22\x64\x6f\x63\x22\x3a\x22\x41\x20\x77\x65\x61\x74\x68\x65\x72\x20\x72\x65\x61\x64\x69\x6e\x67\x2e\x22\x2c\x22\x66\x69\x65\x6c\x64\x73\x22\x3a\x5b\x7b\x22\x6e\x61\x6d\x65\x22\x3a\x22\x73\x74\x61\x74\x69\x6f\x6e\x22\x2c\x22\x74\x79\x70\x65\x22\x3a\x22\x73\x74\x72\x69\x6e\x67\x22\x7d\x2c\x7b\x22\x6e\x61\x6d\x65\x22\x3a\x22\x74\x69\x6d\x65\x22\x2c\x22\x74\x79\x70\x65\x22\x3a\x22\x6c\x6f\x6e\x67\x22\x7d\x2c\x7b\x22\x6e\x61\x6d\x65\x22\x3a\x22\x74\x65\x6d\x70\x22\x2c\x22\x74\x79\x70\x65\x22\x3a\x22\x69\x6e\x74\x22\x7d\x5d\x2c\x22\x6e\x61\x6d\x65\x22\x3a\x22\x57\x65\x61\x74\x68\x65\x72\x22\x2c\x22\x6e\x61\x6d\x65\x73\x70\x61\x63\x65\x22\x3a\x22\x74\x65\x73\x74\x22\x2c\x22\x74\x79\x70\x65\x22\x3a\x22\x72\x65\x63\x6f\x72\x64\x22\x7d\x14\x61\x76\x72\x6f\x2e\x63\x6f\x64\x65\x63\x0e\x64\x65\x66\x6c\x61\x74\x65\x00\x81\x57\x60\x49\x74\x79\x12\xa4\xe7\xae\x1b\xa2\x87\x12\x87\xb6\x0a\x82\x01\x92\x30\x30\x34\xb4\xb4\x34\xd0\xb5\x04\x81\xff\x8b\x27\xbc\x68\x57\x61\x40\x15\x6b\xfc\x7d\xad\x5d\x45\x07\x55\x6c\xe9\xba\x43\xed\x2a\xa2\x40\x31\x23\x33\x53\x98\xd8\xf6\x45\xdd\x53\xd4\xee\x31\xa2\x0a\xde\xbe\xfa\x6d\xb2\xda\x1c\x46\x40\x00\x00\x00\xff\xff\x81\x57\x60\x49\x74\x79\x12\xa4\xe7\xae\x1b\xa2\x87\x12\x87\xb6"
-
-	snappyCodecSample = "\x4f\x62\x6a\x01\x04\x16\x61\x76\x72\x6f\x2e\x73\x63\x68\x65\x6d\x61\xf2\x02\x7b\x22\x64\x6f\x63\x22\x3a\x22\x41\x20\x77\x65\x61\x74\x68\x65\x72\x20\x72\x65\x61\x64\x69\x6e\x67\x2e\x22\x2c\x22\x66\x69\x65\x6c\x64\x73\x22\x3a\x5b\x7b\x22\x6e\x61\x6d\x65\x22\x3a\x22\x73\x74\x61\x74\x69\x6f\x6e\x22\x2c\x22\x74\x79\x70\x65\x22\x3a\x22\x73\x74\x72\x69\x6e\x67\x22\x7d\x2c\x7b\x22\x6e\x61\x6d\x65\x22\x3a\x22\x74\x69\x6d\x65\x22\x2c\x22\x74\x79\x70\x65\x22\x3a\x22\x6c\x6f\x6e\x67\x22\x7d\x2c\x7b\x22\x6e\x61\x6d\x65\x22\x3a\x22\x74\x65\x6d\x70\x22\x2c\x22\x74\x79\x70\x65\x22\x3a\x22\x69\x6e\x74\x22\x7d\x5d\x2c\x22\x6e\x61\x6d\x65\x22\x3a\x22\x57\x65\x61\x74\x68\x65\x72\x22\x2c\x22\x6e\x61\x6d\x65\x73\x70\x61\x63\x65\x22\x3a\x22\x74\x65\x73\x74\x22\x2c\x22\x74\x79\x70\x65\x22\x3a\x22\x72\x65\x63\x6f\x72\x64\x22\x7d\x14\x61\x76\x72\x6f\x2e\x63\x6f\x64\x65\x63\x0c\x73\x6e\x61\x70\x70\x79\x00\x25\x6a\x41\x9b\xcd\xa5\x70\x74\x6a\x04\xfc\x4c\x20\xea\xc3\x5d\x0a\x90\x01\x66\x20\x18\x30\x31\x31\x39\x39\x30\x2d\x39\x01\x01\x18\xff\xa3\x90\xe8\x87\x24\x00\x36\x14\x00\x14\x81\xfb\xd6\x87\x24\x2c\x36\x14\x00\x2c\xa5\xae\xc2\x87\x24\x15\x18\x30\x31\x32\x36\x35\x11\x3c\x18\xb7\xa2\x8b\x94\x26\xde\x01\x36\x15\x00\x18\xdb\xd5\xf6\x93\x26\x9c\x01\x50\x58\xca\x11\x25\x6a\x41\x9b\xcd\xa5\x70\x74\x6a\x04\xfc\x4c\x20\xea\xc3\x5d"
-)
-
-func TestNewReaderBailsBadHeader(t *testing.T) {
-	_, err := NewReader(FromReader(new(bytes.Reader)))
-	checkError(t, err, "cannot read magic number")
-
-	bits := []byte("BAD\x01\x04\x14avro.codec\x16UNSUPPORTED\x16avro.schema\x0a\x22int\x22\x00\x21\x0f\xc7\xbb\x81\x86\x39\xac\x48\xa4\xc6\xaf\xa2\xf1\x58\x1a\x00\x00")
-	_, err = NewReader(FromReader(bytes.NewReader(bits)))
-	checkError(t, err, "invalid magic number")
-
-	bits = []byte("Obj\x01\x02")
-	_, err = NewReader(FromReader(bytes.NewReader(bits)))
-	checkError(t, err, "cannot read header metadata")
-
-	// unsupported codec
-	bits = []byte("Obj\x01\x04\x14avro.codec\x16UNSUPPORTED\x16avro.schema\x0a\x22int\x22\x00\x21\x0f\xc7\xbb\x81\x86\x39\xac\x48\xa4\xc6\xaf\xa2\xf1\x58\x1a\x00\x00")
-	_, err = NewReader(FromReader(bytes.NewReader(bits)))
-	checkError(t, err, "unsupported codec")
-
-	// missing schema
-	bits = []byte("Obj\x01\x02\x14avro.codec\x08null\x00\x21\x0f\xc7\xbb\x81\x86\x39\xac\x48\xa4\xc6\xaf\xa2\xf1\x58\x1a\x00\x00")
-	_, err = NewReader(FromReader(bytes.NewReader(bits)))
-	checkError(t, err, "header ought to have avro.schema key")
-
-	// schema that doesn't compile
-	bits = []byte("Obj\x01\x04\x14avro.codec\x08null\x16avro.schema\x0a\x22???\x22\x00\x21\x0f\xc7\xbb\x81\x86\x39\xac\x48\xa4\xc6\xaf\xa2\xf1\x58\x1a\x00\x00")
-	_, err = NewReader(FromReader(bytes.NewReader(bits)))
-	checkError(t, err, "cannot compile schema")
-
-	// missing sync marker
-	bits = []byte("Obj\x01\x04\x14avro.codec\x08null\x16avro.schema\x0a\x22int\x22\x00")
-	_, err = NewReader(FromReader(bytes.NewReader(bits)))
-	checkError(t, err, "cannot read sync marker")
+	_, err = goavro.NewOCFReader(bytes.NewBuffer([]byte("....")))
+	ensureError(t, err, "cannot create OCF")
 }
 
-func TestNewReaderDefaultsToNullCodec(t *testing.T) {
-	bits := []byte("Obj\x01\x02\x16avro.schema\x0a\x22int\x22\x00\x21\x0f\xc7\xbb\x81\x86\x39\xac\x48\xa4\xc6\xaf\xa2\xf1\x58\x1a\x00\x00")
-	fr, err := NewReader(FromReader(bytes.NewReader(bits)))
-	checkErrorFatal(t, err, nil)
-	if available := fr.Scan(); available {
-		t.Errorf("Actual: %#v; Expected: %#v", available, false)
-	}
-	if err = fr.Close(); err != nil {
-		t.Errorf("Actual: %#v; Expected: %#v", err, nil)
-	}
+//
+// cannot read OCF header
+//
+
+func testCannotReadOCFHeader(t *testing.T, input []byte, expected ...string) {
+	_, err := goavro.NewOCFReader(bytes.NewBuffer(append([]byte("Obj\x01"), input...)))
+	ensureError(t, err, append([]string{"cannot read OCF header"}, expected...)...)
 }
 
-func TestReaderScanShouldNotBlock(t *testing.T) {
-	bits := []byte("Obj\x01\x04\x14avro.codec\x08null\x16avro.schema\x0a\x22int\x22\x00\x21\x0f\xc7\xbb\x81\x86\x39\xac\x48\xa4\xc6\xaf\xa2\xf1\x58\x1a\x00\x00")
-	fr, err := NewReader(FromReader(bytes.NewReader(bits)))
-	checkErrorFatal(t, err, nil)
-	if available := fr.Scan(); available {
-		t.Errorf("Actual: %#v; Expected: %#v", available, false)
-	}
-	if err = fr.Close(); err != nil {
-		t.Errorf("Actual: %#v; Expected: %#v", err, nil)
-	}
+// readOCFHeader, metadataBinaryReader, block count
+
+func TestReadOCFHeaderMetadataBinaryReaderBlockCount(t *testing.T) {
+	testCannotReadOCFHeader(t, nil, "cannot read map block count", "EOF")
+	testCannotReadOCFHeader(t, mostNegativeBlockCount, "cannot read map with block count")
+	testCannotReadOCFHeader(t, []byte("\x01"), "cannot read map block size", "EOF")
+	testCannotReadOCFHeader(t, morePositiveThanMaxBlockCount, "cannot read map when block count exceeds")
 }
 
-func TestReadBlockCountAndSizeWithNothing(t *testing.T) {
-	bits := []byte("")
-	bc, bs, err := readBlockCountAndSize(bytes.NewReader(bits), longCodec())
-	if bc != 0 {
-		t.Errorf("Actual: %#v; Expected: %#v", bc, 0)
-	}
-	if bs != 0 {
-		t.Errorf("Actual: %#v; Expected: %#v", bs, 0)
-	}
-	if err != nil {
-		t.Errorf("Actual: %#v; Expected: %#v", err, nil)
-	}
+// readOCFHeader, metadataBinaryReader, bytesBinaryReader
+
+func TestReadOCFHeaderMetadataBinaryReaderMapKey(t *testing.T) {
+	testCannotReadOCFHeader(t, []byte("\x02"), "cannot read map key", "cannot read bytes", "cannot read size", "EOF")
+	testCannotReadOCFHeader(t, []byte("\x02\x01"), "cannot read map key", "cannot read bytes", "size is negative")
+	testCannotReadOCFHeader(t, append([]byte("\x02"), morePositiveThanMaxBlockCount...), "cannot read map key", "cannot read bytes", "size exceeds MaxBlockSize")
+	testCannotReadOCFHeader(t, append([]byte("\x02"), mostNegativeBlockCount...), "cannot read map key", "cannot read bytes", "size is negative")
+	testCannotReadOCFHeader(t, append([]byte("\x02"), moreNegativeThanMaxBlockCount...), "cannot read map key", "cannot read bytes", "size is negative")
+	testCannotReadOCFHeader(t, []byte("\x02\x02"), "cannot read map key", "cannot read bytes", "EOF")
+	testCannotReadOCFHeader(t, []byte("\x02\x04k1\x04v1\x02\x04k1"), "cannot read map", "duplicate key")
+	testCannotReadOCFHeader(t, []byte("\x04\x04k1\x04v1\x04k1"), "cannot read map", "duplicate key")
 }
 
-func TestFileReadNullCodecBs1(t *testing.T) {
-	fr, err := NewReader(FromReader(bytes.NewReader([]byte(nullCodecSample))))
-	checkErrorFatal(t, err, nil)
-	testFileReader(t, fr)
+func TestReadOCFHeaderMetadataBinaryReaderMapValue(t *testing.T) {
+	testCannotReadOCFHeader(t, []byte("\x02\x04k1"), "cannot read map value for key", "cannot read bytes", "EOF")
+	// have already tested all other binaryBytesReader errors above
+	testCannotReadOCFHeader(t, []byte("\x02\x04k1\x04v1"), "cannot read map block count", "EOF")
+	testCannotReadOCFHeader(t, append([]byte("\x02\x04k1\x04v1"), mostNegativeBlockCount...), "cannot read map with block count")
+	testCannotReadOCFHeader(t, []byte("\x02\x04k1\x04v1"), "cannot read map block count", "EOF")
+	testCannotReadOCFHeader(t, []byte("\x02\x04k1\x04v1\x01"), "cannot read map block size", "EOF")
+	testCannotReadOCFHeader(t, append(append([]byte("\x02\x04k1\x04v1"), moreNegativeThanMaxBlockCount...), []byte("\x02")...), "cannot read map when block count exceeds")
+	testCannotReadOCFHeader(t, append([]byte("\x02\x04k1\x04v1"), morePositiveThanMaxBlockCount...), "cannot read map when block count exceeds")
 }
 
-func TestFileReadNullCodecBs2(t *testing.T) {
-	fr, err := NewReader(FromReader(bytes.NewReader([]byte(nullCodecSampleBs2))))
-	checkErrorFatal(t, err, nil)
-	testFileReader(t, fr)
+// readOCFHeader, avro.codec
+
+func TestReadOCFHeaderMetadataAvroCodecUnknown(t *testing.T) {
+	testCannotReadOCFHeader(t, []byte("\x02\x14avro.codec\x06bad\x00"), "cannot read OCF header", "unrecognized compression", "bad")
 }
 
-func TestFileReadNullCodecShortRead(t *testing.T) {
-	// Simulate short read by using a reader that read one byte at a time
-	fr, err := NewReader(FromReader(&shortReader{bytes.NewReader([]byte(nullCodecSample))}))
-	checkErrorFatal(t, err, nil)
-	testFileReader(t, fr)
+// readOCFHeader, avro.schema
+
+func TestReadOCFHeaderMetadataAvroSchemaMissing(t *testing.T) {
+	testCannotReadOCFHeader(t, []byte("\x00"), "without avro.schema")
+	testCannotReadOCFHeader(t, []byte("\x02\x16avro.schema\x04{}\x00"), "invalid avro.schema")
 }
 
-func TestFileReadDeflateCodec(t *testing.T) {
-	fr, err := NewReader(FromReader(bytes.NewReader([]byte(deflateCodecSample))))
-	checkErrorFatal(t, err, nil)
-	testFileReader(t, fr)
+// readOCFHeader, sync marker
+
+func TestReadOCFHeaderMetadataSyncMarker(t *testing.T) {
+	testCannotReadOCFHeader(t, []byte("\x02\x16avro.schema\x1e{\"type\":\"null\"}\x00"), "sync marker", "EOF")
 }
 
-func TestFileReadSnappyCodec(t *testing.T) {
-	fr, err := NewReader(FromReader(bytes.NewReader([]byte(snappyCodecSample))))
-	checkErrorFatal(t, err, nil)
-	testFileReader(t, fr)
-}
+// TODO: writeOCFHeader
 
-func TestFileReadNullCodecPrematureEOF(t *testing.T) {
-	//              Obj       +-map(2 entries)----------------------------------------+                                                       blockCount(1)   blockSize(2)
-	//              |     01  |     avro.codec:null       avro.schema:------"int"     |   +-sync[16]--------------------------------------------------+   |   |   serialized objects (should be 2 bytes)
-	//              |     |   |    /               \     /                       \    |   |                                                           |   |   |   |
-	bits := []byte("Obj\x01\x04\x14avro.codec\x08null\x16avro.schema\x0a\x22int\x22\x00\x21\x0f\xc7\xbb\x81\x86\x39\xac\x48\xa4\xc6\xaf\xa2\xf1\x58\x1a\x02\x04\x00")
-	fr, err := NewReader(FromReader(bytes.NewReader(bits)))
-	checkErrorFatal(t, err, nil)
-	if available := fr.Scan(); available {
-		t.Errorf("Actual: %#v; Expected: %#v", available, false)
-	}
-	err = fr.Close()
-	// Read only 1 byte, expected 2
-	checkError(t, err, "cannot read block: unexpected EOF")
-}
+//
+// OCFReader
+//
 
-func TestFileReadSnappyCodecCorruptedBlock(t *testing.T) {
-	//                                                                                                                                                          blockSize(1)
-	//              Obj       +-map(2 entries)------------------------------------------+                                                       blockCount(1)   |   serialized objects (should be > 4 bytes with Snappy)
-	//              |     01  |     avro.codec:snappy       avro.schema:------"int"     |   +-sync[16]--------------------------------------------------+   |   |   |   +-sync[16]--------------------------------------------------+
-	//              |     |   |    /                 \     /                       \    |   |                                                           |   |   |   |   |                                                           |
-	bits := []byte("Obj\x01\x04\x14avro.codec\x0Csnappy\x16avro.schema\x0a\x22int\x22\x00\x21\x0f\xc7\xbb\x81\x86\x39\xac\x48\xa4\xc6\xaf\xa2\xf1\x58\x1a\x02\x02\x00\x21\x0f\xc7\xbb\x81\x86\x39\xac\x48\xa4\xc6\xaf\xa2\xf1\x58\x1a")
-	fr, err := NewReader(FromReader(bytes.NewReader(bits)))
-	checkErrorFatal(t, err, nil)
-	if available := fr.Scan(); !available {
-		t.Errorf("Actual: %#v; Expected: %#v", available, false)
-	}
-	_, err = fr.Read()
-	// Found a block size of 1 byte but expected at least 4
-	checkError(t, err, "too small of a block (1 bytes)")
-	if available := fr.Scan(); available {
-		t.Errorf("Actual: %#v; Expected: %#v", available, false)
-	}
-	err = fr.Close()
-	checkError(t, err, nil)
-}
+// func testOCFReader(t *testing.T, schema string, input []byte, expected ...string) {
+// 	_, err := goavro.NewOCFReader(bytes.NewBuffer(append([]byte("Obj\x01"), input...)))
+// 	ensureError(t, err, append([]string{"any prefix?"}, expected...)...)
+// }
 
-func testFileReader(t *testing.T, fr *Reader) {
-	defer func() {
-		if err := fr.Close(); err != nil {
-			t.Fatal(err)
-		}
-	}()
-	var count int
-	for fr.Scan() {
-		datum, err := fr.Read()
-		if err != nil {
-			t.Errorf("Actual: %#v; Expected: %#v", err, nil)
-		}
-		_, ok := datum.(*Record)
-		if !ok {
-			t.Errorf("Actual: %T; Expected: *Record", datum)
-		}
-		count++
-	}
-	if want := 5; count != want {
-		t.Errorf("Actual: %#v; Expected: %#v", count, want)
-	}
-}
-
-type shortReader struct {
-	r io.Reader
-}
-
-func (obr *shortReader) Read(p []byte) (int, error) {
-	// Read up to 1 byte at a time
-	return obr.r.Read(p[:1])
-}
+// func TestOCFReaderRead(t *testing.T) {
+// 	testOCFReader(t,
+// }

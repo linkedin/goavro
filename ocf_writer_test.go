@@ -1,192 +1,297 @@
-// Copyright 2015 LinkedIn Corp. Licensed under the Apache License,
-// Version 2.0 (the "License"); you may not use this file except in
-// compliance with the License.  You may obtain a copy of the License
-// at http://www.apache.org/licenses/LICENSE-2.0
+// Copyright [2017] LinkedIn Corp. Licensed under the Apache License, Version
+// 2.0 (the "License"); you may not use this file except in compliance with the
+// License.  You may obtain a copy of the License at
+// http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
-//  distributed under the License is distributed on an "AS IS" BASIS,
-//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-// implied.Copyright [201X] LinkedIn Corp. Licensed under the Apache
-// License, Version 2.0 (the "License"); you may not use this file
-// except in compliance with the License.  You may obtain a copy of
-// the License at http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-//  distributed under the License is distributed on an "AS IS" BASIS,
-//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-// implied.
+// distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+// WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
-package goavro
+package goavro_test
 
 import (
 	"bytes"
 	"io"
+	"os"
 	"testing"
+
+	"github.com/linkedin/goavro"
 )
 
-var defaultSync []byte
-
-func init() {
-	defaultSync = []byte("\x21\x0f\xc7\xbb\x81\x86\x39\xac\x48\xa4\xc6\xaf\xa2\xf1\x58\x1a")
-}
-
-func TestNewWriterBailsUnsupportedCodec(t *testing.T) {
-	var err error
-	_, err = NewWriter(ToWriter(new(bytes.Buffer)), Compression(""))
-	checkError(t, err, "unsupported codec")
-
-	_, err = NewWriter(ToWriter(new(bytes.Buffer)), Compression("ficticious test codec name"))
-	checkError(t, err, "unsupported codec")
-}
-
-func TestNewWriterBailsMissingWriterSchema(t *testing.T) {
-	var err error
-	_, err = NewWriter(ToWriter(new(bytes.Buffer)))
-	checkError(t, err, "missing schema")
-
-	_, err = NewWriter(ToWriter(new(bytes.Buffer)), Compression(CompressionNull))
-	checkError(t, err, "missing schema")
-
-	_, err = NewWriter(ToWriter(new(bytes.Buffer)), Compression(CompressionDeflate))
-	checkError(t, err, "missing schema")
-
-	_, err = NewWriter(ToWriter(new(bytes.Buffer)), Compression(CompressionSnappy))
-	checkError(t, err, "missing schema")
-}
-
-func TestNewWriterBailsInvalidWriterSchema(t *testing.T) {
-	_, err := NewWriter(WriterSchema("this should not compile"))
-	checkError(t, err, "cannot parse schema")
-}
-
-func TestNewWriterBailsBadSync(t *testing.T) {
-	_, err := NewWriter(WriterSchema(`"int"`), Sync(make([]byte, 0)))
-	checkError(t, err, "sync marker ought to be 16 bytes long")
-
-	_, err = NewWriter(WriterSchema(`"int"`), Sync(make([]byte, syncLength-1)))
-	checkError(t, err, "sync marker ought to be 16 bytes long")
-
-	_, err = NewWriter(WriterSchema(`"int"`), Sync(make([]byte, syncLength+1)))
-	checkError(t, err, "sync marker ought to be 16 bytes long")
-}
-
-func TestNewWriterCreatesRandomSync(t *testing.T) {
-	bb := new(bytes.Buffer)
-	func(w io.Writer) {
-		fw, err := NewWriter(ToWriter(w), WriterSchema(`"int"`))
-		if err != nil {
-			t.Fatalf("Actual: %#v; Expected: %#v", err, nil)
-		}
-		defer fw.Close()
-	}(bb)
-
-	notExpected := []byte("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00")
-	actual := bb.Bytes()
-	actual = actual[len(actual)-syncLength:]
-	if bytes.Compare(actual, notExpected) == 0 {
-		t.Errorf("Actual: %#v; Expected: some non-zero value bits", actual)
+// createTestFile is used to create a new test file fixture with provided data
+func createTestFile(t *testing.T, pathname string, data []byte) {
+	nf, err := os.Create(pathname)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = nf.Write(data); err != nil {
+		t.Fatal(err)
+	}
+	if err = nf.Close(); err != nil {
+		t.Fatal(err)
 	}
 }
 
-func TestWriteHeaderCustomSync(t *testing.T) {
-	bb := new(bytes.Buffer)
-	func(w io.Writer) {
-		fw, err := NewWriter(ToWriter(w), WriterSchema(`"int"`), Sync(defaultSync))
-		if err != nil {
-			t.Fatalf("Actual: %#v; Expected: %#v", err, nil)
+// NOTE: already tested readOCFHeader
+
+func TestNewOCFWriterWhenNotFileNewOCFHeader(t *testing.T) {
+	// when config.W nil
+	_, err := goavro.NewOCFWriter(goavro.OCFConfig{})
+	ensureError(t, err, "cannot create OCFWriter", "when W is nil")
+
+	// when config.CompressionName invalid
+	_, err = goavro.NewOCFWriter(goavro.OCFConfig{W: new(bytes.Buffer), CompressionName: "*invalid*compression*algorithm*"})
+	ensureError(t, err, "cannot create OCFWriter", "unrecognized compression algorithm")
+
+	// when config.Schema doesn't compile
+	_, err = goavro.NewOCFWriter(goavro.OCFConfig{W: new(bytes.Buffer), CompressionName: "null", Schema: "invalid-schema"})
+	ensureError(t, err, "cannot create OCFWriter", "cannot unmarshal schema")
+
+	_, err = goavro.NewOCFWriter(goavro.OCFConfig{W: new(bytes.Buffer), CompressionName: "null", Schema: `{}`})
+	ensureError(t, err, "cannot create OCFWriter", "missing type")
+
+	_, err = goavro.NewOCFWriter(goavro.OCFConfig{W: new(bytes.Buffer), CompressionName: "null"})
+	ensureError(t, err, "cannot create OCFWriter", "without either Codec or Schema specified")
+}
+
+func TestNewOCFWriterWhenNotFileWriteOCFHeader(t *testing.T) {
+	_, err := goavro.NewOCFWriter(goavro.OCFConfig{
+		W:               ShortWriter(new(bytes.Buffer), 3),
+		CompressionName: "null",
+		Schema:          `{"type":"int"}`},
+	)
+	ensureError(t, err, "cannot write OCF header", "short write")
+}
+
+func TestNewOCFWriterWhenFileEmpty(t *testing.T) {
+	// NOTE: When given an empty file, NewOCFWriter ought to behave exactly as
+	// if it's merely given an non-file io.Writer.
+	fh, err := os.OpenFile("fixtures/temp0.avro", os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0666)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = goavro.NewOCFWriter(goavro.OCFConfig{
+		W:               fh,
+		CompressionName: "*invalid*",
+		Schema:          `{"type":"int"}`},
+	)
+	ensureError(t, err, "cannot create OCFWriter", "unrecognized compression algorithm")
+}
+
+func TestNewOCFWriterWhenFileNotEmptyWhenCannotReadOCFHeader(t *testing.T) {
+	fh, err := os.Open("fixtures/bad-header.avro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = goavro.NewOCFWriter(goavro.OCFConfig{
+		W:               fh,
+		CompressionName: "*invalid*",
+		Schema:          `{"type":"int"}`},
+	)
+	ensureError(t, err, "cannot create OCFWriter", "cannot read OCF header")
+}
+
+func testNewOCFWriterWhenFile(t *testing.T, pathname string, expected ...string) {
+	fh, err := os.Open(pathname)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := fh.Close(); err != nil {
+			t.Fatal(err)
 		}
-		fw.Close()
-	}(bb)
+	}()
+	_, err = goavro.NewOCFWriter(goavro.OCFConfig{W: fh})
+	ensureError(t, err, append([]string{"cannot create OCFWriter"}, expected...)...)
+}
 
-	expected := []byte("Obj\x01\x02\x16avro.schema\x0a\x22int\x22\x00\x21\x0f\xc7\xbb\x81\x86\x39\xac\x48\xa4\xc6\xaf\xa2\xf1\x58\x1a")
+func TestNewOCFWriterWhenFileNotEmptyWhenCannotQuickScanToTail(t *testing.T) {
+	testNewOCFWriterWhenFile(t, "fixtures/firstBlockCountNotGreaterThanZero.avro", "block count is not greater")
+	testNewOCFWriterWhenFile(t, "fixtures/blockCountExceedsMaxBlockCount.avro", "block count exceeds")
+	testNewOCFWriterWhenFile(t, "fixtures/cannotReadBlockSize.avro", "cannot read block size")
+	testNewOCFWriterWhenFile(t, "fixtures/blockSizeNotGreaterThanZero.avro", "block size is not greater than 0")
+	testNewOCFWriterWhenFile(t, "fixtures/blockSizeExceedsMaxBlockSize.avro", "block size exceeds")
+	testNewOCFWriterWhenFile(t, "fixtures/cannotDiscardBlockBytes.avro", "cannot seek to next block", "EOF")
+	testNewOCFWriterWhenFile(t, "fixtures/cannotReadSyncMarker.avro", "cannot read sync marker", "EOF")
+	testNewOCFWriterWhenFile(t, "fixtures/syncMarkerMismatch.avro", "sync marker mismatch")
+	testNewOCFWriterWhenFile(t, "fixtures/secondBlockCountZero.avro", "block count is not greater")
+}
 
-	actual := bb.Bytes()
-	if !bytes.Equal(actual, expected) {
-		t.Errorf("Actual: %#v; Expected: %#v", actual, expected)
+func TestNewOCFWriterWhenFileNotEmptyWhenProvidedDifferentCompressionAndSchema(t *testing.T) {
+	createTestFile(t, "fixtures/temp1.avro", []byte("Obj\x01\x04\x14avro.codec\x0edeflate\x16avro.schema\x1e{\"type\":\"long\"}\x000123456789abcdef\x02\x04ab0123456789abcdef"))
+	fh, err := os.Open("fixtures/temp1.avro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := fh.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	ocfw, err := goavro.NewOCFWriter(goavro.OCFConfig{
+		W:               fh,
+		Schema:          `{"type":"int"}`,
+		CompressionName: "null",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if actual, expected := ocfw.Codec().Schema(), `{"type":"long"}`; actual != expected {
+		t.Errorf("Actual: %v; Expected: %v", actual, expected)
+	}
+	if actual, expected := ocfw.CompressionName(), goavro.CompressionDeflateLabel; actual != expected {
+		t.Errorf("Actual: %v; Expected: %v", actual, expected)
 	}
 }
 
-func TestWriteWithNullCodec(t *testing.T) {
-	bb := new(bytes.Buffer)
-	func(w io.Writer) {
-		fw, err := NewWriter(BufferToWriter(w), WriterSchema(`"int"`), Sync(defaultSync))
-		if err != nil {
-			t.Fatalf("Actual: %#v; Expected: %#v", err, nil)
+func TestOCFWriterAppendWhenCannotWrite(t *testing.T) {
+	testPathname := "fixtures/temp2.avro"
+	createTestFile(t, testPathname, []byte("Obj\x01\x02\x16avro.schema\x1e{\"type\":\"long\"}\x000123456789abcdef"))
+	appender, err := os.OpenFile(testPathname, os.O_RDONLY, 0666) // open for read only will cause expected error when attempt to append
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func(ioc io.Closer) {
+		if err := ioc.Close(); err != nil {
+			t.Fatal(err)
 		}
-		defer fw.Close()
-		fw.Write(int32(13))
-		fw.Write(int32(42))
-		fw.Write(int32(54))
-		fw.Write(int32(99))
-	}(bb)
-	t.Logf("bb: %+v", bb.Bytes())
+	}(appender)
 
-	expected := []byte("Obj\x01\x02\x16avro.schema\x0a\x22int\x22\x00" + string(defaultSync) + "\x08\x0a\x1a\x54\x6c\xc6\x01" + string(defaultSync))
+	ocfw, err := goavro.NewOCFWriter(goavro.OCFConfig{W: appender})
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	actual := bb.Bytes()
-	if !bytes.Equal(actual, expected) {
-		t.Errorf("Actual: %#v; Expected: %#v", actual, expected)
+	err = ocfw.Append([]interface{}{13, 42})
+	ensureError(t, err, "bad file descriptor")
+}
+
+func TestOCFWriterAppendSomeItemsToNothing(t *testing.T) {
+	testPathname := "fixtures/temp3.avro"
+	createTestFile(t, testPathname, []byte("Obj\x01\x02\x16avro.schema\x1e{\"type\":\"long\"}\x000123456789abcdef"))
+	appender, err := os.OpenFile(testPathname, os.O_RDWR, 0666)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func(ioc io.Closer) {
+		if err := ioc.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}(appender)
+
+	ocfw, err := goavro.NewOCFWriter(goavro.OCFConfig{W: appender})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err = ocfw.Append([]interface{}{13, 42}); err != nil {
+		t.Fatal(err)
+	}
+
+	// let's make sure data is there
+	reader, err := os.Open(testPathname)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func(ioc io.Closer) {
+		if err := ioc.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}(reader)
+
+	ocfr, err := goavro.NewOCFReader(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var values []int64
+	for ocfr.Scan() {
+		value, err := ocfr.Read()
+		if err != nil {
+			t.Fatal(err)
+		}
+		values = append(values, value.(int64))
+	}
+	if err := ocfr.Err(); err != nil {
+		t.Fatal(err)
+	}
+
+	if actual, expected := len(values), 2; actual != expected {
+		t.Errorf("Actual: %v; Expected: %v", actual, expected)
+	}
+	if actual, expected := values[0], int64(13); actual != expected {
+		t.Errorf("Actual: %v; Expected: %v", actual, expected)
+	}
+	if actual, expected := values[1], int64(42); actual != expected {
+		t.Errorf("Actual: %v; Expected: %v", actual, expected)
 	}
 }
 
-func TestWriteWithDeflateCodec(t *testing.T) {
-	bb := new(bytes.Buffer)
-	func(w io.Writer) {
-		fw, err := NewWriter(
-			BlockSize(2),
-			Compression(CompressionDeflate),
-			WriterSchema(`"int"`),
-			Sync(defaultSync),
-			ToWriter(w))
-		if err != nil {
-			t.Fatalf("Actual: %#v; Expected: %#v", err, nil)
-		}
-		defer fw.Close()
-		fw.Write(int32(13))
-		fw.Write(int32(42))
-		fw.Write(int32(54))
-		fw.Write(int32(99))
-	}(bb)
-
-	// NOTE: because key value pair ordering is indeterminate,
-	// there are two valid possibilities for the encoded map:
-	compressed := "\x04\x10\x92\x0a\x01\x04\x00\x00\xff\xff\x21\x0f\xc7\xbb\x81\x86\x39\xac\x48\xa4\xc6\xaf\xa2\xf1\x58\x1a\x04\x12\xca\x39\xc6\x08\x08\x00\x00\xff\xff"
-	option1 := []byte("Obj\x01\x04\x14avro.codec\x0edeflate\x16avro.schema\x0a\x22int\x22\x00" + string(defaultSync) + compressed + string(defaultSync))
-	option2 := []byte("Obj\x01\x04\x16avro.schema\x0a\x22int\x22\x14avro.codec\x0edeflate\x00" + string(defaultSync) + compressed + string(defaultSync))
-
-	actual := bb.Bytes()
-	if !bytes.Equal(actual, option1) && !bytes.Equal(actual, option2) {
-		t.Errorf("Actual: %#v; Expected: %#v", actual, option1)
+func TestOCFWriterAppendSomeItemsToSomeItems(t *testing.T) {
+	testPathname := "fixtures/temp4.avro"
+	createTestFile(t, testPathname, []byte("Obj\x01\x02\x16avro.schema\x1e{\"type\":\"long\"}\x000123456789abcdef\x04\x04\x1a\x540123456789abcdef"))
+	appender, err := os.OpenFile(testPathname, os.O_RDWR, 0666)
+	if err != nil {
+		t.Fatal(err)
 	}
-}
-
-func TestWriteWithSnappyCodec(t *testing.T) {
-	bb := new(bytes.Buffer)
-	func(w io.Writer) {
-		fw, err := NewWriter(
-			BlockSize(2),
-			Compression(CompressionSnappy),
-			WriterSchema(`"int"`),
-			Sync(defaultSync),
-			ToWriter(w))
-		if err != nil {
-			t.Fatalf("Actual: %#v; Expected: %#v", err, nil)
+	defer func(ioc io.Closer) {
+		if err := ioc.Close(); err != nil {
+			t.Fatal(err)
 		}
-		defer fw.Close()
-		fw.Write(int32(13))
-		fw.Write(int32(42))
-		fw.Write(int32(54))
-		fw.Write(int32(99))
-	}(bb)
+	}(appender)
 
-	// NOTE: because key value pair ordering is indeterminate,
-	// there are two valid possibilities for the encoded map:
-	compressed := "\x04\x10\x02\x04\x1aT\x9d\xf2}\xc9!\x0fǻ\x81\x869\xacH\xa4Ư\xa2\xf1X\x1a\x04\x12\x03\bl\xc6\x01T+\xab\b"
-	option1 := []byte("Obj\x01\x04\x16avro.schema\x0a\x22int\x22\x14avro.codec\x0csnappy\x00" + string(defaultSync) + compressed + string(defaultSync))
-	option2 := []byte("Obj\x01\x04\x14avro.codec\x0csnappy\x16avro.schema\x0a\x22int\x22\x00" + string(defaultSync) + compressed + string(defaultSync))
+	ocfw, err := goavro.NewOCFWriter(goavro.OCFConfig{W: appender})
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	actual := bb.Bytes()
-	if !bytes.Equal(actual, option1) && !bytes.Equal(actual, option2) {
-		t.Errorf("Actual: %q; Expected: %q", actual, option1)
+	if err = ocfw.Append([]interface{}{-10, -100}); err != nil {
+		t.Fatal(err)
+	}
+
+	// let's make sure data is there
+	reader, err := os.Open(testPathname)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func(ioc io.Closer) {
+		if err := ioc.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}(reader)
+
+	ocfr, err := goavro.NewOCFReader(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var values []int64
+	for ocfr.Scan() {
+		value, err := ocfr.Read()
+		if err != nil {
+			t.Fatal(err)
+		}
+		values = append(values, value.(int64))
+	}
+	if err := ocfr.Err(); err != nil {
+		t.Fatal(err)
+	}
+
+	if actual, expected := len(values), 4; actual != expected {
+		t.Fatalf("Actual: %v; Expected: %v", actual, expected)
+	}
+	if actual, expected := values[0], int64(13); actual != expected {
+		t.Errorf("Actual: %v; Expected: %v", actual, expected)
+	}
+	if actual, expected := values[1], int64(42); actual != expected {
+		t.Errorf("Actual: %v; Expected: %v", actual, expected)
+	}
+	if actual, expected := values[2], int64(-10); actual != expected {
+		t.Errorf("Actual: %v; Expected: %v", actual, expected)
+	}
+	if actual, expected := values[3], int64(-100); actual != expected {
+		t.Errorf("Actual: %v; Expected: %v", actual, expected)
 	}
 }

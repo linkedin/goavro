@@ -1,400 +1,180 @@
-// Copyright 2015 LinkedIn Corp. Licensed under the Apache License,
-// Version 2.0 (the "License"); you may not use this file except in
-// compliance with the License.  You may obtain a copy of the License
-// at http://www.apache.org/licenses/LICENSE-2.0
+// Copyright [2017] LinkedIn Corp. Licensed under the Apache License, Version
+// 2.0 (the "License"); you may not use this file except in compliance with the
+// License.  You may obtain a copy of the License at
+// http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
-//  distributed under the License is distributed on an "AS IS" BASIS,
-//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-// implied.Copyright [201X] LinkedIn Corp. Licensed under the Apache
-// License, Version 2.0 (the "License"); you may not use this file
-// except in compliance with the License.  You may obtain a copy of
-// the License at http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-//  distributed under the License is distributed on an "AS IS" BASIS,
-//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-// implied.
+// distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+// WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
 package goavro
 
 import (
-	"encoding/json"
 	"fmt"
-	"strings"
 )
 
-// ErrNoSuchField is returned when attempt to Get a field that does not exist in a Record.
-type ErrNoSuchField struct {
-	field, path string
-}
-
-// Error returns the string representation of an ErrNoSuchField error.
-func (e ErrNoSuchField) Error() string {
-	if e.path != "" {
-		return fmt.Sprintf("no such field: %q in %q", e.field, e.path)
-	}
-	return fmt.Sprintf("no such field: %q", e.field)
-}
-
-// Record is an abstract data type used to hold data corresponding to
-// an Avro record. Wherever an Avro schema specifies a record, this
-// library's Decode method will return a Record initialized to the
-// record's values read from the io.Reader. Likewise, when using
-// Encode to convert data to an Avro record, it is necessary to create
-// and send a Record instance to the Encode method.
-type Record struct {
-	Name      string
-	Fields    []*recordField
-	aliases   []string
-	doc       string
-	n         *name
-	ens       string
-	schemaMap map[string]interface{}
-	pedantic  bool
-}
-
-func (r Record) getField(fieldName string) (*recordField, error) {
-	for _, field := range r.Fields {
-		if field.Name == fieldName {
-			return field, nil
-		}
-	}
-	return nil, ErrNoSuchField{field: fieldName}
-}
-
-// GetQualified returns the datum of the specified Record field, without attempting to qualify the name
-func (r Record) GetQualified(qualifiedName string) (interface{}, error) {
-	field, err := r.getField(qualifiedName)
+func makeRecordCodec(st map[string]*Codec, enclosingNamespace string, schemaMap map[string]interface{}) (*Codec, error) {
+	// NOTE: To support recursive data types, create the codec and register it
+	// using the specified name, and fill in the codec functions later.
+	c, err := registerNewCodec(st, schemaMap, enclosingNamespace)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Record ought to have valid name: %s", err)
 	}
-	return field.Datum, nil
-}
 
-// Get returns the datum of the specified Record field.
-func (r Record) Get(fieldName string) (interface{}, error) {
-	// qualify fieldName searches based on record namespace
-	fn, err := newName(nameName(fieldName), nameNamespace(r.n.ns))
-	if err != nil {
-		return nil, err
-	}
-	return r.GetQualified(fn.n)
-}
-
-// GetFieldSchema returns the schema of the specified Record field.
-func (r Record) GetFieldSchema(fieldName string) (interface{}, error) {
-	// qualify fieldName searches based on record namespace
-	fn, err := newName(nameName(fieldName), nameNamespace(r.n.ns))
-	if err != nil {
-		return nil, err
-	}
-	field, err := r.getField(fn.n)
-	if err != nil {
-		return nil, err
-	}
-	return field.schema, nil
-}
-
-// SetQualified updates the datum of the specified Record field, without attempting to qualify the name
-func (r Record) SetQualified(qualifiedName string, value interface{}) error {
-	field, err := r.getField(qualifiedName)
-	if err != nil {
-		return err
-	}
-	field.Datum = value
-	return nil
-}
-
-// Set updates the datum of the specified Record field.
-func (r Record) Set(fieldName string, value interface{}) error {
-	// qualify fieldName searches based on record namespace
-	fn, err := newName(nameName(fieldName), nameNamespace(r.n.ns))
-	if err != nil {
-		return err
-	}
-	return r.SetQualified(fn.n, value)
-}
-
-// String returns a string representation of the Record.
-func (r Record) String() string {
-	fields := make([]string, len(r.Fields))
-	for idx, f := range r.Fields {
-		fields[idx] = fmt.Sprintf("%v", f)
-	}
-	return fmt.Sprintf("{%s: [%v]}", r.Name, strings.Join(fields, ", "))
-}
-
-// NewRecord will create a Record instance corresponding to the
-// specified schema.
-//
-//    func recordExample(codec goavro.Codec, w io.Writer, recordSchema string) error {
-//         // To encode a Record, you need to instantiate a Record instance
-//         // that adheres to the schema the Encoder expect.
-//         someRecord, err := goavro.NewRecord(goavro.RecordSchema(recordSchema))
-//         if err != nil {
-//             return err
-//         }
-//         // Once you have a Record, you can set the values of the various fields.
-//         someRecord.Set("username", "Aquaman")
-//         someRecord.Set("comment", "The Atlantic is oddly cold this morning!")
-//         // Feel free to fully qualify the field name if you'd like
-//         someRecord.Set("com.example.timestamp", int64(1082196484))
-//
-//         // Once the fields of the Record have the correct data, you can encode it
-//         err = codec.Encode(w, someRecord)
-//         return err
-//     }
-func NewRecord(setters ...RecordSetter) (*Record, error) {
-	record := &Record{n: &name{}}
-	for _, setter := range setters {
-		err := setter(record)
-		if err != nil {
-			return nil, err
-		}
-	}
-	if record.schemaMap == nil {
-		return nil, newCodecBuildError("record", "no schema defined")
-	}
-	var err error
-	record.n, err = newName(nameSchema(record.schemaMap), nameEnclosingNamespace(record.ens))
-	if err != nil {
-		return nil, newCodecBuildError("record", err)
-	}
-	record.Name = record.n.n
-	ns := record.n.namespace()
-
-	val, ok := record.schemaMap["fields"]
+	fields, ok := schemaMap["fields"]
 	if !ok {
-		return nil, newCodecBuildError("record", "record requires one or more fields")
+		return nil, fmt.Errorf("Record %q ought to have fields key", c.typeName)
 	}
-	fields, ok := val.([]interface{})
-	if !ok || (len(fields) == 0 && record.pedantic) {
-		return nil, newCodecBuildError("record", "record fields ought to be non-empty array")
+	fieldSchemas, ok := fields.([]interface{})
+	if !ok || len(fieldSchemas) == 0 {
+		return nil, fmt.Errorf("Record %q fields ought to be non-empty array: %v", c.typeName, fields)
 	}
 
-	record.Fields = make([]*recordField, len(fields))
-	for i, field := range fields {
-		rf, err := newRecordField(field, recordFieldEnclosingNamespace(ns))
+	codecFromFieldName := make(map[string]*Codec)
+	codecFromIndex := make([]*Codec, len(fieldSchemas))
+	nameFromIndex := make([]string, len(fieldSchemas))
+	defaultValueFromName := make(map[string]interface{}, len(fieldSchemas))
+
+	for i, fieldSchema := range fieldSchemas {
+		fieldSchemaMap, ok := fieldSchema.(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("Record %q field %d ought to be valid Avro named type; received: %v", c.typeName, i+1, fieldSchema)
+		}
+
+		// NOTE: field names are not registered in the symbol table, because
+		// field names are not individually addressable codecs.
+
+		fieldCodec, err := buildCodecForTypeDescribedByMap(st, c.typeName.namespace, fieldSchemaMap)
 		if err != nil {
-			return nil, newCodecBuildError("record", err)
+			return nil, fmt.Errorf("Record %q field %d ought to be valid Avro named type: %s", c.typeName, i+1, err)
 		}
-		record.Fields[i] = rf
-	}
 
-	// fields optional to the avro spec
-
-	if val, ok = record.schemaMap["doc"]; ok {
-		record.doc, ok = val.(string)
-		if !ok {
-			return nil, newCodecBuildError("record", "doc ought to be string")
-		}
-	}
-	if val, ok = record.schemaMap["aliases"]; ok {
-		record.aliases, ok = val.([]string)
-		if !ok {
-			return nil, newCodecBuildError("record", "aliases ought to be array of strings")
-		}
-	}
-	record.schemaMap = nil
-	return record, nil
-}
-
-// RecordSetter functions are those those which are used to
-// instantiate a new Record.
-type RecordSetter func(*Record) error
-
-// recordSchemaRaw specifies the schema of the record to create. Schema
-// must be `map[string]interface{}`.
-func recordSchemaRaw(schema interface{}) RecordSetter {
-	return func(r *Record) error {
-		var ok bool
-		r.schemaMap, ok = schema.(map[string]interface{})
-		if !ok {
-			return newCodecBuildError("record", "expected: map[string]interface{}; received: %T", schema)
-		}
-		return nil
-	}
-}
-
-// RecordPedantic specifies pedantic handling, and will cause NewRecord to signal an error if
-// various harmless schema violations occur.
-func RecordPedantic() RecordSetter {
-	return func(r *Record) error {
-		r.pedantic = true
-		return nil
-	}
-}
-
-// RecordSchema specifies the schema of the record to
-// create. Schema must be a JSON string.
-func RecordSchema(recordSchemaJSON string) RecordSetter {
-	var schema map[string]interface{}
-	err := json.Unmarshal([]byte(recordSchemaJSON), &schema)
-	if err != nil {
-		err = newCodecBuildError("record", err)
-	}
-
-	return func(r *Record) error {
-		if err == nil {
-			r.schemaMap = schema
-		}
-		return err
-	}
-}
-
-// RecordEnclosingNamespace specifies the enclosing namespace of the
-// record to create. For instance, if the enclosing namespace is
-// `com.example`, and the record name is `Foo`, then the full record
-// name will be `com.example.Foo`.
-func RecordEnclosingNamespace(someNamespace string) RecordSetter {
-	return func(r *Record) error {
-		r.ens = someNamespace
-		return nil
-	}
-}
-
-////////////////////////////////////////
-
-type recordField struct {
-	Name       string
-	Datum      interface{}
-	doc        string
-	defval     interface{}
-	hasDefault bool
-	order      string
-	aliases    []string
-	schema     interface{}
-	ens        string
-}
-
-func (rf recordField) String() string {
-	return fmt.Sprintf("%s: %v", rf.Name, rf.Datum)
-}
-
-type recordFieldSetter func(*recordField) error
-
-func recordFieldEnclosingNamespace(someNamespace string) recordFieldSetter {
-	return func(rf *recordField) error {
-		rf.ens = someNamespace
-		return nil
-	}
-}
-
-func newRecordField(schema interface{}, setters ...recordFieldSetter) (*recordField, error) {
-	schemaMap, ok := schema.(map[string]interface{})
-	if !ok {
-		return nil, newCodecBuildError("record field", "schema expected: map[string]interface{}; received: %T", schema)
-	}
-
-	rf := &recordField{}
-	for _, setter := range setters {
-		err := setter(rf)
+		// However, when creating a full name for the field name, be sure to use
+		// record's namespace
+		n, err := newNameFromSchemaMap(c.typeName.namespace, fieldSchemaMap)
 		if err != nil {
-			return nil, newCodecBuildError("record field", err)
+			return nil, fmt.Errorf("Record %q field %d ought to have valid name: %v", c.typeName, i+1, fieldSchemaMap)
 		}
-	}
-
-	n, err := newName(nameSchema(schemaMap), nameEnclosingNamespace(rf.ens))
-	if err != nil {
-		return nil, newCodecBuildError("record field", err)
-	}
-	rf.Name = n.n
-
-	typeName, ok := schemaMap["type"]
-	if !ok {
-		return nil, newCodecBuildError("record field", "ought to have type key")
-	}
-	rf.schema = schema
-
-	// Null can only ever be null
-	if typeName == "null" {
-		rf.defval = nil
-		rf.hasDefault = true
-	}
-
-	// Nullable fields ( {"type": ["null", "string"], ...} ) have a default of nil
-	if typeSlice, ok := typeName.([]interface{}); ok {
-		if typeSlice[0] == "null" {
-			rf.defval = nil
-			rf.hasDefault = true
+		fieldName := n.short()
+		if _, ok := codecFromFieldName[fieldName]; ok {
+			return nil, fmt.Errorf("Record %q field %d ought to have unique name: %q", c.typeName, i+1, fieldName)
 		}
-	}
 
-	// fields optional to the avro spec
-
-	val, ok := schemaMap["default"]
-	if ok {
-		rf.hasDefault = true
-		switch typeName.(type) {
-		case string:
-			switch typeName {
-			case "int":
-				dv, ok := val.(float64)
-				if !ok {
-					return nil, newCodecBuildError("record field", "default value type mismatch: %s; expected: %s; received: %T", rf.Name, "int32", val)
-				}
-				rf.defval = int32(dv)
-			case "long":
-				dv, ok := val.(float64)
-				if !ok {
-					return nil, newCodecBuildError("record field", "default value type mismatch: %s; expected: %s; received: %T", rf.Name, "int64", val)
-				}
-				rf.defval = int64(dv)
-			case "float":
-				dv, ok := val.(float64)
-				if !ok {
-					return nil, newCodecBuildError("record field", "default value type mismatch: %s; expected: %s; received: %T", rf.Name, "float32", val)
-				}
-				rf.defval = float32(dv)
-			case "bytes":
-				dv, ok := val.(string)
-				if !ok {
-					return nil, newCodecBuildError("record field", "default value type mismatch: %s; expected: %s; received: %T", rf.Name, "string", val)
-				}
-				rf.defval = []byte(dv)
-			default:
-				rf.defval = val
+		if defaultValue, ok := fieldSchemaMap["default"]; ok {
+			// if codec is union, then default value ought to encode using first schema in union
+			if fieldCodec.typeName.short() == "union" {
+				// NOTE: To support record field default values, union schema
+				// set to the type name of first member
+				defaultValue = Union(fieldCodec.schema, defaultValue)
 			}
-		default:
-			rf.defval = val
+			// attempt to encode default value using codec
+			_, err = fieldCodec.binaryFromNative(nil, defaultValue)
+			if err != nil {
+				return nil, fmt.Errorf("Record %q field %q: default value ought to encode using field schema: %s", c.typeName, fieldName, err)
+			}
+			defaultValueFromName[fieldName] = defaultValue
 		}
+
+		nameFromIndex[i] = fieldName
+		codecFromIndex[i] = fieldCodec
+		codecFromFieldName[fieldName] = fieldCodec
 	}
 
-	if val, ok = schemaMap["doc"]; ok {
-		rf.doc, ok = val.(string)
+	c.binaryFromNative = func(buf []byte, datum interface{}) ([]byte, error) {
+		valueMap, ok := datum.(map[string]interface{})
 		if !ok {
-			return nil, newCodecBuildError("record field", "record field doc ought to be string")
-		}
-	}
-
-	if val, ok = schemaMap["order"]; ok {
-		rf.order, ok = val.(string)
-		if !ok {
-			return nil, newCodecBuildError("record field", "record field order ought to be string")
-		}
-		switch rf.order {
-		case "ascending", "descending", "ignore":
-			// ok
-		default:
-			return nil, newCodecBuildError("record field", "record field order ought to bescending, descending, or ignore")
-		}
-	}
-
-	if val, ok = schemaMap["aliases"]; ok {
-		aliases, ok := schemaMap["aliases"].([]interface{})
-		if !ok {
-			return nil, newCodecBuildError("record field", "record field aliases ought to be array of strings")
+			return nil, fmt.Errorf("cannot encode binary record %q: expected map[string]interface{}; received: %T", c.typeName, datum)
 		}
 
-		for _, alias := range aliases {
-			aliasStr, ok := alias.(string)
+		// records encoded in order fields were defined in schema
+		for i, fieldCodec := range codecFromIndex {
+			fieldName := nameFromIndex[i]
+
+			// NOTE: If field value was not specified in map, then set
+			// fieldValue to its default value (which may or may not have been
+			// specified).
+			fieldValue, ok := valueMap[fieldName]
 			if !ok {
-				return nil, newCodecBuildError("record field", "record field aliases ought to be array of strings")
+				if fieldValue, ok = defaultValueFromName[fieldName]; !ok {
+					return nil, fmt.Errorf("cannot encode binary record %q field %q: schema does not specify default value and no value provided", c.typeName, fieldName)
+				}
 			}
-			rf.aliases = append(rf.aliases, aliasStr)
+
+			var err error
+			buf, err = fieldCodec.binaryFromNative(buf, fieldValue)
+			if err != nil {
+				return nil, fmt.Errorf("cannot encode binary record %q field %q: value does not match its schema: %s", c.typeName, fieldName, err)
+			}
 		}
+		return buf, nil
 	}
 
-	return rf, nil
+	c.nativeFromBinary = func(buf []byte) (interface{}, []byte, error) {
+		recordMap := make(map[string]interface{}, len(codecFromIndex))
+		for i, fieldCodec := range codecFromIndex {
+			name := nameFromIndex[i]
+			var value interface{}
+			var err error
+			value, buf, err = fieldCodec.nativeFromBinary(buf)
+			if err != nil {
+				return nil, nil, fmt.Errorf("cannot decode binary record %q field %q: %s", c.typeName, name, err)
+			}
+			recordMap[name] = value
+		}
+		return recordMap, buf, nil
+	}
+
+	c.nativeFromTextual = func(buf []byte) (interface{}, []byte, error) {
+		var mapValues map[string]interface{}
+		var err error
+		// NOTE: Setting `defaultCodec == nil` instructs genericMapTextDecoder
+		// to return an error when a field name is not found in the
+		// codecFromFieldName map.
+		mapValues, buf, err = genericMapTextDecoder(buf, nil, codecFromFieldName)
+		if err != nil {
+			return nil, nil, fmt.Errorf("cannot decode textual record %q: %s", c.typeName, err)
+		}
+		if actual, expected := len(mapValues), len(codecFromFieldName); actual != expected {
+			// set missing field keys to their respective default values, then
+			// re-check number of keys
+			for fieldName, defaultValue := range defaultValueFromName {
+				if _, ok := mapValues[fieldName]; !ok {
+					mapValues[fieldName] = defaultValue
+				}
+			}
+			if actual, expected = len(mapValues), len(codecFromFieldName); actual != expected {
+				return nil, nil, fmt.Errorf("cannot decode textual record %q: only found %d of %d fields", c.typeName, actual, expected)
+			}
+		}
+		return mapValues, buf, nil
+	}
+
+	c.textualFromNative = func(buf []byte, datum interface{}) ([]byte, error) {
+		// NOTE: Ensure only schema defined field names are encoded; and if
+		// missing in datum, either use the provided field default value or
+		// return an error.
+		sourceMap, ok := datum.(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("cannot encode textual record %q: expected map[string]interface{}; received: %T", c.typeName, datum)
+		}
+		destMap := make(map[string]interface{}, len(codecFromIndex))
+		for fieldName := range codecFromFieldName {
+			fieldValue, ok := sourceMap[fieldName]
+			if !ok {
+				defaultValue, ok := defaultValueFromName[fieldName]
+				if !ok {
+					return nil, fmt.Errorf("cannot encode textual record %q field %q: schema does not specify default value and no value provided", c.typeName, fieldName)
+				}
+				fieldValue = defaultValue
+			}
+			destMap[fieldName] = fieldValue
+		}
+		datum = destMap
+		// NOTE: Setting `defaultCodec == nil` instructs genericMapTextEncoder
+		// to return an error when a field name is not found in the
+		// codecFromFieldName map.
+		return genericMapTextEncoder(buf, datum, nil, codecFromFieldName)
+	}
+
+	return c, nil
 }

@@ -1,5 +1,16 @@
 # goavro
 
+Goavro is a library that encodes and decodes Avro data.
+
+## Description
+
+* Encodes to and decodes from both binary and textual JSON Avro data.
+* `Codec` is stateless and is safe to use by multiple go routines.
+
+With the exeption of features not yet supported, goavro attempts to be
+fully compliant with the most recent version of the
+[Avro specification](http://avro.apache.org/docs/1.8.2/spec.html).
+
 ## NOTICE
 
 This goavro library has been rewritten to correct a large number of
@@ -13,27 +24,123 @@ shortcomings:
 * https://github.com/linkedin/goavro/issues/72
 * https://github.com/linkedin/goavro/issues/81
 
-I ernestly want to replace this library with the newer version, but
-there is an API difference: rather than reading from `io.Reader`
-streams, decoding reads from byte slices, and rather than writing to
-`io.Writer` streams, encoding appends to byte slices. The performance
-benefit seems worth the trouble of upgrading: 3x encoding performance
-and 4x decoding performance on some hefty payloads used at LinkedIn.
+As a consequence of the rewrite, the API has been significantly
+simplified, taking into account suggestions from users received during
+the past few years since its original release.
 
-Until the migration is complete, if your program is not able to encode
-or decode Avro payloads due to schema issues, or perhaps you are
-looking for a more performant implementation, I recommend looking at
-the newer goavro engine hosted in a different repository
+The original version of this library is still available, however the
+v1 branch does not support all the same features, has a number of
+outstanding bugs, and performs significantly slower than the v2
+branch. Users are highly encouraged to update their software to use
+the v2 branch, but until they do, they can continue to use the v1
+branch by modifying import statements:
 
-https://github.com/karrick/goavro
+```Go
+import goavro "gopkg.in/linkedin/goavro.v1"
+```
 
-## Description
+### Justification for API Change
 
-Goavro is a golang library that implements encoding and decoding of
-Avro data. It provides an interface to encode data directly to
-`io.Writer` streams, and decoding data from `io.Reader`
-streams. Goavro fully adheres to
-[version 1.7.7 of the Avro specification](http://avro.apache.org/docs/1.7.7/spec.html).
+It was a very difficult decision to break the API when creating the
+new version, but in the end the benefits outweighed the consequences:
+
+1. Allowed proper handling of Avro namespaces.
+1. Eliminated largest gripe of users: getting data into and out of
+   records.
+1. Provided significant, 3x--4x speed improvement for all tasks.
+1. Allowed textual encoding to and decoding from Avro JSON.
+1. Better handling of record field default values.
+
+#### Avro namespaces
+
+The original version of this library was written prior to my really
+understanding how Avro namespaces ought to work. After using Avro for
+a long time now, and after a lot of research, I think I grok Avro
+namespaces properly, and the library now correctly handles every test
+case the Apache Avro distribution has for namespaces, including being
+able to refer to a previously defined data type later on in the same
+schema.
+
+#### Getting Data into and out of Records
+
+The original version of this library required creating `goavro.Record`
+instances, and use of getters and setters to access a record's
+fields. When schemas were complex, this required a lot of work to
+debug and get right. The original version also required users to break
+schemas in chunks, and have a different schema for each record
+type. This was cumbersome, annoying, and error prone.
+
+The new version of this library eliminates the `goavro.Record` type,
+and accepts a native Go map for all records to be encoded. Keys are
+the field names, and values are the field values. Nothing could be
+more easy. Conversely, decoding Avro data yields a native Go map for
+the upstream client to pull data back out out.
+
+Furthermore, there is never a reason to ever have to break your schema
+down into record schemas. Merely feed the entire schema into the
+`NewCodec` function once when you create the `Codec`, then use
+it. This library knows how to parse the data provided to it and ensure
+data values for records and their fields are properly encoded and
+decoded.
+
+#### 3x--4x Performance Improvement
+
+The original version of this library was truly written with Go's idea
+of `io.Reader` and `io.Writer` composition in mind. Although
+composition is a powerful tool, the original library had to pull bytes
+off the `io.Reader`--often one byte at a time--check for read errors,
+decode the bytes, and repeat. This version, by using a native Go byte
+slice, both decoding and encoding complex Avro data here at LinkedIn
+is between three and four times faster than before.
+
+#### Avro JSON Support
+
+The original version of this library did not support JSON encoding or
+decoding, because it wasn't deemed useful for our internal use at the
+time. When writing the new version of the library I decided to tackle
+this issue once and for all, because so many engineers needed this
+functionality for their work.
+
+#### Better Handling of Record Field Default Values
+
+The original version of this library did not well handle default
+values for record fields. This version of the library uses a default
+value of a record field when encoding from native Go data to Avro data
+and the record field is not specified. Additionally, when decoding
+from Avro JSON data to native Go data, and a field is not specified,
+the default value will be used to populate the field.
+
+## Contrast With Code Generation Tools
+
+If you have the ability to rebuild and redeploy your software whenever
+data schemas change, code generation tools might be the best solution
+for your application.
+
+There are numerous excellent tools for generating source code to
+translate data between native and Avro binary or textual data. One
+such tool is linked below. If a particular application is designed to
+work with a rarely changing schema, programs that use code generated
+functions can potentially be more performant than a program that uses
+goavro to create a `Codec` dynamically at run time.
+
+* [gogen-avro](https://github.com/alanctgardner/gogen-avro)
+
+I recommend benchmarking the resultant programs using typical data
+using both the code generated functions and using goavro to see which
+performs better. Not all code generated functions will out perform
+goavro for all data corpuses.
+
+If you don't have the ability to rebuild and redeploy software updates
+whenever a data schema change occurs, goavro could be a great fit for
+your needs. With goavro, your program can be given a new schema while
+running, compile it into a `Codec` on the fly, and immediately start
+encoding or decoding data using that `Codec`. Because Avro encoding
+specifies that encoded data always be accompanied by a schema this is
+not usually a problem. If the schema change is backwards compatible,
+and the portion of your program that handles the decoded data is still
+able to reference the decoded fields, there is nothing that needs to
+be done when the schema change is detected by your program when using
+goavro `Codec` instances to encode or decode data.
 
 ## Resources
 
@@ -48,220 +155,181 @@ streams. Goavro fully adheres to
 Documentation is available via
 [![GoDoc](https://godoc.org/github.com/linkedin/goavro?status.svg)](https://godoc.org/github.com/linkedin/goavro).
 
-Please see the example programs in the `examples` directory for
-reference.
-
-Although the Avro specification defines the terms reader and writer as
-library components which read and write Avro data, Go has particular
-strong emphasis on what a Reader and Writer are. Namely, it is bad
-form to define an interface which shares the same name but uses a
-different method signature. In other words, all Reader interfaces
-should effectively mirror an `io.Reader`, and all Writer interfaces
-should mirror an `io.Writer`. Adherence to this standard is essential
-to keep libraries easy to use.
-
-An `io.Reader` reads data from the stream specified at object creation
-time into the parameterized slice of bytes and returns both the number
-of bytes read and an error. An Avro reader also reads from a stream,
-but it is possible to create an Avro reader that can read from one
-stream, then read from another, using the same compiled schema. In
-other words, an Avro reader puts the schema first, whereas an
-`io.Reader` puts the stream first.
-
-To support an Avro reader being able to read from multiple streams,
-its API must be different and incompatible with `io.Reader` interface
-from the Go standard. Instead, an Avro reader looks more like the
-Unmarshal functionality provided by the Go `encoding/json` library.
-
-### Codec interface
-
-Creating a `goavro.Codec` is fast, but ought to be performed exactly
-once per Avro schema to process. Once a `Codec` is created, it may be
-used multiple times to either decode or encode data.
-
-The `Codec` interface exposes two methods, one to encode data and one
-to decode data. They encode directly into an `io.Writer`, and decode
-directly from an `io.Reader`.
-
-A particular `Codec` can work with only one Avro schema. However,
-there is no practical limit to how many `Codec`s may be created and
-used in a program. Internally a `goavro.codec` is merely a namespace
-and two function pointers to decode and encode data. Because `codec`s
-maintain no state, the same `Codec` can be concurrently used on
-different `io` streams as desired.
-
 ```Go
-    func (c *codec) Decode(r io.Reader) (interface{}, error)
-    func (c *codec) Encode(w io.Writer, datum interface{}) error
-```
+package main
 
-#### Creating a `Codec`
+import (
+    "fmt"
 
-The below is an example of creating a `Codec` from a provided JSON
-schema. `Codec`s do not maintain any internal state, and may be used
-multiple times on multiple `io.Reader`s, `io.Writer`s, concurrently if
-desired.
+    "github.com/linkedin/goavro"
+)
 
-```Go
-    someRecordSchemaJson := `{"type":"record","name":"Foo","fields":[{"name":"field1","type":"int"},{"name":"field2","type":"string","default":"happy"}]}`
-    codec, err := goavro.NewCodec(someRecordSchemaJson)
+func main() {
+    codec, err := goavro.NewCodec(`
+        {
+          "type": "record",
+          "name": "LongList",
+          "fields" : [
+            {"name": "next", "type": ["null", "LongList"], "default": null}
+          ]
+        }`)
     if err != nil {
-        return nil, err
+        fmt.Println(err)
     }
-```
 
-#### Decoding data
+    // NOTE: May omit fields when using default value
+    textual := []byte(`{"next":{"LongList":{}}}`)
 
-The below is a simplified example of decoding binary data to be read
-from an `io.Reader` into a single datum using a previously compiled
-`Codec`. The `Decode` method of the `Codec` interface may be called
-multiple times, each time on the same or on different `io.Reader`
-objects.
-
-```Go
-    // uses codec created above, and an io.Reader, definition not shown
-    datum, err := codec.Decode(r)
+    // Convert textual Avro data (in Avro JSON format) to native Go form
+    native, _, err := codec.NativeFromTextual(textual)
     if err != nil {
-        return nil, err
+        fmt.Println(err)
     }
-```
 
-#### Encoding data
-
-The below is a simplified example of encoding a single datum into the
-Avro binary format using a previously compiled `Codec`. The `Encode`
-method of the `Codec` interface may be called multiple times, each
-time on the same or on different `io.Writer` objects.
-
-```Go
-    // uses codec created above, an io.Writer, definition not shown,
-    // and some data
-    err := codec.Encode(w, datum)
+    // Convert native Go form to binary Avro data
+    binary, err := codec.BinaryFromNative(nil, native)
     if err != nil {
-        return nil, err
-    }
-```
-
-Another example, this time leveraging `bufio.Writer`:
-
-```Go
-    // Encoding data using bufio.Writer to buffer the writes
-    // during data encoding:
-
-    func encodeWithBufferedWriter(c Codec, w io.Writer, datum interface{}) error {
-        bw := bufio.NewWriter(w)
-        err := c.Encode(bw, datum)
-        if err != nil {
-            return err
-        }
-        return bw.Flush()
+        fmt.Println(err)
     }
 
-    err := encodeWithBufferedWriter(codec, w, datum)
+    // Convert binary Avro data back to native Go form
+    native, _, err = codec.NativeFromBinary(binary)
     if err != nil {
-        return nil, err
+        fmt.Println(err)
     }
-```
 
-### Reader and Writer helper types
+    // Convert native Go form to textual Avro data
+    textual, err = codec.TextualFromNative(nil, native)
+    if err != nil {
+        fmt.Println(err)
+    }
 
-The `Codec` interface provides means to encode and decode any Avro
-data, but a number of additional helper types are provided to handle
-streaming of Avro data.
-
-See the example programs `examples/file/reader.go` and
-`examples/file/writer.go` for more context:
-
-This example wraps the provided `io.Reader` in a `bufio.Reader` and
-dumps the data to standard output.
-
-```Go
-func dumpReader(r io.Reader) {
-	fr, err := goavro.NewReader(goavro.BufferFromReader(r))
-	if err != nil {
-		log.Fatal("cannot create Reader: ", err)
-	}
-	defer func() {
-		if err := fr.Close(); err != nil {
-			log.Fatal(err)
-		}
-	}()
-
-	for fr.Scan() {
-		datum, err := fr.Read()
-		if err != nil {
-			log.Println("cannot read datum: ", err)
-			continue
-		}
-		fmt.Println(datum)
-	}
+    // NOTE: Textual encoding will show all fields, even those with values that
+    // match their default values
+    fmt.Println(string(textual))
+    // Output: {"next":{"LongList":{"next":null}}}
 }
 ```
 
-This example buffers the provided `io.Writer` in a `bufio.Writer`, and
-writes some data to the stream.
+Also please see the example programs in the `examples` directory for
+reference.
+
+### ab2t
+
+The `ab2t` program is similar to the reference standard
+`avrocat` program and converts Avro OCF files to Avro JSON
+encoding.
+
+### arw
+
+The Avro-ReWrite program, `arw`, can be used to rewrite an
+Avro OCF file while optionally changing the block counts, the
+compression algorithm. `arw` can also upgrade the schema provided the
+existing datum values can be encoded with the newly provided schema.
+
+### avroheader
+
+The Avro Header program, `avroheader`, can be used to print various
+header information from an OCF file.
+
+### splice
+
+The `splice` program can be used to splice together an OCF file from
+an Avro schema file and a raw Avro binary data file.
+
+### Translating Data
+
+A `Codec` provides four methods for translating between a byte slice
+of either binary or textual Avro data and native Go data.
+
+The following methods convert data between native Go data and byte
+slices of the binary Avro representation:
+
+    BinaryFromNative
+    NativeFromBinary
+
+The following methods convert data between native Go data and byte
+slices of the textual Avro representation:
+
+    NativeFromTextual
+    TextualFromNative
+
+Each `Codec` also exposes the `Schema` method to return a simplified
+version of the JSON schema string used to create the `Codec`.
+
+#### Translating From Avro to Go Data
+
+Goavro does not use Go's structure tags to translate data between
+native Go types and Avro encoded data.
+
+When translating from either binary or textual Avro to native Go data,
+goavro returns primitive Go data values for corresponding Avro data
+values. That is, a Go `nil` is returned for an Avro `null`; a Go
+`bool` for an Avro `boolean`; a Go `[]byte` for an Avro `bytes`; a Go
+`float32` for an Avro `float`, a Go `float64` for an Avro `double`; a
+Go `int64` for an Avro `long`; a Go `int32` for an Avro `int`; and a
+Go `string` for an Avro `string`.
+
+For complex Avro data types, a Go `[]interface{}` is returned for an
+Avro `array`; a Go `string` for an Avro `enum`; a Go `[]byte` for an
+Avro `fixed`; a Go `map[string]interface{}` for an Avro `map` and
+`record`.
+
+Because of encoding rules for Avro unions, when an union's value is
+`null`, a simple Go `nil` is returned. However when an union's value
+is non-`nil`, a Go `map[string]interface{}` with a single key is
+returned for the union. The map's single key is the Avro type name and
+its value is the datum's value.
+
+#### Translating From Go to Avro Data
+
+Goavro does not use Go's structure tags to translate data between
+native Go types and Avro encoded data.
+
+When translating from native Go to either binary or textual Avro data,
+goavro generally requires the same native Go data types as the decoder
+would provide, with some exceptions for programmer convenience. Goavro
+will accept any numerical data type provided there is no precision
+lost when encoding the value. For instance, providing `float64(3.0)`
+to an encoder expecting an Avro `int` would succeed, while sending
+`float64(3.5)` to the same encoder would return an error.
+
+When providing a slice of items for an encoder, the encoder will
+accept either `[]interface{}`, or any slice of the required type. For
+instance, when the Avro schema specifies:
+`{"type":"array","items":"string"}`, the encoder will accept either
+`[]interface{}`, or `[]string`. If given `[]int`, the encoder will
+return an error when it attempts to encode the first non-string array
+value using the string encoder.
+
+When providing a value for an Avro union, the encoder will accept
+`nil` for a `null` value. If the value is non-`nil`, it must be a
+`map[string]interface{}` with a single key-value pair, where the key
+is the Avro type name and the value is the datum's value. As a
+convenience, the `Union` function wraps any datum value in a map as
+specified above.
 
 ```Go
-func makeSomeData(w io.Writer) error {
-    recordSchema := `
-    {
-      "type": "record",
-      "name": "example",
-      "fields": [
-        {
-          "type": "string",
-          "name": "username"
-        },
-        {
-          "type": "string",
-          "name": "comment"
-        },
-        {
-          "type": "long",
-          "name": "timestamp"
-        }
-      ]
+func ExampleUnion() {
+    codec, err := goavro.NewCodec(`["null","string","int"]`)
+    if err != nil {
+        fmt.Println(err)
     }
-    `
-	fw, err := goavro.NewWriter(
-		goavro.BlockSize(13), // example; default is 10
-		goavro.Compression(goavro.CompressionSnappy), // default is CompressionNull
-		goavro.WriterSchema(recordSchema),
-		goavro.ToWriter(w))
-	if err != nil {
-		log.Fatal("cannot create Writer: ", err)
-	}
-	defer fw.Close()
-
-    // make a record instance using the same schema
-	someRecord, err := goavro.NewRecord(goavro.RecordSchema(recordSchema))
-	if err != nil {
-		log.Fatal(err)
-	}
-	// identify field name to set datum for
-	someRecord.Set("username", "Aquaman")
-	someRecord.Set("comment", "The Atlantic is oddly cold this morning!")
-	// you can fully qualify the field name
-	someRecord.Set("com.example.timestamp", int64(1082196484))
-    fw.Write(someRecord)
-
-    // make another record
-	someRecord, err = goavro.NewRecord(goavro.RecordSchema(recordSchema))
-	if err != nil {
-		log.Fatal(err)
-	}
-	someRecord.Set("username", "Batman")
-	someRecord.Set("comment", "Who are all of these crazies?")
-	someRecord.Set("com.example.timestamp", int64(1427383430))
-    fw.Write(someRecord)
+    buf, err := codec.TextFromNative(nil, goavro.Union("string", "some string"))
+    if err != nil {
+        fmt.Println(err)
+    }
+    fmt.Println(string(buf))
+    // Output: {"string":"some string"}
 }
 ```
 
 ## Limitations
 
-Goavro is a fully featured encoder and decoder of binary Avro data. It
-fully supports recursive data structures, unions, and namespacing. It
-does have a few limitations that have yet to be implemented.
+Goavro is a fully featured encoder and decoder of binary and textual
+JSON Avro data. It fully supports recursive data structures, unions,
+and namespacing. It does have a few limitations that have yet to be
+implemented.
 
 ### Aliases
 
@@ -269,19 +337,6 @@ The Avro specification allows an implementation to optionally map a
 writer's schema to a reader's schema using aliases. Although goavro
 can compile schemas with aliases, it does not yet implement this
 feature.
-
-### JSON Encoding
-
-The Avro Data Serialization format describes two encodings: binary and
-JSON. Goavro only implements binary encoding of data streams, because
-that is what most applications need.
-
-> Most applications will use the binary encoding, as it is smaller and
-> faster. But, for debugging and web-based applications, the JSON
-> encoding may sometimes be appropriate.
-
-Note that data schemas are always encoded using JSON, as per the
-specification.
 
 ### Kafka Streams
 
@@ -292,37 +347,35 @@ is a layer of abstraction that also sits above Avro Data Serialization
 format, but has its own schema. Like Avro Object Container Files, this
 has been implemented but removed until the API can be improved.
 
-### Default maximum length of `String` and `Bytes` fields
+### Default Maximum Block Counts, and Block Sizes
 
-Because the way we currently decode String and Bytes fields is entirely
-stateless an Avro file could specify that a String or Bytes field is
-extremely large and there would be no way for the decode function to know
-anything was wrong. Instead of checking the available system memory on
-every decode operation, we've instead decided to opt for what we believe
-to be a sane default (`math.MaxInt32` or ~2.2GB) but leave that variable exported so that a user
-can change the variable if they need to exceed this limit.
+When decoding arrays, maps, and OCF files, the Avro specification
+states that the binary includes block counts and block sizes that
+specify how many items are in the next block, and how many bytes are
+in the next block. To prevent possible denial-of-service attacks on
+clients that use this library caused by attempting to decode
+maliciously crafted data, decoded block counts and sizes are compared
+against public library variables MaxBlockCount and MaxBlockSize. When
+the decoded values exceed these values, the decoder returns an error.
+
+Because not every upstream client is the same, we've chosen some sane
+defaults for these values, but left them as mutable variables, so that
+clients are able to override if deemed necessary for their
+purposes. Their initial default values are (`math.MaxInt32` or
+~2.2GB).
 
 ## License
 
 ### Goavro license
 
-Copyright 2015 LinkedIn Corp. Licensed under the Apache License,
+Copyright 2017 LinkedIn Corp. Licensed under the Apache License,
 Version 2.0 (the "License"); you may not use this file except in
-compliance with the License.  You may obtain a copy of the License at
-[http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0).
+compliance with the License. You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-implied.Copyright [201X] LinkedIn Corp. Licensed under the Apache
-License, Version 2.0 (the "License"); you may not use this file except
-in compliance with the License.  You may obtain a copy of the License
-at
-[http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0).
-
-Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 implied.
 
 ### Google Snappy license

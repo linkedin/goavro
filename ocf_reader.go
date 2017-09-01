@@ -1,28 +1,19 @@
-// Copyright 2015 LinkedIn Corp. Licensed under the Apache License,
-// Version 2.0 (the "License"); you may not use this file except in
-// compliance with the License.  You may obtain a copy of the License
-// at http://www.apache.org/licenses/LICENSE-2.0
+// Copyright [2017] LinkedIn Corp. Licensed under the Apache License, Version
+// 2.0 (the "License"); you may not use this file except in compliance with the
+// License.  You may obtain a copy of the License at
+// http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-// implied.Copyright [201X] LinkedIn Corp. Licensed under the Apache
-// License, Version 2.0 (the "License"); you may not use this file
-// except in compliance with the License.  You may obtain a copy of
-// the License at http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-// implied.
+// distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+// WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
 package goavro
 
 import (
-	"bufio"
 	"bytes"
 	"compress/flate"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"hash/crc32"
 	"io"
@@ -31,373 +22,238 @@ import (
 	"github.com/golang/snappy"
 )
 
-// ErrReaderInit is returned when the encoder encounters an error.
-type ErrReaderInit struct {
-	Message string
-	Err     error
+// OCFReader structure is used to read Object Container Files (OCF).
+type OCFReader struct {
+	header              *ocfHeader
+	block               []byte // buffer from which decoding takes place
+	rerr                error  // most recent error that took place while reading bytes (unrecoverable)
+	derr                error  // most recent decode error
+	ior                 io.Reader
+	readReady           bool  // true after Scan and before Read
+	remainingBlockItems int64 // count of encoded data items remaining in block buffer to be decoded
 }
 
-func (e ErrReaderInit) Error() string {
-	if e.Err == nil {
-		return "cannot build " + e.Message
-	}
-	return "cannot build " + e.Message + ": " + e.Err.Error()
-}
-
-func newReaderInitError(a ...interface{}) *ErrReaderInit {
-	var err error
-	var format, message string
-	var ok bool
-	if len(a) == 0 {
-		return &ErrReaderInit{"cannot create reader: no reason given", nil}
-	}
-	// if last item is error: save it
-	if err, ok = a[len(a)-1].(error); ok {
-		a = a[:len(a)-1] // pop it
-	}
-	// if items left, first ought to be format string
-	if len(a) > 0 {
-		if format, ok = a[0].(string); ok {
-			a = a[1:] // unshift
-			message = fmt.Sprintf(format, a...)
-		}
-	}
-	return &ErrReaderInit{message, err}
-}
-
-// ErrReaderBlockCount is returned when a reader detects an error
-// while attempting to read the block count and block size.
-type ErrReaderBlockCount struct {
-	Err error
-}
-
-func (e *ErrReaderBlockCount) Error() string {
-	return "cannot read block count and size: " + e.Err.Error()
-}
-
-// ReaderSetter functions are those those which are used to instantiate
-// a new Reader.
-type ReaderSetter func(*Reader) error
-
-// BufferFromReader wraps the specified `io.Reader` using a
-// `bufio.Reader` to read from a file.
-func BufferFromReader(r io.Reader) ReaderSetter {
-	return func(fr *Reader) error {
-		fr.r = bufio.NewReader(r)
-		return nil
-	}
-}
-
-// FromReader specifies the `io.Reader` to use when reading a file.
-func FromReader(r io.Reader) ReaderSetter {
-	return func(fr *Reader) error {
-		fr.r = r
-		return nil
-	}
-}
-
-// Reader structure contains data necessary to read Avro files.
-type Reader struct {
-	CompressionCodec string
-	DataSchema       string
-	Sync             []byte
-	dataCodec        Codec
-	datum            Datum
-	deblocked        chan Datum
-	err              error
-	r                io.Reader
-}
-
-// NewReader returns a object to read data from an io.Reader using the
-// Avro Object Container Files format.
+// NewOCFReader initializes and returns a new structure used to read an Avro
+// Object Container File (OCF).
 //
-//     func main() {
-//         conn, err := net.Dial("tcp", "127.0.0.1:8080")
+//     func example(ior io.Reader) error {
+//         // NOTE: Wrap provided io.Reader in a buffered reader, which improves the
+//         // performance of streaming file data.
+//         br := bufio.NewReader(ior)
+//         ocfr, err := goavro.NewOCFReader(br)
 //         if err != nil {
-//             log.Fatal(err)
+//             return err
 //         }
-//         fr, err := goavro.NewReader(goavro.FromReader(conn))
-//         if err != nil {
-//             log.Fatal("cannot create Reader: ", err)
-//         }
-//         defer func() {
-//             if err := fr.Close(); err != nil {
-//                 log.Fatal(err)
-//             }
-//         }()
-//
-//         for fr.Scan() {
-//             datum, err := fr.Read()
+//         for ocfr.Scan() {
+//             datum, err := ocfr.Read()
 //             if err != nil {
-//                 log.Println("cannot read datum: ", err)
-//                 continue
+//                 return err
 //             }
-//             fmt.Println("RECORD: ", datum)
+//             fmt.Println(datum)
 //         }
+//         return ocfr.Err()
 //     }
-func NewReader(setters ...ReaderSetter) (*Reader, error) {
-	var err error
-	fr := &Reader{}
-	for _, setter := range setters {
-		err = setter(fr)
-		if err != nil {
-			return nil, newReaderInitError(err)
-		}
-	}
-	if fr.r == nil {
-		return nil, newReaderInitError("must specify io.Reader")
-	}
-	// read in header information and use it to initialize Reader
-	magic := make([]byte, 4)
-	_, err = io.ReadFull(fr.r, magic)
+func NewOCFReader(ior io.Reader) (*OCFReader, error) {
+	header, err := readOCFHeader(ior)
 	if err != nil {
-		return nil, newReaderInitError("cannot read magic number", err)
+		return nil, fmt.Errorf("cannot create OCFReader: %s", err)
 	}
-	if bytes.Compare(magic, []byte(magicBytes)) != 0 {
-		return nil, &ErrReaderInit{Message: "invalid magic number: " + string(magic)}
-	}
-	meta, err := decodeHeaderMetadata(fr.r)
-	if err != nil {
-		return nil, newReaderInitError("cannot read header metadata", err)
-	}
-	fr.CompressionCodec, err = getHeaderString("avro.codec", meta)
-	if err != nil {
-		fr.CompressionCodec = CompressionNull
-	}
-	if !IsCompressionCodecSupported(fr.CompressionCodec) {
-		return nil, newReaderInitError("unsupported codec: %s", fr.CompressionCodec)
-	}
-	fr.DataSchema, err = getHeaderString("avro.schema", meta)
-	if err != nil {
-		return nil, newReaderInitError("cannot read header metadata", err)
-	}
-	if fr.dataCodec, err = NewCodec(fr.DataSchema); err != nil {
-		return nil, newReaderInitError("cannot compile schema", err)
-	}
-	fr.Sync = make([]byte, syncLength)
-	if _, err = io.ReadFull(fr.r, fr.Sync); err != nil {
-		return nil, newReaderInitError("cannot read sync marker", err)
-	}
-	// setup reading pipeline
-	toDecompress := make(chan *readerBlock)
-	toDecode := make(chan *readerBlock)
-	fr.deblocked = make(chan Datum)
-	go read(fr, longCodec(), toDecompress)
-	go decompress(fr, toDecompress, toDecode)
-	go decode(fr, toDecode)
-	return fr, nil
+	return &OCFReader{header: header, ior: ior}, nil
 }
 
-// Close releases resources and returns any Reader errors.
-func (fr *Reader) Close() error {
-	return fr.err
+// Codec returns the codec found within the OCF file.
+func (ocfr *OCFReader) Codec() *Codec {
+	return ocfr.header.codec
 }
 
-// Scan returns true if more data is ready to be read.
-func (fr *Reader) Scan() bool {
-	var ok bool
-	fr.datum, ok = <-fr.deblocked
-	return ok
-}
-
-// Read returns the next element from the Reader.
-func (fr *Reader) Read() (interface{}, error) {
-	return fr.datum.Value, fr.datum.Err
-}
-
-func decodeHeaderMetadata(r io.Reader) (map[string]interface{}, error) {
-	md, err := metadataCodec.Decode(r)
-	if err != nil {
-		return nil, err
+// CompressionName returns the name of the compression algorithm found within
+// the OCF file.
+func (ocfr *OCFReader) CompressionName() string {
+	switch ocfr.header.compressionID {
+	case compressionNull:
+		return CompressionNullLabel
+	case compressionDeflate:
+		return CompressionDeflateLabel
+	case compressionSnappy:
+		return CompressionSnappyLabel
+	default:
+		return "should not get here: unrecognized compression algorithm"
 	}
-	return md.(map[string]interface{}), nil
 }
 
-func getHeaderString(someKey string, header map[string]interface{}) (string, error) {
-	v, ok := header[someKey]
-	if !ok {
-		return "", fmt.Errorf("header ought to have %v key", someKey)
-	}
-	return string(v.([]byte)), nil
+// Err returns the last error encountered while reading the OCF file.  See
+// `NewOCFReader` documentation for an example.
+func (ocfr *OCFReader) Err() error {
+	return ocfr.rerr
 }
 
-type readerBlock struct {
-	datumCount int
-	err        error
-	r          io.Reader
+// Read consumes one datum value from the Avro OCF stream and returns it. Read
+// is designed to be called only once after each invocation of the Scan method.
+// See `NewOCFReader` documentation for an example.
+func (ocfr *OCFReader) Read() (interface{}, error) {
+	// NOTE: Test previous error before testing readReady to prevent overwriting
+	// previous error.
+	if ocfr.rerr != nil {
+		return nil, ocfr.rerr
+	}
+	if !ocfr.readReady {
+		ocfr.rerr = errors.New("Read called without successful Scan")
+		return nil, ocfr.rerr
+	}
+	ocfr.readReady = false
+
+	// decode one datum value from block
+	var datum interface{}
+	datum, ocfr.block, ocfr.rerr = ocfr.header.codec.NativeFromBinary(ocfr.block)
+	if ocfr.rerr != nil {
+		return false, ocfr.rerr
+	}
+	ocfr.remainingBlockItems--
+
+	return datum, nil
 }
 
-// ErrReader is returned when the reader encounters an error.
-type ErrReader struct {
-	Message string
-	Err     error
+// RemainingBlockItems returns the number of items remaining in the block being
+// processed.
+func (ocfr *OCFReader) RemainingBlockItems() int64 {
+	return ocfr.remainingBlockItems
 }
 
-func (e ErrReader) Error() string {
-	if e.Err == nil {
-		return "cannot read from reader: " + e.Message
-	}
-	return "cannot read from reader: " + e.Message + ": " + e.Err.Error()
-}
+// Scan returns true when there is at least one more data item to be read from
+// the Avro OCF. Scan ought to be called prior to calling the Read method each
+// time the Read method is invoked.  See `NewOCFReader` documentation for an
+// example.
+func (ocfr *OCFReader) Scan() bool {
+	ocfr.readReady = false
 
-func newReaderError(a ...interface{}) *ErrReader {
-	var err error
-	var format, message string
-	var ok bool
-	if len(a) == 0 {
-		return &ErrReader{"no reason given", nil}
+	if ocfr.rerr != nil {
+		return false
 	}
-	// if last item is error: save it
-	if err, ok = a[len(a)-1].(error); ok {
-		a = a[:len(a)-1] // pop it
-	}
-	// if items left, first ought to be format string
-	if len(a) > 0 {
-		if format, ok = a[0].(string); ok {
-			a = a[1:] // unshift
-			message = fmt.Sprintf(format, a...)
-		}
-	}
-	return &ErrReader{message, err}
-}
 
-func read(fr *Reader, lCodec *codec, toDecompress chan<- *readerBlock) {
-	// NOTE: these variables created outside loop to reduce churn
-	sync := make([]byte, syncLength)
-
-	blockCount, blockSize, err := readBlockCountAndSize(fr.r, lCodec)
-	if err != nil {
-		fr.err = err
-		blockCount = 0
-	}
-	for blockCount != 0 {
-		// Use a new buffer for every block because it will be shared with other goroutines
-		bits := make([]byte, blockSize)
-		if _, err = io.ReadFull(fr.r, bits); err != nil {
-			fr.err = newReaderError("cannot read block", err)
-			break
-		}
-		toDecompress <- &readerBlock{datumCount: blockCount, r: bytes.NewReader(bits)}
-		if _, err := io.ReadFull(fr.r, sync); err != nil {
-			fr.err = newReaderError("cannot read sync marker", err)
-			break
-		}
-		if !bytes.Equal(fr.Sync, sync) {
-			fr.err = newReaderError(fmt.Sprintf("sync marker mismatch: %#v != %#v", sync, fr.Sync))
-			break
-		}
-		if blockCount, blockSize, fr.err = readBlockCountAndSize(fr.r, lCodec); fr.err != nil {
-			break
-		}
-	}
-	close(toDecompress)
-}
-
-func readBlockCountAndSize(r io.Reader, lcodec *codec) (int, int, error) {
-	bc, err := lcodec.Decode(r)
-	if err != nil {
-		if ed, ok := err.(*ErrDecoder); ok && ed.Err == io.EOF {
-			return 0, 0, nil // we're done
-		}
-		return 0, 0, &ErrReaderBlockCount{err}
-	}
-	bs, err := lcodec.Decode(r)
-	if err != nil {
-		return 0, 0, &ErrReaderBlockCount{err}
-	}
-	return int(bc.(int64)), int(bs.(int64)), nil
-}
-
-func decompress(fr *Reader, toDecompress <-chan *readerBlock, toDecode chan<- *readerBlock) {
-	switch fr.CompressionCodec {
-	case CompressionNull:
-		for block := range toDecompress {
-			toDecode <- block
+	// NOTE: If there are no more remaining data items from the existing block,
+	// then attempt to slurp in the next block.
+	if ocfr.remainingBlockItems <= 0 {
+		if count := len(ocfr.block); count != 0 {
+			ocfr.rerr = fmt.Errorf("extra bytes between final datum in previous block and block sync marker: %d", count)
+			return false
 		}
 
-	case CompressionDeflate:
-		var rc io.ReadCloser
-		var bits []byte
-		for block := range toDecompress {
-			rc = flate.NewReader(block.r)
-			bits, block.err = ioutil.ReadAll(rc)
-			if block.err != nil {
-				block.err = newReaderError("cannot read from deflate", block.err)
-				toDecode <- block
-				_ = rc.Close() // already have the read error; ignore the close error
-				continue
+		// Read the block count and update the number of remaining items for
+		// this block
+		ocfr.remainingBlockItems, ocfr.rerr = longBinaryReader(ocfr.ior)
+		if ocfr.rerr != nil {
+			if ocfr.rerr == io.EOF {
+				ocfr.rerr = nil // merely end of file, rather than error
+			} else {
+				ocfr.rerr = fmt.Errorf("cannot read block count: %s", ocfr.rerr)
 			}
-			block.err = rc.Close()
-			if block.err != nil {
-				block.err = newReaderError("cannot close deflate", block.err)
-				toDecode <- block
-				continue
-			}
-			block.r = bytes.NewReader(bits)
-			toDecode <- block
+			return false
+		}
+		if ocfr.remainingBlockItems <= 0 {
+			ocfr.rerr = fmt.Errorf("cannot decode when block count is not greater than 0: %d", ocfr.remainingBlockItems)
+			return false
+		}
+		if ocfr.remainingBlockItems > MaxBlockCount {
+			ocfr.rerr = fmt.Errorf("cannot decode when block count exceeds MaxBlockCount: %d > %d", ocfr.remainingBlockItems, MaxBlockCount)
 		}
 
-	case CompressionSnappy:
-		var (
-			src, dst []byte
-			crc      uint32
-		)
-		for block := range toDecompress {
-			src, block.err = ioutil.ReadAll(block.r)
-			if block.err != nil {
-				block.err = newReaderError("cannot read", block.err)
-				toDecode <- block
-				continue
-			}
-			if len(src) < 4 {
-				block.err = newReaderError(fmt.Sprintf("too small of a block (%d bytes)", len(src)))
-				toDecode <- block
-				continue
-			}
-			index := len(src) - 4 // last 4 bytes is crc32 of decoded blob
+		var blockSize int64
+		blockSize, ocfr.rerr = longBinaryReader(ocfr.ior)
+		if ocfr.rerr != nil {
+			ocfr.rerr = fmt.Errorf("cannot read block size: %s", ocfr.rerr)
+			return false
+		}
+		if blockSize <= 0 {
+			ocfr.rerr = fmt.Errorf("cannot decode when block size is not greater than 0: %d", blockSize)
+			return false
+		}
+		if blockSize > MaxBlockSize {
+			ocfr.rerr = fmt.Errorf("cannot decode when block size exceeds MaxBlockSize: %d > %d", blockSize, MaxBlockSize)
+			return false
+		}
 
-			dst, block.err = snappy.Decode(nil, src[:index])
-			if block.err != nil {
-				block.err = newReaderError("cannot decompress", block.err)
-				toDecode <- block
-				continue
+		// read entire block into buffer
+		ocfr.block = make([]byte, blockSize)
+		_, ocfr.rerr = io.ReadFull(ocfr.ior, ocfr.block)
+		if ocfr.rerr != nil {
+			ocfr.rerr = fmt.Errorf("cannot read block: %s", ocfr.rerr)
+			return false
+		}
+
+		switch ocfr.header.compressionID {
+		case compressionNull:
+			// no-op
+
+		case compressionDeflate:
+			// NOTE: flate.NewReader wraps with io.ByteReader if argument does
+			// not implement that interface.
+			rc := flate.NewReader(bytes.NewBuffer(ocfr.block))
+			ocfr.block, ocfr.rerr = ioutil.ReadAll(rc)
+			if ocfr.rerr != nil {
+				_ = rc.Close()
+				return false
+			}
+			if ocfr.rerr = rc.Close(); ocfr.rerr != nil {
+				return false
 			}
 
-			block.err = binary.Read(bytes.NewReader(src[index:index+4]), binary.BigEndian, &crc)
-			if block.err != nil {
-				block.err = newReaderError("failed to read crc checksum after snappy block", block.err)
-				toDecode <- block
-				continue
+		case compressionSnappy:
+			index := len(ocfr.block) - 4 // last 4 bytes is crc32 of decoded block
+			if index <= 0 {
+				ocfr.rerr = fmt.Errorf("cannot decompress snappy without CRC32 checksum: %d", len(ocfr.block))
+				return false
 			}
-
-			if crc != crc32.ChecksumIEEE(dst) {
-				block.err = newReaderError("snappy crc checksum mismatch", block.err)
-				toDecode <- block
-				continue
+			decoded, err := snappy.Decode(nil, ocfr.block[:index])
+			if err != nil {
+				ocfr.rerr = fmt.Errorf("cannot decompress: %s", err)
+				return false
 			}
+			actualCRC := crc32.ChecksumIEEE(decoded)
+			expectedCRC := binary.BigEndian.Uint32(ocfr.block[index : index+4])
+			if actualCRC != expectedCRC {
+				ocfr.rerr = fmt.Errorf("snappy CRC32 checksum mismatch: %x != %x", actualCRC, expectedCRC)
+				return false
+			}
+			ocfr.block = decoded
 
-			block.r = bytes.NewReader(dst)
-			toDecode <- block
+		default:
+			ocfr.rerr = fmt.Errorf("should not get here: cannot compress block using unrecognized compression: %d", ocfr.header.compressionID)
+			return false
+
+		}
+
+		// read and ensure sync marker matches
+		sync := make([]byte, ocfSyncLength)
+		var n int
+		if n, ocfr.rerr = io.ReadFull(ocfr.ior, sync); ocfr.rerr != nil {
+			ocfr.rerr = fmt.Errorf("cannot read sync marker: read %d out of %d bytes: %s", n, ocfSyncLength, ocfr.rerr)
+			return false
+		}
+		if !bytes.Equal(sync, ocfr.header.syncMarker[:]) {
+			ocfr.rerr = fmt.Errorf("sync marker mismatch: %v != %v", sync, ocfr.header.syncMarker)
+			return false
 		}
 	}
-	close(toDecode)
+
+	ocfr.readReady = true
+	return true
 }
 
-func decode(fr *Reader, toDecode <-chan *readerBlock) {
-decodeLoop:
-	for block := range toDecode {
-		if block.err != nil {
-			fr.deblocked <- Datum{Err: block.err}
-		} else {
-			for i := 0; i < block.datumCount; i++ {
-				var datum Datum
-				datum.Value, datum.Err = fr.dataCodec.Decode(block.r)
-				if datum.Value == nil && datum.Err == nil {
-					break decodeLoop
-				}
-				fr.deblocked <- datum
-			}
-		}
-	}
-	close(fr.deblocked)
+// SkipThisBlockAndReset can be called after an error occurs while reading or
+// decoding datum values from an OCF stream. OCF specifies each OCF stream
+// contain one or more blocks of data. Each block consists of a block count, the
+// number of bytes for the block, followed be the possibly compressed
+// block. Inside each decompressed block is all of the binary encoded datum
+// values concatenated together. In other words, OCF framing is at a block level
+// rather than a datum level. If there is an error while reading or decoding a
+// datum, the reader is not able to skip to the next datum value, because OCF
+// does not have any markers for where each datum ends and the next one
+// begins. Therefore, the reader is only able to skip this datum value and all
+// subsequent datum values in the current block, move to the next block and
+// start decoding datum values there.
+func (ocfr *OCFReader) SkipThisBlockAndReset() {
+	// ??? is it an error to call method unless the reader has had an error
+	ocfr.remainingBlockItems = 0
+	ocfr.block = ocfr.block[:0]
+	ocfr.rerr = nil
 }

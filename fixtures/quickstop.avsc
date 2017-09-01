@@ -1,0 +1,1 @@
+{"fields":[{"name":"ID","type":{"type":"long"}},{"name":"First","type":{"type":"string"}},{"name":"Last","type":{"type":"string"}},{"name":"Phone","type":{"type":"string"}},{"name":"Age","type":{"type":"int"}}],"name":"Person","type":"record"}

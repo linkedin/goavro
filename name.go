@@ -1,158 +1,134 @@
-// Copyright 2015 LinkedIn Corp. Licensed under the Apache License,
-// Version 2.0 (the "License"); you may not use this file except in
-// compliance with the License.  You may obtain a copy of the License
-// at http://www.apache.org/licenses/LICENSE-2.0
+// Copyright [2017] LinkedIn Corp. Licensed under the Apache License, Version
+// 2.0 (the "License"); you may not use this file except in compliance with the
+// License.  You may obtain a copy of the License at
+// http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
-//  distributed under the License is distributed on an "AS IS" BASIS,
-//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-// implied.Copyright [201X] LinkedIn Corp. Licensed under the Apache
-// License, Version 2.0 (the "License"); you may not use this file
-// except in compliance with the License.  You may obtain a copy of
-// the License at http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-//  distributed under the License is distributed on an "AS IS" BASIS,
-//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-// implied.
+// distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+// WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
 package goavro
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 )
 
-const (
-	nullNamespace = ""
-)
+const nullNamespace = ""
 
-type name struct {
-	n   string // name
-	ns  string // namespace
-	ens string // enclosing namespace
-}
-
-type nameSetter func(*name) error
-
-func newName(setters ...nameSetter) (*name, error) {
-	var err error
-	n := &name{}
-	for _, setter := range setters {
-		if err = setter(n); err != nil {
-			return nil, err
-		}
-	}
-	// if name contains dot, then ignore namespace and enclosing namespace
-	if !strings.ContainsRune(n.n, '.') {
-		if n.ns != "" {
-			n.n = n.ns + "." + n.n
-		} else if n.ens != "" {
-			n.n = n.ens + "." + n.n
-		}
-	}
-	return n, nil
-}
-
-func nameSchema(schema map[string]interface{}) nameSetter {
-	return func(n *name) error {
-		val, ok := schema["name"]
-		if !ok {
-			return fmt.Errorf("ought to have name key")
-		}
-		n.n, ok = val.(string)
-		if !ok || len(n.n) == 0 {
-			return fmt.Errorf("name ought to be non-empty string: %T", n)
-		}
-		if val, ok := schema["namespace"]; ok {
-			n.ns, ok = val.(string)
-			if !ok {
-				return fmt.Errorf("namespace ought to be a string: %T", n)
-			}
-		}
-		return nil
-	}
-}
-
-// ErrInvalidName is returned when a Codec cannot be created due to
-// invalid name format.
+// ErrInvalidName is the error returned when one or more parts of an Avro name
+// is invalid.
 type ErrInvalidName struct {
 	Message string
 }
 
 func (e ErrInvalidName) Error() string {
-	return "The name portion of a fullname, record field names, and enum symbols must " + e.Message
+	return "schema name ought to " + e.Message
 }
 
+// NOTE: This function designed to work with name components, after they have
+// been split on the period rune.
 func isRuneInvalidForFirstCharacter(r rune) bool {
-	if (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || r == '_' || r == '.' {
-		return false
-	}
-	return true
+	return (r < 'A' || r > 'Z') && (r < 'a' || r > 'z') && r != '_'
 }
 
 func isRuneInvalidForOtherCharacters(r rune) bool {
-	if r >= '0' && r <= '9' {
-		return false
-	}
-	return isRuneInvalidForFirstCharacter(r)
+	return isRuneInvalidForFirstCharacter(r) && (r < '0' || r > '9')
 }
 
-func checkName(s string) error {
+func checkNameComponent(s string) error {
+	err := checkString(s)
+	if err != nil {
+		return &ErrInvalidName{err.Error()}
+	}
+	return err
+}
+
+func checkString(s string) error {
 	if len(s) == 0 {
-		return &ErrInvalidName{"not be empty"}
+		return errors.New("be non-empty string")
 	}
 	if strings.IndexFunc(s[:1], isRuneInvalidForFirstCharacter) != -1 {
-		return &ErrInvalidName{"start with [A-Za-z_]"}
+		return errors.New("start with [A-Za-z_]: " + s)
 	}
 	if strings.IndexFunc(s[1:], isRuneInvalidForOtherCharacters) != -1 {
-		return &ErrInvalidName{"have second and remaining characters contain only [A-Za-z0-9_]"}
+		return errors.New("have second and remaining characters contain only [A-Za-z0-9_]: " + s)
 	}
 	return nil
 }
 
-func nameName(someName string) nameSetter {
-	return func(n *name) (err error) {
-		if err = checkName(someName); err == nil {
-			n.n = someName
+// name describes an Avro name in terms of its full name and namespace.
+type name struct {
+	fullName  string // the instance's Avro name
+	namespace string // for use when building new name from existing one
+}
+
+// newName returns a new Name instance after first ensuring the arguments do not
+// violate any of the Avro naming rules.
+func newName(n, ns, ens string) (*name, error) {
+	var nn name
+
+	if index := strings.LastIndexByte(n, '.'); index > -1 {
+		// inputName does contain a dot, so ignore everything else and use it as the full name
+		nn.fullName = n
+		nn.namespace = n[:index]
+	} else {
+		// inputName does not contain a dot, therefore is not the full name
+		if ns != nullNamespace {
+			// if namespace provided in the schema in the same schema level, use it
+			nn.fullName = ns + "." + n
+			nn.namespace = ns
+		} else if ens != nullNamespace {
+			// otherwise if enclosing namespace provided, use it
+			nn.fullName = ens + "." + n
+			nn.namespace = ens
+		} else {
+			// otherwise no namespace, so use null namespace, the empty string
+			nn.fullName = n
 		}
-		return
 	}
-}
 
-func nameEnclosingNamespace(someNamespace string) nameSetter {
-	return func(n *name) error {
-		n.ens = someNamespace
-		return nil
+	// verify all components of the full name for adherence to Avro naming rules
+	for _, component := range strings.Split(nn.fullName, ".") {
+		if err := checkNameComponent(component); err != nil {
+			return nil, err
+		}
 	}
+
+	return &nn, nil
 }
 
-func nameNamespace(someNamespace string) nameSetter {
-	return func(n *name) error {
-		n.ns = someNamespace
-		return nil
+func newNameFromSchemaMap(enclosingNamespace string, schemaMap map[string]interface{}) (*name, error) {
+	var nameString, namespaceString string
+
+	name, ok := schemaMap["name"]
+	if !ok {
+		return nil, errors.New("schema ought to have name key")
 	}
-}
-
-func (n *name) equals(b *name) bool {
-	if n.n == b.n {
-		return true
+	nameString, ok = name.(string)
+	if !ok || nameString == nullNamespace {
+		return nil, fmt.Errorf("schema name ought to be non-empty string; received: %T", name)
 	}
-	return false
-}
-
-func (n name) namespace() string {
-	li := strings.LastIndex(n.n, ".")
-	if li == -1 {
-		return ""
+	namespace, ok := schemaMap["namespace"]
+	if ok {
+		namespaceString, ok = namespace.(string)
+		if !ok || namespaceString == nullNamespace {
+			return nil, fmt.Errorf("schema namespace, if provided, ought to be non-empty string; received: %T", namespace)
+		}
 	}
-	return n.n[:li]
+
+	return newName(nameString, namespaceString, enclosingNamespace)
 }
 
-func (n name) GoString() string {
-	return n.n
+func (n *name) String() string {
+	return n.fullName
 }
 
-func (n name) String() string {
-	return n.n
+// short returns the name without the prefixed namespace.
+func (n *name) short() string {
+	if index := strings.LastIndexByte(n.fullName, '.'); index > -1 {
+		return n.fullName[index+1:]
+	}
+	return n.fullName
 }

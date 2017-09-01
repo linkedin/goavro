@@ -1,108 +1,99 @@
-// Copyright 2015 LinkedIn Corp. Licensed under the Apache License,
-// Version 2.0 (the "License"); you may not use this file except in
-// compliance with the License.  You may obtain a copy of the License
-// at http://www.apache.org/licenses/LICENSE-2.0
+// Copyright [2017] LinkedIn Corp. Licensed under the Apache License, Version
+// 2.0 (the "License"); you may not use this file except in compliance with the
+// License.  You may obtain a copy of the License at
+// http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
-//  distributed under the License is distributed on an "AS IS" BASIS,
-//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-// implied.Copyright [201X] LinkedIn Corp. Licensed under the Apache
-// License, Version 2.0 (the "License"); you may not use this file
-// except in compliance with the License.  You may obtain a copy of
-// the License at http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-//  distributed under the License is distributed on an "AS IS" BASIS,
-//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-// implied.
+// distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+// WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
-package goavro
+package goavro_test
 
 import (
-	"bytes"
-	"fmt"
 	"io"
+	"runtime"
 	"strings"
+	"sync"
 	"testing"
 )
 
-type testBuffer interface {
-	io.ReadWriter
-	Bytes() []byte
-}
+func benchmarkLowAndHigh(b *testing.B, callback func()) {
+	// Run test case in parallel at relative low concurrency
+	b.Run("Low", func(b *testing.B) {
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				callback()
+			}
+		})
+	})
 
-// A byte buffer for testing that fulfills io.ReadWriter, but can't be
-// upcast to ByteWriter or StringWriter
-type simpleBuffer struct {
-	buf bytes.Buffer
-}
+	// Run test case in parallel at relative high concurrency
+	b.Run("High", func(b *testing.B) {
+		concurrency := runtime.NumCPU() * 1000
+		wg := new(sync.WaitGroup)
+		wg.Add(concurrency)
+		b.ResetTimer()
 
-func (sb *simpleBuffer) Write(b []byte) (n int, err error) {
-	return sb.buf.Write(b)
-}
+		for c := 0; c < concurrency; c++ {
+			go func() {
+				defer wg.Done()
 
-func (sb *simpleBuffer) Bytes() []byte {
-	return sb.buf.Bytes()
-}
-
-func (sb *simpleBuffer) Read(p []byte) (n int, err error) {
-	return sb.buf.Read(p)
-}
-
-func checkError(t *testing.T, actualError error, expectedError interface{}) {
-	if expectedError == nil {
-		if actualError != nil {
-			t.Errorf("Actual: %#v; Expected: %#v", actualError.Error(), expectedError)
+				for n := 0; n < b.N; n++ {
+					callback()
+				}
+			}()
 		}
-	} else {
-		if actualError == nil {
-			t.Errorf("Actual: %#v; Expected: %#v", actualError, expectedError)
-		} else {
-			var expected error
-			switch expectedError.(type) {
-			case string:
-				expected = fmt.Errorf(expectedError.(string))
-			case error:
-				expected = expectedError.(error)
-			}
-			if !strings.Contains(actualError.Error(), expected.Error()) {
-				t.Errorf("Actual: %#v; Expected to contain: %#v",
-					actualError.Error(), expected.Error())
-			}
+
+		wg.Wait()
+	})
+}
+
+// ensure code under test returns error containing specified string
+func ensureError(tb testing.TB, err error, contains ...string) {
+	if err == nil {
+		tb.Errorf("Actual: %v; Expected: %#v", err, contains)
+		return
+	}
+	for _, stub := range contains {
+		if !strings.Contains(err.Error(), stub) {
+			tb.Errorf("Actual: %v; Expected: %#v", err, contains)
 		}
 	}
 }
 
-func checkErrorFatal(t *testing.T, actualError error, expectedError interface{}) {
-	if expectedError == nil {
-		if actualError != nil {
-			t.Fatalf("Actual: %#v; Expected: %#v", actualError.Error(), expectedError)
-		}
-	} else {
-		if actualError == nil {
-			t.Fatalf("Actual: %#v; Expected: %#v", actualError, expectedError)
-		} else {
-			var expected string
-			switch expectedError.(type) {
-			case string:
-				expected = expectedError.(string)
-			case error:
-				expected = expectedError.(error).Error()
-			}
-			if !strings.Contains(actualError.Error(), expected) {
-				t.Fatalf("Actual: %#v; Expected to contain: %#v",
-					actualError.Error(), expected)
-			}
-		}
-	}
+// ShortWriter returns a structure that wraps an io.Writer, but returns
+// io.ErrShortWrite when the number of bytes to write exceeds a preset limit.
+//
+// Copied with author's permission from https://github.com/karrick/gorill.
+//
+//   bb := NopCloseBuffer()
+//   sw := ShortWriter(bb, 16)
+//
+//   n, err := sw.Write([]byte("short write"))
+//   // n == 11, err == nil
+//
+//   n, err := sw.Write([]byte("a somewhat longer write"))
+//   // n == 16, err == io.ErrShortWrite
+func ShortWriter(w io.Writer, max int) io.Writer {
+	return shortWriter{Writer: w, max: max}
 }
 
-func checkResponse(t *testing.T, bb *bytes.Buffer, n int, expectedBytes []byte) {
-	expectedCount := len(expectedBytes)
-	if n != expectedCount {
-		t.Errorf("Actual: %#v; Expected: %#v", n, expectedCount)
+func (s shortWriter) Write(data []byte) (int, error) {
+	var short bool
+	index := len(data)
+	if index > s.max {
+		index = s.max
+		short = true
 	}
-	if bytes.Compare(bb.Bytes(), expectedBytes) != 0 {
-		t.Errorf("Actual: %#v; Expected: %#v", bb.Bytes(), expectedBytes)
+	n, err := s.Writer.Write(data[:index])
+	if short {
+		return n, io.ErrShortWrite
 	}
+	return n, err
+}
+
+type shortWriter struct {
+	io.Writer
+	max int
 }
