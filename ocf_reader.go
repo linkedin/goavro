@@ -61,6 +61,11 @@ func NewOCFReader(ior io.Reader) (*OCFReader, error) {
 	return &OCFReader{header: header, ior: ior}, nil
 }
 
+//MetaData returns the file metadata map found within the OCF file
+func (ocfr *OCFReader) MetaData() map[string][]byte {
+	return ocfr.header.metadata
+}
+
 // Codec returns the codec found within the OCF file.
 func (ocfr *OCFReader) Codec() *Codec {
 	return ocfr.header.codec

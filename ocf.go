@@ -61,6 +61,7 @@ type ocfHeader struct {
 	codec         *Codec
 	compressionID compressionID
 	syncMarker    [ocfSyncLength]byte
+	metadata      map[string][]byte
 }
 
 func newOCFHeader(config OCFConfig) (*ocfHeader, error) {
@@ -96,6 +97,8 @@ func newOCFHeader(config OCFConfig) (*ocfHeader, error) {
 			return nil, fmt.Errorf("cannot create OCF header: %s", err)
 		}
 	}
+
+	header.metadata = config.MetaData
 
 	//
 	// The 16-byte, randomly-generated sync marker for this file.
@@ -164,7 +167,7 @@ func readOCFHeader(ior io.Reader) (*ocfHeader, error) {
 		return nil, fmt.Errorf("cannot read OCF header with invalid avro.schema: %s", err)
 	}
 
-	header := &ocfHeader{codec: codec, compressionID: cID}
+	header := &ocfHeader{codec: codec, compressionID: cID, metadata: metadata}
 
 	//
 	// read and store sync marker
@@ -208,7 +211,14 @@ func writeOCFHeader(header *ocfHeader, iow io.Writer) (err error) {
 	//
 	// file metadata, including the schema
 	//
-	buf, err = ocfMetadataCodec.BinaryFromNative(buf, map[string]interface{}{"avro.schema": []byte(schema), "avro.codec": []byte(avroCodec)})
+	meta := make(map[string]interface{})
+	for k, v := range header.metadata {
+		meta[k] = v
+	}
+	meta["avro.schema"] = []byte(schema)
+	meta["avro.codec"] = []byte(avroCodec)
+
+	buf, err = ocfMetadataCodec.BinaryFromNative(buf, meta)
 	if err != nil {
 		return fmt.Errorf("should not get here: cannot write OCF header: %s", err)
 	}

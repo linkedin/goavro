@@ -51,6 +51,11 @@ type OCFConfig struct {
 	// omitted, defaults to "null" codec. When appending to an existing OCF,
 	// this field is ignored.
 	CompressionName string
+
+	//MetaData specifies application specific meta data to be added to
+	//the OCF file.  When appending to an existing OCF, this field
+	//is ignored
+	MetaData map[string][]byte
 }
 
 // OCFWriter is used to create a new or append to an existing Avro Object
