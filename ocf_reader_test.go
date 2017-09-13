@@ -7,22 +7,20 @@
 // distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
 // WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
-package goavro_test
+package goavro
 
 import (
 	"bytes"
 	"testing"
-
-	"github.com/linkedin/goavro"
 )
 
 // readOCFHeader, magic bytes
 
 func TestReadOCFHeaderMagicBytes(t *testing.T) {
-	_, err := goavro.NewOCFReader(bytes.NewBuffer([]byte("Obj"))) // missing fourth byte
+	_, err := NewOCFReader(bytes.NewBuffer([]byte("Obj"))) // missing fourth byte
 	ensureError(t, err, "cannot create OCF")
 
-	_, err = goavro.NewOCFReader(bytes.NewBuffer([]byte("....")))
+	_, err = NewOCFReader(bytes.NewBuffer([]byte("....")))
 	ensureError(t, err, "cannot create OCF")
 }
 
@@ -31,7 +29,7 @@ func TestReadOCFHeaderMagicBytes(t *testing.T) {
 //
 
 func testCannotReadOCFHeader(t *testing.T, input []byte, expected ...string) {
-	_, err := goavro.NewOCFReader(bytes.NewBuffer(append([]byte("Obj\x01"), input...)))
+	_, err := NewOCFReader(bytes.NewBuffer(append([]byte("Obj\x01"), input...)))
 	ensureError(t, err, append([]string{"cannot read OCF header"}, expected...)...)
 }
 
@@ -94,7 +92,7 @@ func TestReadOCFHeaderMetadataSyncMarker(t *testing.T) {
 //
 
 // func testOCFReader(t *testing.T, schema string, input []byte, expected ...string) {
-// 	_, err := goavro.NewOCFReader(bytes.NewBuffer(append([]byte("Obj\x01"), input...)))
+// 	_, err := NewOCFReader(bytes.NewBuffer(append([]byte("Obj\x01"), input...)))
 // 	ensureError(t, err, append([]string{"any prefix?"}, expected...)...)
 // }
 

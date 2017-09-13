@@ -7,15 +7,13 @@
 // distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
 // WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
-package goavro_test
+package goavro
 
 import (
 	"bytes"
 	"io"
 	"os"
 	"testing"
-
-	"github.com/linkedin/goavro"
 )
 
 // createTestFile is used to create a new test file fixture with provided data
@@ -36,26 +34,26 @@ func createTestFile(t *testing.T, pathname string, data []byte) {
 
 func TestNewOCFWriterWhenNotFileNewOCFHeader(t *testing.T) {
 	// when config.W nil
-	_, err := goavro.NewOCFWriter(goavro.OCFConfig{})
+	_, err := NewOCFWriter(OCFConfig{})
 	ensureError(t, err, "cannot create OCFWriter", "when W is nil")
 
 	// when config.CompressionName invalid
-	_, err = goavro.NewOCFWriter(goavro.OCFConfig{W: new(bytes.Buffer), CompressionName: "*invalid*compression*algorithm*"})
+	_, err = NewOCFWriter(OCFConfig{W: new(bytes.Buffer), CompressionName: "*invalid*compression*algorithm*"})
 	ensureError(t, err, "cannot create OCFWriter", "unrecognized compression algorithm")
 
 	// when config.Schema doesn't compile
-	_, err = goavro.NewOCFWriter(goavro.OCFConfig{W: new(bytes.Buffer), CompressionName: "null", Schema: "invalid-schema"})
+	_, err = NewOCFWriter(OCFConfig{W: new(bytes.Buffer), CompressionName: "null", Schema: "invalid-schema"})
 	ensureError(t, err, "cannot create OCFWriter", "cannot unmarshal schema")
 
-	_, err = goavro.NewOCFWriter(goavro.OCFConfig{W: new(bytes.Buffer), CompressionName: "null", Schema: `{}`})
+	_, err = NewOCFWriter(OCFConfig{W: new(bytes.Buffer), CompressionName: "null", Schema: `{}`})
 	ensureError(t, err, "cannot create OCFWriter", "missing type")
 
-	_, err = goavro.NewOCFWriter(goavro.OCFConfig{W: new(bytes.Buffer), CompressionName: "null"})
+	_, err = NewOCFWriter(OCFConfig{W: new(bytes.Buffer), CompressionName: "null"})
 	ensureError(t, err, "cannot create OCFWriter", "without either Codec or Schema specified")
 }
 
 func TestNewOCFWriterWhenNotFileWriteOCFHeader(t *testing.T) {
-	_, err := goavro.NewOCFWriter(goavro.OCFConfig{
+	_, err := NewOCFWriter(OCFConfig{
 		W:               ShortWriter(new(bytes.Buffer), 3),
 		CompressionName: "null",
 		Schema:          `{"type":"int"}`},
@@ -70,7 +68,7 @@ func TestNewOCFWriterWhenFileEmpty(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = goavro.NewOCFWriter(goavro.OCFConfig{
+	_, err = NewOCFWriter(OCFConfig{
 		W:               fh,
 		CompressionName: "*invalid*",
 		Schema:          `{"type":"int"}`},
@@ -83,7 +81,7 @@ func TestNewOCFWriterWhenFileNotEmptyWhenCannotReadOCFHeader(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = goavro.NewOCFWriter(goavro.OCFConfig{
+	_, err = NewOCFWriter(OCFConfig{
 		W:               fh,
 		CompressionName: "*invalid*",
 		Schema:          `{"type":"int"}`},
@@ -101,7 +99,7 @@ func testNewOCFWriterWhenFile(t *testing.T, pathname string, expected ...string)
 			t.Fatal(err)
 		}
 	}()
-	_, err = goavro.NewOCFWriter(goavro.OCFConfig{W: fh})
+	_, err = NewOCFWriter(OCFConfig{W: fh})
 	ensureError(t, err, append([]string{"cannot create OCFWriter"}, expected...)...)
 }
 
@@ -129,7 +127,7 @@ func TestNewOCFWriterWhenFileNotEmptyWhenProvidedDifferentCompressionAndSchema(t
 		}
 	}()
 
-	ocfw, err := goavro.NewOCFWriter(goavro.OCFConfig{
+	ocfw, err := NewOCFWriter(OCFConfig{
 		W:               fh,
 		Schema:          `{"type":"int"}`,
 		CompressionName: "null",
@@ -141,7 +139,7 @@ func TestNewOCFWriterWhenFileNotEmptyWhenProvidedDifferentCompressionAndSchema(t
 	if actual, expected := ocfw.Codec().Schema(), `{"type":"long"}`; actual != expected {
 		t.Errorf("Actual: %v; Expected: %v", actual, expected)
 	}
-	if actual, expected := ocfw.CompressionName(), goavro.CompressionDeflateLabel; actual != expected {
+	if actual, expected := ocfw.CompressionName(), CompressionDeflateLabel; actual != expected {
 		t.Errorf("Actual: %v; Expected: %v", actual, expected)
 	}
 }
@@ -159,7 +157,7 @@ func TestOCFWriterAppendWhenCannotWrite(t *testing.T) {
 		}
 	}(appender)
 
-	ocfw, err := goavro.NewOCFWriter(goavro.OCFConfig{W: appender})
+	ocfw, err := NewOCFWriter(OCFConfig{W: appender})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -181,7 +179,7 @@ func TestOCFWriterAppendSomeItemsToNothing(t *testing.T) {
 		}
 	}(appender)
 
-	ocfw, err := goavro.NewOCFWriter(goavro.OCFConfig{W: appender})
+	ocfw, err := NewOCFWriter(OCFConfig{W: appender})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,7 +199,7 @@ func TestOCFWriterAppendSomeItemsToNothing(t *testing.T) {
 		}
 	}(reader)
 
-	ocfr, err := goavro.NewOCFReader(reader)
+	ocfr, err := NewOCFReader(reader)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -242,7 +240,7 @@ func TestOCFWriterAppendSomeItemsToSomeItems(t *testing.T) {
 		}
 	}(appender)
 
-	ocfw, err := goavro.NewOCFWriter(goavro.OCFConfig{W: appender})
+	ocfw, err := NewOCFWriter(OCFConfig{W: appender})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -262,7 +260,7 @@ func TestOCFWriterAppendSomeItemsToSomeItems(t *testing.T) {
 		}
 	}(reader)
 
-	ocfr, err := goavro.NewOCFReader(reader)
+	ocfr, err := NewOCFReader(reader)
 	if err != nil {
 		t.Fatal(err)
 	}

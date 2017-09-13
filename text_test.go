@@ -7,19 +7,17 @@
 // distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
 // WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
-package goavro_test
+package goavro
 
 import (
 	"bytes"
 	"fmt"
 	"math"
 	"testing"
-
-	"github.com/linkedin/goavro"
 )
 
 func testTextDecodeFail(t *testing.T, schema string, buf []byte, errorMessage string) {
-	c, err := goavro.NewCodec(schema)
+	c, err := NewCodec(schema)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,7 +32,7 @@ func testTextDecodeFail(t *testing.T, schema string, buf []byte, errorMessage st
 }
 
 func testTextEncodeFail(t *testing.T, schema string, datum interface{}, errorMessage string) {
-	c, err := goavro.NewCodec(schema)
+	c, err := NewCodec(schema)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +52,7 @@ func testTextDecodeFailShortBuffer(t *testing.T, schema string, buf []byte) {
 }
 
 func testTextDecodePass(t *testing.T, schema string, datum interface{}, encoded []byte) {
-	codec, err := goavro.NewCodec(schema)
+	codec, err := NewCodec(schema)
 	if err != nil {
 		t.Fatalf("schema: %s; %s", schema, err)
 	}
@@ -176,7 +174,7 @@ func testTextDecodePass(t *testing.T, schema string, datum interface{}, encoded 
 }
 
 func testTextEncodePass(t *testing.T, schema string, datum interface{}, expected []byte) {
-	codec, err := goavro.NewCodec(schema)
+	codec, err := NewCodec(schema)
 	if err != nil {
 		t.Fatalf("Schma: %q %s", schema, err)
 	}

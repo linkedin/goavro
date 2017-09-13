@@ -7,14 +7,12 @@
 // distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
 // WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
-package goavro_test
+package goavro
 
 import (
 	"fmt"
 	"log"
 	"testing"
-
-	"github.com/linkedin/goavro"
 )
 
 func TestMapSchema(t *testing.T) {
@@ -56,7 +54,7 @@ func TestMapDecodeNextBlockCountCannotDecode(t *testing.T) {
 }
 
 func TestMapDecodeNextBlockCountNegative(t *testing.T) {
-	c, err := goavro.NewCodec(`{"type":"map","values":"int"}`)
+	c, err := NewCodec(`{"type":"map","values":"int"}`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +150,7 @@ func TestMapTextualReceiveSliceInt(t *testing.T) {
 }
 
 func ExampleMap() {
-	codec, err := goavro.NewCodec(`{
+	codec, err := NewCodec(`{
             "name": "r1",
             "type": "record",
             "fields": [{

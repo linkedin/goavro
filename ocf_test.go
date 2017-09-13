@@ -7,14 +7,12 @@
 // distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
 // WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
-package goavro_test
+package goavro
 
 import (
 	"bytes"
 	"fmt"
 	"testing"
-
-	"github.com/linkedin/goavro"
 )
 
 // testOCFRoundTripWithHeaders has OCFWriter write to a buffer using specified
@@ -29,7 +27,7 @@ func testOCFRoundTripWithHeaders(t *testing.T, compressionName string, headers m
 	schema := `{"type":"long"}`
 
 	bb := new(bytes.Buffer)
-	ocfw, err := goavro.NewOCFWriter(goavro.OCFConfig{
+	ocfw, err := NewOCFWriter(OCFConfig{
 		W:               bb,
 		CompressionName: compressionName,
 		Schema:          schema,
@@ -45,7 +43,7 @@ func testOCFRoundTripWithHeaders(t *testing.T, compressionName string, headers m
 		t.Fatal(err)
 	}
 
-	ocfr, err := goavro.NewOCFReader(bb)
+	ocfr, err := NewOCFReader(bb)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,17 +81,17 @@ func testOCFRoundTripWithHeaders(t *testing.T, compressionName string, headers m
 }
 
 func TestOCFWriterCompressionNull(t *testing.T) {
-	testOCFRoundTrip(t, goavro.CompressionNullLabel)
+	testOCFRoundTrip(t, CompressionNullLabel)
 }
 
 func TestOCFWriterCompressionDeflate(t *testing.T) {
-	testOCFRoundTrip(t, goavro.CompressionDeflateLabel)
+	testOCFRoundTrip(t, CompressionDeflateLabel)
 }
 
 func TestOCFWriterCompressionSnappy(t *testing.T) {
-	testOCFRoundTrip(t, goavro.CompressionSnappyLabel)
+	testOCFRoundTrip(t, CompressionSnappyLabel)
 }
 
 func TestOCFWriterWithApplicationMetaData(t *testing.T) {
-	testOCFRoundTripWithHeaders(t, goavro.CompressionNullLabel, map[string][]byte{"foo": []byte("BOING"), "goo": []byte("zoo")})
+	testOCFRoundTripWithHeaders(t, CompressionNullLabel, map[string][]byte{"foo": []byte("BOING"), "goo": []byte("zoo")})
 }

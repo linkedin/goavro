@@ -7,25 +7,23 @@
 // distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
 // WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
-package goavro_test
+package goavro
 
 import (
 	"bytes"
 	"testing"
-
-	v2 "github.com/linkedin/goavro"
 )
 
-func newCodecUsingV2(tb testing.TB, schema string) *v2.Codec {
-	codec, err := v2.NewCodec(schema)
+func newCodecUsingV2(tb testing.TB, schema string) *Codec {
+	codec, err := NewCodec(schema)
 	if err != nil {
 		tb.Fatal(err)
 	}
 	return codec
 }
 
-func nativeFromAvroUsingV2(tb testing.TB, avroBlob []byte) ([]interface{}, *v2.Codec) {
-	ocf, err := v2.NewOCFReader(bytes.NewReader(avroBlob))
+func nativeFromAvroUsingV2(tb testing.TB, avroBlob []byte) ([]interface{}, *Codec) {
+	ocf, err := NewOCFReader(bytes.NewReader(avroBlob))
 	if err != nil {
 		tb.Fatal(err)
 	}
@@ -44,7 +42,7 @@ func nativeFromAvroUsingV2(tb testing.TB, avroBlob []byte) ([]interface{}, *v2.C
 	return nativeData, ocf.Codec()
 }
 
-func binaryFromNativeUsingV2(tb testing.TB, codec *v2.Codec, nativeData []interface{}) [][]byte {
+func binaryFromNativeUsingV2(tb testing.TB, codec *Codec, nativeData []interface{}) [][]byte {
 	binaryData := make([][]byte, len(nativeData))
 	for i, datum := range nativeData {
 		binaryDatum, err := codec.BinaryFromNative(nil, datum)
@@ -56,7 +54,7 @@ func binaryFromNativeUsingV2(tb testing.TB, codec *v2.Codec, nativeData []interf
 	return binaryData
 }
 
-func textFromNativeUsingV2(tb testing.TB, codec *v2.Codec, nativeData []interface{}) [][]byte {
+func textFromNativeUsingV2(tb testing.TB, codec *Codec, nativeData []interface{}) [][]byte {
 	textData := make([][]byte, len(nativeData))
 	for i, nativeDatum := range nativeData {
 		textDatum, err := codec.TextualFromNative(nil, nativeDatum)
@@ -68,7 +66,7 @@ func textFromNativeUsingV2(tb testing.TB, codec *v2.Codec, nativeData []interfac
 	return textData
 }
 
-func nativeFromBinaryUsingV2(tb testing.TB, codec *v2.Codec, binaryData [][]byte) []interface{} {
+func nativeFromBinaryUsingV2(tb testing.TB, codec *Codec, binaryData [][]byte) []interface{} {
 	nativeData := make([]interface{}, len(binaryData))
 	for i, binaryDatum := range binaryData {
 		nativeDatum, buf, err := codec.NativeFromBinary(binaryDatum)
@@ -83,7 +81,7 @@ func nativeFromBinaryUsingV2(tb testing.TB, codec *v2.Codec, binaryData [][]byte
 	return nativeData
 }
 
-func nativeFromTextUsingV2(tb testing.TB, codec *v2.Codec, textData [][]byte) []interface{} {
+func nativeFromTextUsingV2(tb testing.TB, codec *Codec, textData [][]byte) []interface{} {
 	nativeData := make([]interface{}, len(textData))
 	for i, textDatum := range textData {
 		nativeDatum, buf, err := codec.NativeFromTextual(textDatum)

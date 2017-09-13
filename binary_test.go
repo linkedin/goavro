@@ -7,36 +7,34 @@
 // distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
 // WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
-package goavro_test
+package goavro
 
 import (
 	"bytes"
 	"fmt"
 	"math"
 	"testing"
-
-	"github.com/linkedin/goavro"
 )
 
 var morePositiveThanMaxBlockCount, morePositiveThanMaxBlockSize, moreNegativeThanMaxBlockCount, mostNegativeBlockCount []byte
 
 func init() {
-	c, err := goavro.NewCodec("long")
+	c, err := NewCodec("long")
 	if err != nil {
 		panic(err)
 	}
 
-	morePositiveThanMaxBlockCount, err = c.BinaryFromNative(nil, (goavro.MaxBlockCount + 1))
+	morePositiveThanMaxBlockCount, err = c.BinaryFromNative(nil, (MaxBlockCount + 1))
 	if err != nil {
 		panic(err)
 	}
 
-	morePositiveThanMaxBlockSize, err = c.BinaryFromNative(nil, (goavro.MaxBlockSize + 1))
+	morePositiveThanMaxBlockSize, err = c.BinaryFromNative(nil, (MaxBlockSize + 1))
 	if err != nil {
 		panic(err)
 	}
 
-	moreNegativeThanMaxBlockCount, err = c.BinaryFromNative(nil, -(goavro.MaxBlockCount + 1))
+	moreNegativeThanMaxBlockCount, err = c.BinaryFromNative(nil, -(MaxBlockCount + 1))
 	if err != nil {
 		panic(err)
 	}
@@ -48,7 +46,7 @@ func init() {
 }
 
 func testBinaryDecodeFail(t *testing.T, schema string, buf []byte, errorMessage string) {
-	c, err := goavro.NewCodec(schema)
+	c, err := NewCodec(schema)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +61,7 @@ func testBinaryDecodeFail(t *testing.T, schema string, buf []byte, errorMessage 
 }
 
 func testBinaryEncodeFail(t *testing.T, schema string, datum interface{}, errorMessage string) {
-	c, err := goavro.NewCodec(schema)
+	c, err := NewCodec(schema)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +81,7 @@ func testBinaryDecodeFailShortBuffer(t *testing.T, schema string, buf []byte) {
 }
 
 func testBinaryDecodePass(t *testing.T, schema string, datum interface{}, encoded []byte) {
-	codec, err := goavro.NewCodec(schema)
+	codec, err := NewCodec(schema)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +105,7 @@ func testBinaryDecodePass(t *testing.T, schema string, datum interface{}, encode
 }
 
 func testBinaryEncodePass(t *testing.T, schema string, datum interface{}, expected []byte) {
-	codec, err := goavro.NewCodec(schema)
+	codec, err := NewCodec(schema)
 	if err != nil {
 		t.Fatalf("Schma: %q %s", schema, err)
 	}

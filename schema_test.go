@@ -7,40 +7,38 @@
 // distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
 // WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
-package goavro_test
+package goavro
 
 import (
 	"fmt"
 	"testing"
-
-	"github.com/linkedin/goavro"
 )
 
 func testSchemaPrimativeCodec(t *testing.T, primitiveTypeName string) {
-	if _, err := goavro.NewCodec(primitiveTypeName); err != nil {
+	if _, err := NewCodec(primitiveTypeName); err != nil {
 		t.Errorf("Bare primitive type: Schema: %q; Actual: %#v; Expected: %#v", primitiveTypeName, err, nil)
 	}
 	quoted := `"` + primitiveTypeName + `"`
-	if _, err := goavro.NewCodec(quoted); err != nil {
+	if _, err := NewCodec(quoted); err != nil {
 		t.Errorf("Bare primitive type: Schema: %q; Actual: %#v; Expected: %#v", quoted, err, nil)
 	}
 	full := fmt.Sprintf(`{"type":"%s"}`, primitiveTypeName)
-	if _, err := goavro.NewCodec(full); err != nil {
+	if _, err := NewCodec(full); err != nil {
 		t.Errorf("Full primitive type: Schema: %q; Actual: %#v; Expected: %#v", full, err, nil)
 	}
 	extra := fmt.Sprintf(`{"type":"%s","ignoredKey":"ignoredValue"}`, primitiveTypeName)
-	if _, err := goavro.NewCodec(extra); err != nil {
+	if _, err := NewCodec(extra); err != nil {
 		t.Errorf("Full primitive type with extra attributes: Schema: %q; Actual: %#v; Expected: %#v", extra, err, nil)
 	}
 }
 
 func testSchemaInvalid(t *testing.T, schema, errorMessage string) {
-	_, err := goavro.NewCodec(schema)
+	_, err := NewCodec(schema)
 	ensureError(t, err, errorMessage)
 }
 
 func testSchemaValid(t *testing.T, schema string) {
-	_, err := goavro.NewCodec(schema)
+	_, err := NewCodec(schema)
 	if err != nil {
 		t.Errorf("Actual: %v; Expected: %v", err, nil)
 	}
@@ -51,7 +49,7 @@ func TestSchemaFailInvalidType(t *testing.T) {
 }
 
 func TestCodecSchema(t *testing.T) {
-	codec, err := goavro.NewCodec(` {  "type" : "string" } `)
+	codec, err := NewCodec(` {  "type" : "string" } `)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,7 +146,7 @@ func TestSchemaFixedNameCanBeUsedLater(t *testing.T) {
 
 // func ExampleCodecSchema() {
 // 	schema := `{"type":"map","values":{"type":"enum","name":"foo","symbols":["alpha","bravo"]}}`
-// 	codec, err := goavro.NewCodec(schema)
+// 	codec, err := NewCodec(schema)
 // 	if err != nil {
 // 		fmt.Println(err)
 // 	}

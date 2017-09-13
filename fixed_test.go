@@ -7,12 +7,10 @@
 // distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
 // WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
-package goavro_test
+package goavro
 
 import (
 	"testing"
-
-	"github.com/linkedin/goavro"
 )
 
 func TestSchemaFixed(t *testing.T) {
@@ -39,7 +37,7 @@ func TestFixedDecodeBufferUnderflow(t *testing.T) {
 }
 
 func TestFixedDecodeWithExtra(t *testing.T) {
-	c, err := goavro.NewCodec(`{"type":"fixed","name":"foo","size":4}`)
+	c, err := NewCodec(`{"type":"fixed","name":"foo","size":4}`)
 	if err != nil {
 		t.Errorf("Actual: %#v; Expected: %#v", err, nil)
 	}

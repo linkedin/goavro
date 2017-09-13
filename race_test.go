@@ -7,18 +7,16 @@
 // distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
 // WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
-package goavro_test
+package goavro
 
 import (
 	"fmt"
 	"sync"
 	"testing"
-
-	"github.com/linkedin/goavro"
 )
 
 func TestRaceEncodeEncodeArray(t *testing.T) {
-	codec, err := goavro.NewCodec(`{"type":"record","name":"record1","fields":[{"name":"field1","type":"array","items":"long"}]}`)
+	codec, err := NewCodec(`{"type":"record","name":"record1","fields":[{"name":"field1","type":"array","items":"long"}]}`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +62,7 @@ func TestRaceEncodeEncodeArray(t *testing.T) {
 }
 
 func TestRaceEncodeEncodeRecord(t *testing.T) {
-	codec, err := goavro.NewCodec(`{"type":"record","name":"record1","fields":[{"type":"long","name":"field1"}]}`)
+	codec, err := NewCodec(`{"type":"record","name":"record1","fields":[{"type":"long","name":"field1"}]}`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +107,7 @@ func TestRaceEncodeEncodeRecord(t *testing.T) {
 }
 
 func TestRaceCodecConstructionDecode(t *testing.T) {
-	codec, err := goavro.NewCodec(`{"type": "long"}`)
+	codec, err := NewCodec(`{"type": "long"}`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +129,7 @@ func TestRaceCodecConstructionDecode(t *testing.T) {
 		for i := 0; i < 10000; i++ {
 			// Completely unrelated stateful objects were causing races
 			if i%100 == 0 {
-				_, _ = goavro.NewCodec(`{"type": "long"}`)
+				_, _ = NewCodec(`{"type": "long"}`)
 			}
 			buf, err := codec.BinaryFromNative(nil, i)
 			if err != nil {
@@ -172,7 +170,7 @@ func TestRaceCodecConstruction(t *testing.T) {
 	go func() {
 		defer close(comms)
 		recordSchemaJSON := `{"type": "long"}`
-		codec, err := goavro.NewCodec(recordSchemaJSON)
+		codec, err := NewCodec(recordSchemaJSON)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -190,7 +188,7 @@ func TestRaceCodecConstruction(t *testing.T) {
 	go func() {
 		defer close(done)
 		recordSchemaJSON := `{"type": "long"}`
-		codec, err := goavro.NewCodec(recordSchemaJSON)
+		codec, err := NewCodec(recordSchemaJSON)
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -7,14 +7,12 @@
 // distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
 // WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
-package goavro_test
+package goavro
 
 import (
 	"bytes"
 	"fmt"
 	"testing"
-
-	"github.com/linkedin/goavro"
 )
 
 func TestRecordName(t *testing.T) {
@@ -93,7 +91,7 @@ func TestRecordDecodedEmptyBuffer(t *testing.T) {
 }
 
 func TestRecordFieldTypeHasPrimitiveName(t *testing.T) {
-	codec, err := goavro.NewCodec(`{
+	codec, err := NewCodec(`{
   "type": "record",
   "name": "r1",
   "namespace": "com.example",
@@ -305,7 +303,7 @@ func TestSchemaRecordNamespaceFixed(t *testing.T) {
 }
 
 func TestRecordNamespace(t *testing.T) {
-	c, err := goavro.NewCodec(`{
+	c, err := NewCodec(`{
   "type": "record",
   "name": "org.foo.Y",
   "fields": [
@@ -421,7 +419,7 @@ func TestRecordFieldUnionInvalidDefaultValue(t *testing.T) {
 }
 
 func TestRecordRecursiveRoundTrip(t *testing.T) {
-	codec, err := goavro.NewCodec(`
+	codec, err := NewCodec(`
 {
   "type": "record",
   "name": "LongList",                  
@@ -470,7 +468,7 @@ func TestRecordRecursiveRoundTrip(t *testing.T) {
 }
 
 func ExampleRecordRecursiveRoundTrip() {
-	codec, err := goavro.NewCodec(`
+	codec, err := NewCodec(`
 {
   "type": "record",
   "name": "LongList",
@@ -517,7 +515,7 @@ func ExampleRecordRecursiveRoundTrip() {
 }
 
 func ExampleBinaryFromNative() {
-	codec, err := goavro.NewCodec(`
+	codec, err := NewCodec(`
 {
   "type": "record",
   "name": "LongList",
@@ -551,7 +549,7 @@ func ExampleBinaryFromNative() {
 }
 
 func ExampleNativeFromBinary() {
-	codec, err := goavro.NewCodec(`
+	codec, err := NewCodec(`
 {
   "type": "record",
   "name": "LongList",
@@ -577,7 +575,7 @@ func ExampleNativeFromBinary() {
 }
 
 func ExampleNativeFromTextual() {
-	codec, err := goavro.NewCodec(`
+	codec, err := NewCodec(`
 {
   "type": "record",
   "name": "LongList",
@@ -603,7 +601,7 @@ func ExampleNativeFromTextual() {
 }
 
 func ExampleTextualFromNative() {
-	codec, err := goavro.NewCodec(`
+	codec, err := NewCodec(`
 {
   "type": "record",
   "name": "LongList",

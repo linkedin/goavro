@@ -7,7 +7,7 @@
 // distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
 // WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
-package goavro_test
+package goavro
 
 import (
 	"bytes"
@@ -15,8 +15,6 @@ import (
 	"math"
 	"strconv"
 	"testing"
-
-	"github.com/linkedin/goavro"
 )
 
 func TestSchemaUnion(t *testing.T) {
@@ -25,61 +23,61 @@ func TestSchemaUnion(t *testing.T) {
 }
 
 func TestUnion(t *testing.T) {
-	testBinaryCodecPass(t, `["null"]`, goavro.Union("null", nil), []byte("\x00"))
-	testBinaryCodecPass(t, `["null","int"]`, goavro.Union("null", nil), []byte("\x00"))
-	testBinaryCodecPass(t, `["int","null"]`, goavro.Union("null", nil), []byte("\x02"))
+	testBinaryCodecPass(t, `["null"]`, Union("null", nil), []byte("\x00"))
+	testBinaryCodecPass(t, `["null","int"]`, Union("null", nil), []byte("\x00"))
+	testBinaryCodecPass(t, `["int","null"]`, Union("null", nil), []byte("\x02"))
 
-	testBinaryCodecPass(t, `["null","int"]`, goavro.Union("int", 3), []byte("\x02\x06"))
-	testBinaryCodecPass(t, `["null","long"]`, goavro.Union("long", 3), []byte("\x02\x06"))
+	testBinaryCodecPass(t, `["null","int"]`, Union("int", 3), []byte("\x02\x06"))
+	testBinaryCodecPass(t, `["null","long"]`, Union("long", 3), []byte("\x02\x06"))
 
-	testBinaryCodecPass(t, `["int","null"]`, goavro.Union("int", 3), []byte("\x00\x06"))
-	testBinaryEncodePass(t, `["int","null"]`, goavro.Union("int", 3), []byte("\x00\x06")) // can encode a bare 3
+	testBinaryCodecPass(t, `["int","null"]`, Union("int", 3), []byte("\x00\x06"))
+	testBinaryEncodePass(t, `["int","null"]`, Union("int", 3), []byte("\x00\x06")) // can encode a bare 3
 
-	testBinaryEncodeFail(t, `[{"type":"enum","name":"colors","symbols":["red","green","blue"]},{"type":"enum","name":"animals","symbols":["dog","cat"]}]`, goavro.Union("colors", "bravo"), "value ought to be member of symbols")
-	testBinaryEncodeFail(t, `[{"type":"enum","name":"colors","symbols":["red","green","blue"]},{"type":"enum","name":"animals","symbols":["dog","cat"]}]`, goavro.Union("animals", "bravo"), "value ought to be member of symbols")
-	testBinaryCodecPass(t, `[{"type":"enum","name":"colors","symbols":["red","green","blue"]},{"type":"enum","name":"animals","symbols":["dog","cat"]}]`, goavro.Union("colors", "green"), []byte{0, 2})
-	testBinaryCodecPass(t, `[{"type":"enum","name":"colors","symbols":["red","green","blue"]},{"type":"enum","name":"animals","symbols":["dog","cat"]}]`, goavro.Union("animals", "cat"), []byte{2, 2})
+	testBinaryEncodeFail(t, `[{"type":"enum","name":"colors","symbols":["red","green","blue"]},{"type":"enum","name":"animals","symbols":["dog","cat"]}]`, Union("colors", "bravo"), "value ought to be member of symbols")
+	testBinaryEncodeFail(t, `[{"type":"enum","name":"colors","symbols":["red","green","blue"]},{"type":"enum","name":"animals","symbols":["dog","cat"]}]`, Union("animals", "bravo"), "value ought to be member of symbols")
+	testBinaryCodecPass(t, `[{"type":"enum","name":"colors","symbols":["red","green","blue"]},{"type":"enum","name":"animals","symbols":["dog","cat"]}]`, Union("colors", "green"), []byte{0, 2})
+	testBinaryCodecPass(t, `[{"type":"enum","name":"colors","symbols":["red","green","blue"]},{"type":"enum","name":"animals","symbols":["dog","cat"]}]`, Union("animals", "cat"), []byte{2, 2})
 }
 
 func TestUnionRejectInvalidType(t *testing.T) {
 	testBinaryEncodeFailBadDatumType(t, `["null","long"]`, 3)
 	testBinaryEncodeFailBadDatumType(t, `["null","int","long","float"]`, float64(3.5))
-	testBinaryEncodeFailBadDatumType(t, `["null","long"]`, goavro.Union("int", 3))
-	testBinaryEncodeFailBadDatumType(t, `["null","int","long","float"]`, goavro.Union("double", float64(3.5)))
+	testBinaryEncodeFailBadDatumType(t, `["null","long"]`, Union("int", 3))
+	testBinaryEncodeFailBadDatumType(t, `["null","int","long","float"]`, Union("double", float64(3.5)))
 }
 
 func TestUnionWillCoerceTypeIfPossible(t *testing.T) {
-	testBinaryCodecPass(t, `["null","long","float","double"]`, goavro.Union("long", int32(3)), []byte("\x02\x06"))
-	testBinaryCodecPass(t, `["null","int","float","double"]`, goavro.Union("int", int64(3)), []byte("\x02\x06"))
-	testBinaryCodecPass(t, `["null","int","long","double"]`, goavro.Union("double", float32(3.5)), []byte("\x06\x00\x00\x00\x00\x00\x00\f@"))
-	testBinaryCodecPass(t, `["null","int","long","float"]`, goavro.Union("float", float64(3.5)), []byte("\x06\x00\x00\x60\x40"))
+	testBinaryCodecPass(t, `["null","long","float","double"]`, Union("long", int32(3)), []byte("\x02\x06"))
+	testBinaryCodecPass(t, `["null","int","float","double"]`, Union("int", int64(3)), []byte("\x02\x06"))
+	testBinaryCodecPass(t, `["null","int","long","double"]`, Union("double", float32(3.5)), []byte("\x06\x00\x00\x00\x00\x00\x00\f@"))
+	testBinaryCodecPass(t, `["null","int","long","float"]`, Union("float", float64(3.5)), []byte("\x06\x00\x00\x60\x40"))
 }
 
 func TestUnionNumericCoercionGuardsPrecision(t *testing.T) {
-	testBinaryEncodeFail(t, `["null","int","long","double"]`, goavro.Union("int", float32(3.5)), "lose precision")
+	testBinaryEncodeFail(t, `["null","int","long","double"]`, Union("int", float32(3.5)), "lose precision")
 }
 
 func TestUnionWithArray(t *testing.T) {
-	testBinaryCodecPass(t, `["null",{"type":"array","items":"int"}]`, goavro.Union("null", nil), []byte("\x00"))
+	testBinaryCodecPass(t, `["null",{"type":"array","items":"int"}]`, Union("null", nil), []byte("\x00"))
 
-	testBinaryCodecPass(t, `["null",{"type":"array","items":"int"}]`, goavro.Union("array", []interface{}{}), []byte("\x02\x00"))
-	testBinaryCodecPass(t, `["null",{"type":"array","items":"int"}]`, goavro.Union("array", []interface{}{1}), []byte("\x02\x02\x02\x00"))
-	testBinaryCodecPass(t, `["null",{"type":"array","items":"int"}]`, goavro.Union("array", []interface{}{1, 2}), []byte("\x02\x04\x02\x04\x00"))
+	testBinaryCodecPass(t, `["null",{"type":"array","items":"int"}]`, Union("array", []interface{}{}), []byte("\x02\x00"))
+	testBinaryCodecPass(t, `["null",{"type":"array","items":"int"}]`, Union("array", []interface{}{1}), []byte("\x02\x02\x02\x00"))
+	testBinaryCodecPass(t, `["null",{"type":"array","items":"int"}]`, Union("array", []interface{}{1, 2}), []byte("\x02\x04\x02\x04\x00"))
 
-	testBinaryCodecPass(t, `[{"type": "array", "items": "string"}, "null"]`, goavro.Union("null", nil), []byte{2})
-	testBinaryCodecPass(t, `[{"type": "array", "items": "string"}, "null"]`, goavro.Union("array", []string{"foo"}), []byte("\x00\x02\x06foo\x00"))
-	testBinaryCodecPass(t, `[{"type": "array", "items": "string"}, "null"]`, goavro.Union("array", []string{"foo", "bar"}), []byte("\x00\x04\x06foo\x06bar\x00"))
+	testBinaryCodecPass(t, `[{"type": "array", "items": "string"}, "null"]`, Union("null", nil), []byte{2})
+	testBinaryCodecPass(t, `[{"type": "array", "items": "string"}, "null"]`, Union("array", []string{"foo"}), []byte("\x00\x02\x06foo\x00"))
+	testBinaryCodecPass(t, `[{"type": "array", "items": "string"}, "null"]`, Union("array", []string{"foo", "bar"}), []byte("\x00\x04\x06foo\x06bar\x00"))
 }
 
 func TestUnionWithMap(t *testing.T) {
-	testBinaryCodecPass(t, `["null",{"type":"map","values":"string"}]`, goavro.Union("null", nil), []byte("\x00"))
-	testBinaryCodecPass(t, `["string",{"type":"map","values":"string"}]`, goavro.Union("map", map[string]interface{}{"He": "Helium"}), []byte("\x02\x02\x04He\x0cHelium\x00"))
-	testBinaryCodecPass(t, `["string",{"type":"array","items":"string"}]`, goavro.Union("string", "Helium"), []byte("\x00\x0cHelium"))
+	testBinaryCodecPass(t, `["null",{"type":"map","values":"string"}]`, Union("null", nil), []byte("\x00"))
+	testBinaryCodecPass(t, `["string",{"type":"map","values":"string"}]`, Union("map", map[string]interface{}{"He": "Helium"}), []byte("\x02\x02\x04He\x0cHelium\x00"))
+	testBinaryCodecPass(t, `["string",{"type":"array","items":"string"}]`, Union("string", "Helium"), []byte("\x00\x0cHelium"))
 }
 
 func TestUnionMapRecordFitsInRecord(t *testing.T) {
 	// union value may be either map or a record
-	codec, err := goavro.NewCodec(`["null",{"type":"map","values":"double"},{"type":"record","name":"com.example.record","fields":[{"name":"field1","type":"int"},{"name":"field2","type":"float"}]}]`)
+	codec, err := NewCodec(`["null",{"type":"map","values":"double"},{"type":"record","name":"com.example.record","fields":[{"name":"field1","type":"int"},{"name":"field2","type":"float"}]}]`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +88,7 @@ func TestUnionMapRecordFitsInRecord(t *testing.T) {
 		"field1": 3,
 		"field2": 3.5,
 	}
-	datumIn := goavro.Union("com.example.record", datum)
+	datumIn := Union("com.example.record", datum)
 
 	buf, err := codec.BinaryFromNative(nil, datumIn)
 	if err != nil {
@@ -147,26 +145,26 @@ func TestUnionRecordFieldWhenNull(t *testing.T) {
   ]
 }`
 
-	testBinaryCodecPass(t, schema, map[string]interface{}{"f1": goavro.Union("array", []interface{}{})}, []byte("\x00\x00"))
-	testBinaryCodecPass(t, schema, map[string]interface{}{"f1": goavro.Union("array", []string{"bar"})}, []byte("\x00\x02\x06bar\x00"))
-	testBinaryCodecPass(t, schema, map[string]interface{}{"f1": goavro.Union("array", []string{})}, []byte("\x00\x00"))
-	testBinaryCodecPass(t, schema, map[string]interface{}{"f1": goavro.Union("null", nil)}, []byte("\x02"))
+	testBinaryCodecPass(t, schema, map[string]interface{}{"f1": Union("array", []interface{}{})}, []byte("\x00\x00"))
+	testBinaryCodecPass(t, schema, map[string]interface{}{"f1": Union("array", []string{"bar"})}, []byte("\x00\x02\x06bar\x00"))
+	testBinaryCodecPass(t, schema, map[string]interface{}{"f1": Union("array", []string{})}, []byte("\x00\x00"))
+	testBinaryCodecPass(t, schema, map[string]interface{}{"f1": Union("null", nil)}, []byte("\x02"))
 	testBinaryCodecPass(t, schema, map[string]interface{}{"f1": nil}, []byte("\x02"))
 }
 
 func TestUnionText(t *testing.T) {
-	testTextEncodeFail(t, `["null","int"]`, goavro.Union("null", 3), "expected")
-	testTextCodecPass(t, `["null","int"]`, goavro.Union("null", nil), []byte("null"))
-	testTextCodecPass(t, `["null","int"]`, goavro.Union("int", 3), []byte(`{"int":3}`))
-	testTextCodecPass(t, `["null","int","string"]`, goavro.Union("string", "😂 "), []byte(`{"string":"\u0001\uD83D\uDE02 "}`))
+	testTextEncodeFail(t, `["null","int"]`, Union("null", 3), "expected")
+	testTextCodecPass(t, `["null","int"]`, Union("null", nil), []byte("null"))
+	testTextCodecPass(t, `["null","int"]`, Union("int", 3), []byte(`{"int":3}`))
+	testTextCodecPass(t, `["null","int","string"]`, Union("string", "😂 "), []byte(`{"string":"\u0001\uD83D\uDE02 "}`))
 }
 
 func ExampleUnion() {
-	codec, err := goavro.NewCodec(`["null","string","int"]`)
+	codec, err := NewCodec(`["null","string","int"]`)
 	if err != nil {
 		fmt.Println(err)
 	}
-	buf, err := codec.TextualFromNative(nil, goavro.Union("string", "some string"))
+	buf, err := codec.TextualFromNative(nil, Union("string", "some string"))
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -180,7 +178,7 @@ func ExampleUnion3() {
 	// when the writer desires to encode data to JSON that cannot be written as
 	// a JSON number, then to encode it as a string and allow the reader to
 	// parse the string accordingly.
-	codec, err := goavro.NewCodec(`["null","double","string"]`)
+	codec, err := NewCodec(`["null","double","string"]`)
 	if err != nil {
 		fmt.Println(err)
 	}
