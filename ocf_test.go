@@ -11,14 +11,21 @@ package goavro_test
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 
 	"github.com/linkedin/goavro"
 )
 
-// testOCFRoundTrip has OCFWriter write to a buffer using specified
+// testOCFRoundTripWithHeaders has OCFWriter write to a buffer using specified
 // compression algorithm, then attempt to read it back
 func testOCFRoundTrip(t *testing.T, compressionName string) {
+	testOCFRoundTripWithHeaders(t, compressionName, nil)
+}
+
+// testOCFRoundTripWithHeaders has OCFWriter write to a buffer using specified
+// compression algorithm and headers, then attempt to read it back
+func testOCFRoundTripWithHeaders(t *testing.T, compressionName string, headers map[string][]byte) {
 	schema := `{"type":"long"}`
 
 	bb := new(bytes.Buffer)
@@ -26,6 +33,7 @@ func testOCFRoundTrip(t *testing.T, compressionName string) {
 		W:               bb,
 		CompressionName: compressionName,
 		Schema:          schema,
+		MetaData:        headers,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -63,6 +71,15 @@ func testOCFRoundTrip(t *testing.T, compressionName string) {
 			t.Errorf("Actual: %v; Expected: %v", actual, expected)
 		}
 	}
+
+	readMeta := ocfr.MetaData()
+	for k, v := range headers {
+		expected := fmt.Sprintf("%s", v)
+		actual := fmt.Sprintf("%s", readMeta[k])
+		if actual != expected {
+			t.Errorf("Actual: %v; Expected: %v (%v)", actual, expected, k)
+		}
+	}
 }
 
 func TestOCFWriterCompressionNull(t *testing.T) {
@@ -75,4 +92,8 @@ func TestOCFWriterCompressionDeflate(t *testing.T) {
 
 func TestOCFWriterCompressionSnappy(t *testing.T) {
 	testOCFRoundTrip(t, goavro.CompressionSnappyLabel)
+}
+
+func TestOCFWriterWithApplicationMetaData(t *testing.T) {
+	testOCFRoundTripWithHeaders(t, goavro.CompressionNullLabel, map[string][]byte{"foo": []byte("BOING"), "goo": []byte("zoo")})
 }
