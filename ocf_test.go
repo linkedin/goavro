@@ -14,7 +14,7 @@ import (
 	"fmt"
 	"testing"
 
-	goavro "github.com/MediaMath/goavro.v2"
+	"github.com/linkedin/goavro"
 )
 
 // testOCFRoundTripWithHeaders has OCFWriter write to a buffer using specified
