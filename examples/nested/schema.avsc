@@ -1,0 +1,22 @@
+{
+		"namespace": "my.namespace.com",
+		"type":	"record",
+		"name": "indentity",
+		"fields": [
+			{ "name": "FirstName", "type": "string"},
+			{ "name": "LastName", "type": "string"},
+			{ "name": "Errors", "type": ["null", {"type":"array", "items":"string"}], "default": null },
+			{ "name": "Address", "type": ["null",{
+				"namespace": "my.namespace.com",
+				"type":	"record",
+				"name": "address",
+				"fields": [
+					{ "name": "Address1", "type": "string" },
+					{ "name": "Address2", "type": ["null", "string"], "default": null },
+					{ "name": "City", "type": "string" },
+					{ "name": "State", "type": "string" },
+					{ "name": "Zip", "type": "int" }
+				]
+			}],"default":null}
+		]
+	}
