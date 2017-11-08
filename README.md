@@ -5,9 +5,9 @@ Goavro is a library that encodes and decodes Avro data.
 ## Description
 
 * Encodes to and decodes from both binary and textual JSON Avro data.
-* `Codec` is stateless and is safe to use by multiple go routines.
+* `Codec` is stateless and is safe to use by multiple goroutines.
 
-With the exeption of features not yet supported, goavro attempts to be
+With the exception of features not yet supported, goavro attempts to be
 fully compliant with the most recent version of the
 [Avro specification](http://avro.apache.org/docs/1.8.2/spec.html).
 
@@ -145,10 +145,10 @@ goavro `Codec` instances to encode or decode data.
 ## Resources
 
 * [Avro CLI Examples](https://github.com/miguno/avro-cli-examples)
-* [Avro](http://avro.apache.org/)
-* [Google Snappy](https://code.google.com/p/snappy/)
-* [JavaScript Object Notation, JSON](http://www.json.org/)
-* [Kafka](http://kafka.apache.org)
+* [Avro](https://avro.apache.org/)
+* [Google Snappy](https://google.github.io/snappy/)
+* [JavaScript Object Notation, JSON](https://www.json.org/)
+* [Kafka](https://kafka.apache.org)
 
 ## Usage
 
