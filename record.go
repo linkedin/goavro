@@ -63,6 +63,11 @@ func makeRecordCodec(st map[string]*Codec, enclosingNamespace string, schemaMap 
 		if defaultValue, ok := fieldSchemaMap["default"]; ok {
 			// if codec is union, then default value ought to encode using first schema in union
 			if fieldCodec.typeName.short() == "union" {
+				// NOTE: To support a null default value,
+				// the string literal "null" must be coerced to a `nil`
+				if defaultValue == "null" {
+					defaultValue = nil
+				}
 				// NOTE: To support record field default values, union schema
 				// set to the type name of first member
 				defaultValue = Union(fieldCodec.schema, defaultValue)

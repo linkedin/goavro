@@ -195,3 +195,41 @@ func TestMapValueTypeRecord(t *testing.T) {
 	// are returned as a Go map
 	testBinaryEncodePass(t, schema, datum, expected)
 }
+
+func TestDefaultValueOughtToEncodeUsingFieldSchemaOK(t *testing.T) {
+
+	testSchemaValid(t, `
+	{
+	  "namespace": "universe.of.things",
+	  "type": "record",
+	  "name": "Thing",
+	  "fields": [
+		{
+		  "name": "attributes",
+		  "type": [
+			"null",
+			{
+			  "type": "array",
+			  "items": {
+				"namespace": "universe.of.things",
+				"type": "record",
+				"name": "attribute",
+				"fields": [
+				  {
+					"name": "name",
+					"type": "string"
+				  },
+				  {
+					"name": "value",
+					"type": "string"
+				  }
+				]
+			  }
+			}
+		  ],
+		  "default": "null"
+		}
+	  ]
+	}`)
+
+}
