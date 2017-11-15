@@ -75,6 +75,11 @@ func newName(n, ns, ens string) (*name, error) {
 		nn.namespace = n[:index]
 	} else {
 		// inputName does not contain a dot, therefore is not the full name
+		err := checkNameComponent(n)
+		if err != nil {
+			return nil, err
+		}
+
 		if ns != nullNamespace {
 			// if namespace provided in the schema in the same schema level, use it
 			nn.fullName = ns + "." + n
@@ -86,13 +91,6 @@ func newName(n, ns, ens string) (*name, error) {
 		} else {
 			// otherwise no namespace, so use null namespace, the empty string
 			nn.fullName = n
-		}
-	}
-
-	// verify all components of the full name for adherence to Avro naming rules
-	for _, component := range strings.Split(nn.fullName, ".") {
-		if err := checkNameComponent(component); err != nil {
-			return nil, err
 		}
 	}
 
