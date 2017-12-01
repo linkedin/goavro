@@ -117,7 +117,7 @@ func readOCFHeader(ior io.Reader) (*ocfHeader, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot read OCF header magic bytes: %s", err)
 	}
-	if bytes.Compare(magic, ocfMagicBytes) != 0 {
+	if !bytes.Equal(magic, ocfMagicBytes) {
 		return nil, fmt.Errorf("cannot read OCF header with invalid magic bytes: %#q", magic)
 	}
 

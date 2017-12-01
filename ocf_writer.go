@@ -62,7 +62,6 @@ type OCFConfig struct {
 // Container File (OCF).
 type OCFWriter struct {
 	header *ocfHeader
-	err    error
 	iow    io.Writer
 }
 

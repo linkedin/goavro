@@ -106,7 +106,7 @@ func bytesNativeFromTextual(buf []byte) (interface{}, []byte, error) {
 				}
 				// NOTE: Avro bytes represent binary data, and do not
 				// necessarily represent text. Therefore, Avro bytes are not
-				// encoded in UTF-16. Each \u is followed by 4 hexidecimal
+				// encoded in UTF-16. Each \u is followed by 4 hexadecimal
 				// digits, the first and second of which must be 0.
 				v, err := parseUint64FromHexSlice(buf[i+3 : i+5])
 				if err != nil {
@@ -170,7 +170,7 @@ func stringNativeFromTextual(buf []byte) (interface{}, []byte, error) {
 
 				r := rune(v)
 				if utf16.IsSurrogate(r) {
-					i++ // absorb final hexidecimal digit from previous value
+					i++ // absorb final hexadecimal digit from previous value
 
 					// Expect second half of surrogate pair
 					if i > buflen-6 || buf[i] != '\\' || buf[i+1] != 'u' {
@@ -210,9 +210,6 @@ func parseUint64FromHexSlice(buf []byte) (uint64, error) {
 	var value uint64
 	for _, b := range buf {
 		diff := uint64(b - '0')
-		if diff < 0 {
-			return 0, hex.InvalidByteError(b)
-		}
 		if diff < 10 {
 			value = (value << 4) | diff
 			continue
@@ -279,7 +276,7 @@ func bytesTextualFromNative(buf []byte, datum interface{}) ([]byte, error) {
 		}
 		// This Code Point _could_ be encoded as a single byte, however, it's
 		// above standard ASCII range (b > 127), therefore must encode using its
-		// four-byte hexidecimal equivalent, which will always start with the
+		// four-byte hexadecimal equivalent, which will always start with the
 		// high byte 00
 		buf = appendUnicodeHex(buf, uint16(b))
 	}
@@ -318,7 +315,7 @@ func stringTextualFromNative(buf []byte, datum interface{}) ([]byte, error) {
 func appendUnicodeHex(buf []byte, v uint16) []byte {
 	// Start with '\u' prefix:
 	buf = append(buf, sliceUnicode...)
-	// And tack on 4 hexidecimal digits:
+	// And tack on 4 hexadecimal digits:
 	buf = append(buf, hexDigits[(v&0xF000)>>12])
 	buf = append(buf, hexDigits[(v&0xF00)>>8])
 	buf = append(buf, hexDigits[(v&0xF0)>>4])

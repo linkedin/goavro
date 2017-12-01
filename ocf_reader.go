@@ -27,7 +27,6 @@ type OCFReader struct {
 	header              *ocfHeader
 	block               []byte // buffer from which decoding takes place
 	rerr                error  // most recent error that took place while reading bytes (unrecoverable)
-	derr                error  // most recent decode error
 	ior                 io.Reader
 	readReady           bool  // true after Scan and before Read
 	remainingBlockItems int64 // count of encoded data items remaining in block buffer to be decoded

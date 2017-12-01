@@ -165,14 +165,15 @@ func TestRaceCodecConstructionDecode(t *testing.T) {
 func TestRaceCodecConstruction(t *testing.T) {
 
 	comms := make(chan []byte, 1000)
-	done := make(chan error, 10)
+	done := make(chan error, 1000)
 
 	go func() {
 		defer close(comms)
 		recordSchemaJSON := `{"type": "long"}`
 		codec, err := NewCodec(recordSchemaJSON)
 		if err != nil {
-			t.Fatal(err)
+			done <- err
+			return
 		}
 
 		for i := 0; i < 10000; i++ {
@@ -190,7 +191,8 @@ func TestRaceCodecConstruction(t *testing.T) {
 		recordSchemaJSON := `{"type": "long"}`
 		codec, err := NewCodec(recordSchemaJSON)
 		if err != nil {
-			t.Fatal(err)
+			done <- err
+			return
 		}
 		var i int64
 		for encoded := range comms {
@@ -208,8 +210,9 @@ func TestRaceCodecConstruction(t *testing.T) {
 		}
 	}()
 
-	err := <-done
-	if err != nil {
-		t.Fatal(err)
+	for err := range done {
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 }

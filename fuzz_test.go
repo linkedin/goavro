@@ -102,8 +102,8 @@ func TestCrashers_OCF_e2e(t *testing.T) {
 			" things are infinite" +
 			": the universe and h" +
 			"uman stupidity; and " +
-			"I'm not sure about u" +
-			"niverse.\x06\x01\x00\x00\x00\x06ABCT\x00e" +
+			"I'm not sure about " +
+			"universe.\x06\x01\x00\x00\x00\x06ABCT\x00e" +
 			"rran is IMBA!\x04\x06qqq\x84\x01" +
 			"\x06mmm\x00\x00\x02\x06key\x04\x023\x024\x021\x02K" +
 			"��~\x02\x84\x01\x02`\xaa\xaa\xaa\xaa\xaa\x1a@\a" +

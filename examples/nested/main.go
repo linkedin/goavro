@@ -59,7 +59,7 @@ func main() {
 	userOut := StringMapToUser(native.(map[string]interface{}))
 	fmt.Printf("user out=%+v\n", userOut)
 	if ok := reflect.DeepEqual(user, userOut); !ok {
-		fmt.Fprintf(os.Stderr, "struct Compare Failed ok=%b\n", ok)
+		fmt.Fprintf(os.Stderr, "struct Compare Failed ok=%t\n", ok)
 		os.Exit(1)
 	}
 }
