@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"reflect"
 
 	"github.com/linkedin/goavro"
@@ -58,11 +59,12 @@ func main() {
 	userOut := StringMapToUser(native.(map[string]interface{}))
 	fmt.Printf("user out=%+v\n", userOut)
 	if ok := reflect.DeepEqual(user, userOut); !ok {
-		fmt.Errorf("struct Compare Failed ok=%b", ok)
+		fmt.Fprintf(os.Stderr, "struct Compare Failed ok=%b\n", ok)
+		os.Exit(1)
 	}
-
 }
 
+// User holds information about a user.
 type User struct {
 	FirstName string
 	LastName  string
@@ -70,6 +72,7 @@ type User struct {
 	Address   *Address
 }
 
+// Address holds information about an address.
 type Address struct {
 	Address1 string
 	Address2 string
@@ -78,6 +81,7 @@ type Address struct {
 	Zip      int
 }
 
+// ToStringMap returns a map representation of the User.
 func (u *User) ToStringMap() map[string]interface{} {
 	datumIn := map[string]interface{}{
 		"FirstName": string(u.FirstName),
@@ -112,6 +116,7 @@ func (u *User) ToStringMap() map[string]interface{} {
 	return datumIn
 }
 
+// StringMapToUser returns a User from a map representation of the User.
 func StringMapToUser(data map[string]interface{}) *User {
 
 	ind := &User{}
