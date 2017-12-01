@@ -55,35 +55,35 @@ type Codec struct {
 
 func newSymbolTable() map[string]*Codec {
 	return map[string]*Codec{
-		"boolean": &Codec{
+		"boolean": {
 			typeName:          &name{"boolean", nullNamespace},
 			binaryFromNative:  booleanBinaryFromNative,
 			nativeFromBinary:  booleanNativeFromBinary,
 			nativeFromTextual: booleanNativeFromTextual,
 			textualFromNative: booleanTextualFromNative,
 		},
-		"bytes": &Codec{
+		"bytes": {
 			typeName:          &name{"bytes", nullNamespace},
 			binaryFromNative:  bytesBinaryFromNative,
 			nativeFromBinary:  bytesNativeFromBinary,
 			nativeFromTextual: bytesNativeFromTextual,
 			textualFromNative: bytesTextualFromNative,
 		},
-		"double": &Codec{
+		"double": {
 			typeName:          &name{"double", nullNamespace},
 			binaryFromNative:  doubleBinaryFromNative,
 			nativeFromBinary:  doubleNativeFromBinary,
 			nativeFromTextual: doubleNativeFromTextual,
 			textualFromNative: doubleTextualFromNative,
 		},
-		"float": &Codec{
+		"float": {
 			typeName:          &name{"float", nullNamespace},
 			binaryFromNative:  floatBinaryFromNative,
 			nativeFromBinary:  floatNativeFromBinary,
 			nativeFromTextual: floatNativeFromTextual,
 			textualFromNative: floatTextualFromNative,
 		},
-		"int": &Codec{
+		"int": {
 
 			typeName:          &name{"int", nullNamespace},
 			binaryFromNative:  intBinaryFromNative,
@@ -91,21 +91,21 @@ func newSymbolTable() map[string]*Codec {
 			nativeFromTextual: intNativeFromTextual,
 			textualFromNative: intTextualFromNative,
 		},
-		"long": &Codec{
+		"long": {
 			typeName:          &name{"long", nullNamespace},
 			binaryFromNative:  longBinaryFromNative,
 			nativeFromBinary:  longNativeFromBinary,
 			nativeFromTextual: longNativeFromTextual,
 			textualFromNative: longTextualFromNative,
 		},
-		"null": &Codec{
+		"null": {
 			typeName:          &name{"null", nullNamespace},
 			binaryFromNative:  nullBinaryFromNative,
 			nativeFromBinary:  nullNativeFromBinary,
 			nativeFromTextual: nullNativeFromTextual,
 			textualFromNative: nullTextualFromNative,
 		},
-		"string": &Codec{
+		"string": {
 			typeName:          &name{"string", nullNamespace},
 			binaryFromNative:  stringBinaryFromNative,
 			nativeFromBinary:  stringNativeFromBinary,
