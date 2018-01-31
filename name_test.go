@@ -30,6 +30,8 @@ func TestNameContainsInvalidCharacter(t *testing.T) {
 }
 
 func TestNamespaceContainsInvalidCharacter(t *testing.T) {
+	defer func() { RelaxedNameValidation = false }()
+	RelaxedNameValidation = true
 	n, err := newName("X", ".org.foo", nullNamespace)
 	if err != nil {
 		t.Fatal(err)

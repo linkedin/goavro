@@ -75,11 +75,6 @@ func newName(n, ns, ens string) (*name, error) {
 		nn.namespace = n[:index]
 	} else {
 		// inputName does not contain a dot, therefore is not the full name
-		err := checkNameComponent(n)
-		if err != nil {
-			return nil, err
-		}
-
 		if ns != nullNamespace {
 			// if namespace provided in the schema in the same schema level, use it
 			nn.fullName = ns + "." + n
@@ -94,8 +89,24 @@ func newName(n, ns, ens string) (*name, error) {
 		}
 	}
 
+	// verify all components of the full name for adherence to Avro naming rules
+	for i, component := range strings.Split(nn.fullName, ".") {
+		if i == 0 && RelaxedNameValidation && component == "" {
+			continue
+		}
+		if err := checkNameComponent(component); err != nil {
+			return nil, err
+		}
+	}
+
 	return &nn, nil
 }
+
+var (
+	// RelaxedNameValidation causes name validation to allow the first component
+	// of an Avro namespace to be the empty string.
+	RelaxedNameValidation bool
+)
 
 func newNameFromSchemaMap(enclosingNamespace string, schemaMap map[string]interface{}) (*name, error) {
 	var nameString, namespaceString string
