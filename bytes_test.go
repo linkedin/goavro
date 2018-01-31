@@ -10,6 +10,7 @@
 package goavro
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -110,9 +111,39 @@ func TestPrimitiveStringText(t *testing.T) {
 	testTextCodecPass(t, "string", "⌘ ", []byte("\"\\u0001\\u2318 \""))
 	testTextCodecPass(t, "string", "😂 ", []byte("\"\\u0001\\uD83D\\uDE02 \""))
 
+	testTextDecodeFail(t, "string", []byte("\"\\"), "short buffer")
 	testTextDecodeFail(t, "string", []byte("\"\\uD83D\""), "surrogate pair")
 	testTextDecodeFail(t, "string", []byte("\"\\uD83D\\u\""), "surrogate pair")
 	testTextDecodeFail(t, "string", []byte("\"\\uD83D\\uD\""), "surrogate pair")
 	testTextDecodeFail(t, "string", []byte("\"\\uD83D\\uDE\""), "surrogate pair")
 	testTextDecodeFail(t, "string", []byte("\"\\uD83D\\uDE0\""), "invalid byte")
+}
+
+func TestUnescapeUnicode(t *testing.T) {
+	checkGood := func(t *testing.T, argument, want string) {
+		got, err := unescapeUnicodeString(argument)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got != want {
+			t.Errorf("GOT: %q; WANT: %q", got, want)
+		}
+	}
+
+	checkBad := func(t *testing.T, argument, want string) {
+		_, got := unescapeUnicodeString(argument)
+		if got == nil || !strings.Contains(got.Error(), want) {
+			t.Errorf("GOT: %v; WANT: %v", got, want)
+		}
+	}
+
+	checkBad(t, "\\u0000", "short buffer")
+	checkBad(t, "\\uinvalid", "invalid byte")
+	checkBad(t, "\\ud83d\\ude0", "missing second half of surrogate pair")
+	checkBad(t, "\\ud83d\\uinvalid", "invalid byte")
+	checkBad(t, "\\", "short buffer")
+	checkGood(t, "", "")
+	checkGood(t, "\\\\", "\\")
+	checkGood(t, "\\u0001\\uD83D\\uDE02 ", "😂 ")
+	checkGood(t, "Hello, \u0022World!\"", "Hello, \"World!\"")
 }

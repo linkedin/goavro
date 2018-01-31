@@ -126,7 +126,7 @@ func TestRecordFieldTypeHasPrimitiveName(t *testing.T) {
 		't', 'h', 'i', 'r', 't', 'e', 'e', 'n',
 		0x1a, // field2 == 13
 	}; !bytes.Equal(buf, expected) {
-		t.Errorf("Actual: %#v; Expected: %#v", buf, expected)
+		t.Errorf("GOT: %#v; WANT: %#v", buf, expected)
 	}
 
 	// round trip
@@ -135,18 +135,18 @@ func TestRecordFieldTypeHasPrimitiveName(t *testing.T) {
 		t.Fatal(err)
 	}
 	if actual, expected := len(buf), 0; actual != expected {
-		t.Errorf("Actual: %#v; Expected: %#v", actual, expected)
+		t.Errorf("GOT: %#v; WANT: %#v", actual, expected)
 	}
 	datumOutMap, ok := datumOut.(map[string]interface{})
 	if !ok {
-		t.Errorf("Actual: %#v; Expected: %#v", ok, true)
+		t.Errorf("GOT: %#v; WANT: %#v", ok, true)
 	}
 	if actual, expected := len(datumOutMap), len(datumIn); actual != expected {
-		t.Errorf("Actual: %#v; Expected: %#v", actual, expected)
+		t.Errorf("GOT: %#v; WANT: %#v", actual, expected)
 	}
 	for k, v := range datumIn {
 		if actual, expected := fmt.Sprintf("%v", datumOutMap[k]), fmt.Sprintf("%v", v); actual != expected {
-			t.Errorf("Actual: %#v; Expected: %#v", actual, expected)
+			t.Errorf("GOT: %#v; WANT: %#v", actual, expected)
 		}
 	}
 }
@@ -337,7 +337,7 @@ func TestRecordNamespace(t *testing.T) {
 		t.Fatal(err)
 	}
 	if expected := []byte("abcdefgh"); !bytes.Equal(buf, expected) {
-		t.Errorf("Actual: %#v; Expected: %#v", buf, expected)
+		t.Errorf("GOT: %#v; WANT: %#v", buf, expected)
 	}
 
 	// round trip
@@ -346,18 +346,18 @@ func TestRecordNamespace(t *testing.T) {
 		t.Fatal(err)
 	}
 	if actual, expected := len(buf), 0; actual != expected {
-		t.Errorf("Actual: %#v; Expected: %#v", actual, expected)
+		t.Errorf("GOT: %#v; WANT: %#v", actual, expected)
 	}
 	datumOutMap, ok := datumOut.(map[string]interface{})
 	if !ok {
-		t.Errorf("Actual: %#v; Expected: %#v", ok, true)
+		t.Errorf("GOT: %#v; WANT: %#v", ok, true)
 	}
 	if actual, expected := len(datumOutMap), len(datumIn); actual != expected {
-		t.Errorf("Actual: %#v; Expected: %#v", actual, expected)
+		t.Errorf("GOT: %#v; WANT: %#v", actual, expected)
 	}
 	for k, v := range datumIn {
 		if actual, expected := fmt.Sprintf("%s", datumOutMap[k]), fmt.Sprintf("%s", v); actual != expected {
-			t.Errorf("Actual: %#v; Expected: %#v", actual, expected)
+			t.Errorf("GOT: %#v; WANT: %#v", actual, expected)
 		}
 	}
 }
@@ -463,7 +463,7 @@ func TestRecordRecursiveRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 	if actual, expected := string(buf), final; actual != expected {
-		t.Fatalf("Actual: %v; Expected: %v", actual, expected)
+		t.Fatalf("GOT: %v; WANT: %v", actual, expected)
 	}
 }
 

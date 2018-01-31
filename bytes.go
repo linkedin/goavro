@@ -208,7 +208,80 @@ func stringNativeFromTextual(buf []byte) (interface{}, []byte, error) {
 		}
 		newBytes = append(newBytes, b)
 	}
+	if escaped {
+		return nil, nil, fmt.Errorf("cannot decode textual string: %s", io.ErrShortBuffer)
+	}
 	return nil, nil, fmt.Errorf("cannot decode textual string: expected final \"; found: %x", buf[buflen-1])
+}
+
+func unescapeUnicodeString(some string) (string, error) {
+	if some == "" {
+		return "", nil
+	}
+	buf := []byte(some)
+	buflen := len(buf)
+	var i int
+	var newBytes []byte
+	var escaped bool
+	// Loop through bytes following initial double quote, but note we will
+	// return immediately when find unescaped double quote.
+	for i = 0; i < buflen; i++ {
+		b := buf[i]
+		if escaped {
+			escaped = false
+			if b == 'u' {
+				// NOTE: Need at least 4 more bytes to read uint16, but subtract
+				// 1 because do not want to count the trailing quote and
+				// subtract another 1 because already consumed u but have yet to
+				// increment i.
+				if i > buflen-6 {
+					return "", fmt.Errorf("cannot replace escaped characters with UTF-8 equivalent: %s", io.ErrShortBuffer)
+				}
+				v, err := parseUint64FromHexSlice(buf[i+1 : i+5])
+				if err != nil {
+					return "", fmt.Errorf("cannot replace escaped characters with UTF-8 equivalent: %s", err)
+				}
+				i += 4 // absorb 4 characters: one 'u' and three of the digits
+
+				nbl := len(newBytes)
+				newBytes = append(newBytes, []byte{0, 0, 0, 0}...) // grow to make room for UTF-8 encoded rune
+
+				r := rune(v)
+				if utf16.IsSurrogate(r) {
+					i++ // absorb final hexadecimal digit from previous value
+
+					// Expect second half of surrogate pair
+					if i > buflen-6 || buf[i] != '\\' || buf[i+1] != 'u' {
+						return "", errors.New("cannot replace escaped characters with UTF-8 equivalent: missing second half of surrogate pair")
+					}
+
+					v, err = parseUint64FromHexSlice(buf[i+2 : i+6])
+					if err != nil {
+						return "", fmt.Errorf("cannot replace escaped characters with UTF-8 equivalents: %s", err)
+					}
+					i += 5 // absorb 5 characters: two for '\u', and 3 of the 4 digits
+
+					// Get code point by combining high and low surrogate bits
+					r = utf16.DecodeRune(r, rune(v))
+				}
+
+				width := utf8.EncodeRune(newBytes[nbl:], r) // append UTF-8 encoded version of code point
+				newBytes = newBytes[:nbl+width]             // trim off excess bytes
+				continue
+			}
+			newBytes = append(newBytes, b)
+			continue
+		}
+		if b == '\\' {
+			escaped = true
+			continue
+		}
+		newBytes = append(newBytes, b)
+	}
+	if escaped {
+		return "", fmt.Errorf("cannot replace escaped characters with UTF-8 equivalents: %s", io.ErrShortBuffer)
+	}
+	return string(newBytes), nil
 }
 
 func parseUint64FromHexSlice(buf []byte) (uint64, error) {

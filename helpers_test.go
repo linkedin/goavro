@@ -52,12 +52,12 @@ func benchmarkLowAndHigh(b *testing.B, callback func()) {
 // ensure code under test returns error containing specified string
 func ensureError(tb testing.TB, err error, contains ...string) {
 	if err == nil {
-		tb.Errorf("Actual: %v; Expected: %#v", err, contains)
+		tb.Errorf("GOT: %v; WANT: %#v", err, contains)
 		return
 	}
 	for _, stub := range contains {
 		if !strings.Contains(err.Error(), stub) {
-			tb.Errorf("Actual: %v; Expected: %#v", err, contains)
+			tb.Errorf("GOT: %v; WANT: %#v", err, contains)
 		}
 	}
 }

@@ -137,10 +137,10 @@ func TestNewOCFWriterWhenFileNotEmptyWhenProvidedDifferentCompressionAndSchema(t
 	}
 
 	if actual, expected := ocfw.Codec().Schema(), `{"type":"long"}`; actual != expected {
-		t.Errorf("Actual: %v; Expected: %v", actual, expected)
+		t.Errorf("GOT: %v; WANT: %v", actual, expected)
 	}
 	if actual, expected := ocfw.CompressionName(), CompressionDeflateLabel; actual != expected {
-		t.Errorf("Actual: %v; Expected: %v", actual, expected)
+		t.Errorf("GOT: %v; WANT: %v", actual, expected)
 	}
 }
 
@@ -217,13 +217,13 @@ func TestOCFWriterAppendSomeItemsToNothing(t *testing.T) {
 	}
 
 	if actual, expected := len(values), 2; actual != expected {
-		t.Errorf("Actual: %v; Expected: %v", actual, expected)
+		t.Errorf("GOT: %v; WANT: %v", actual, expected)
 	}
 	if actual, expected := values[0], int64(13); actual != expected {
-		t.Errorf("Actual: %v; Expected: %v", actual, expected)
+		t.Errorf("GOT: %v; WANT: %v", actual, expected)
 	}
 	if actual, expected := values[1], int64(42); actual != expected {
-		t.Errorf("Actual: %v; Expected: %v", actual, expected)
+		t.Errorf("GOT: %v; WANT: %v", actual, expected)
 	}
 }
 
@@ -278,18 +278,18 @@ func TestOCFWriterAppendSomeItemsToSomeItems(t *testing.T) {
 	}
 
 	if actual, expected := len(values), 4; actual != expected {
-		t.Fatalf("Actual: %v; Expected: %v", actual, expected)
+		t.Fatalf("GOT: %v; WANT: %v", actual, expected)
 	}
 	if actual, expected := values[0], int64(13); actual != expected {
-		t.Errorf("Actual: %v; Expected: %v", actual, expected)
+		t.Errorf("GOT: %v; WANT: %v", actual, expected)
 	}
 	if actual, expected := values[1], int64(42); actual != expected {
-		t.Errorf("Actual: %v; Expected: %v", actual, expected)
+		t.Errorf("GOT: %v; WANT: %v", actual, expected)
 	}
 	if actual, expected := values[2], int64(-10); actual != expected {
-		t.Errorf("Actual: %v; Expected: %v", actual, expected)
+		t.Errorf("GOT: %v; WANT: %v", actual, expected)
 	}
 	if actual, expected := values[3], int64(-100); actual != expected {
-		t.Errorf("Actual: %v; Expected: %v", actual, expected)
+		t.Errorf("GOT: %v; WANT: %v", actual, expected)
 	}
 }

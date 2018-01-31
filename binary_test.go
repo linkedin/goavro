@@ -53,10 +53,10 @@ func testBinaryDecodeFail(t *testing.T, schema string, buf []byte, errorMessage 
 	value, newBuffer, err := c.NativeFromBinary(buf)
 	ensureError(t, err, errorMessage)
 	if value != nil {
-		t.Errorf("Actual: %v; Expected: %v", value, nil)
+		t.Errorf("GOT: %v; WANT: %v", value, nil)
 	}
 	if !bytes.Equal(buf, newBuffer) {
-		t.Errorf("Actual: %v; Expected: %v", newBuffer, buf)
+		t.Errorf("GOT: %v; WANT: %v", newBuffer, buf)
 	}
 }
 
@@ -68,7 +68,7 @@ func testBinaryEncodeFail(t *testing.T, schema string, datum interface{}, errorM
 	buf, err := c.BinaryFromNative(nil, datum)
 	ensureError(t, err, errorMessage)
 	if buf != nil {
-		t.Errorf("Actual: %v; Expected: %v", buf, nil)
+		t.Errorf("GOT: %v; WANT: %v", buf, nil)
 	}
 }
 

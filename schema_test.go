@@ -40,7 +40,7 @@ func testSchemaInvalid(t *testing.T, schema, errorMessage string) {
 func testSchemaValid(t *testing.T, schema string) {
 	_, err := NewCodec(schema)
 	if err != nil {
-		t.Errorf("Actual: %v; Expected: %v", err, nil)
+		t.Errorf("GOT: %v; WANT: %v", err, nil)
 	}
 }
 
@@ -54,7 +54,7 @@ func TestCodecSchema(t *testing.T) {
 		t.Fatal(err)
 	}
 	if actual, expected := codec.Schema(), `{"type":"string"}`; actual != expected {
-		t.Errorf("Actual: %v; Expected: %v", actual, expected)
+		t.Errorf("GOT: %v; WANT: %v", actual, expected)
 	}
 }
 

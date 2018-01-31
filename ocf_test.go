@@ -62,11 +62,11 @@ func testOCFRoundTripWithHeaders(t *testing.T, compressionName string, headers m
 	}
 
 	if actual, expected := len(valuesRead), len(valuesToWrite); actual != expected {
-		t.Errorf("Actual: %v; Expected: %v", actual, expected)
+		t.Errorf("GOT: %v; WANT: %v", actual, expected)
 	}
 	for i := 0; i < len(valuesRead); i++ {
 		if actual, expected := valuesRead[i], valuesToWrite[i]; actual != expected {
-			t.Errorf("Actual: %v; Expected: %v", actual, expected)
+			t.Errorf("GOT: %v; WANT: %v", actual, expected)
 		}
 	}
 
@@ -75,7 +75,7 @@ func testOCFRoundTripWithHeaders(t *testing.T, compressionName string, headers m
 		expected := fmt.Sprintf("%s", v)
 		actual := fmt.Sprintf("%s", readMeta[k])
 		if actual != expected {
-			t.Errorf("Actual: %v; Expected: %v (%v)", actual, expected, k)
+			t.Errorf("GOT: %v; WANT: %v (%v)", actual, expected, k)
 		}
 	}
 }

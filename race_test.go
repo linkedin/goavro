@@ -152,7 +152,7 @@ func TestRaceCodecConstructionDecode(t *testing.T) {
 			}
 			result := datum.(int64) // Avro long values always decoded as int64
 			if result != i {
-				done <- fmt.Errorf("Actual: %v; Expected: %v", result, i)
+				done <- fmt.Errorf("GOT: %v; WANT: %v", result, i)
 				return
 			}
 			i++
@@ -203,7 +203,7 @@ func TestRaceCodecConstruction(t *testing.T) {
 			}
 			result := decoded.(int64) // Avro long values always decoded as int64
 			if result != i {
-				done <- fmt.Errorf("Actual: %v; Expected: %v", result, i)
+				done <- fmt.Errorf("GOT: %v; WANT: %v", result, i)
 				return
 			}
 			i++

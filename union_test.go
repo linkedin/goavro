@@ -99,7 +99,7 @@ func TestUnionMapRecordFitsInRecord(t *testing.T) {
 		0x06,                   // field1 == 3
 		0x00, 0x00, 0x60, 0x40, // field2 == 3.5
 	}) {
-		t.Errorf("Actual: %#v; Expected: %#v", buf, []byte{byte(2)})
+		t.Errorf("GOT: %#v; WANT: %#v", buf, []byte{byte(2)})
 	}
 
 	// round trip
@@ -108,30 +108,30 @@ func TestUnionMapRecordFitsInRecord(t *testing.T) {
 		t.Fatal(err)
 	}
 	if actual, expected := len(buf), 0; actual != expected {
-		t.Errorf("Actual: %#v; Expected: %#v", actual, expected)
+		t.Errorf("GOT: %#v; WANT: %#v", actual, expected)
 	}
 
 	datumOutMap, ok := datumOut.(map[string]interface{})
 	if !ok {
-		t.Fatalf("Actual: %#v; Expected: %#v", ok, false)
+		t.Fatalf("GOT: %#v; WANT: %#v", ok, false)
 	}
 	if actual, expected := len(datumOutMap), 1; actual != expected {
-		t.Fatalf("Actual: %#v; Expected: %#v", actual, expected)
+		t.Fatalf("GOT: %#v; WANT: %#v", actual, expected)
 	}
 	datumValue, ok := datumOutMap["com.example.record"]
 	if !ok {
-		t.Fatalf("Actual: %#v; Expected: %#v", datumOutMap, "have `com.example.record` key")
+		t.Fatalf("GOT: %#v; WANT: %#v", datumOutMap, "have `com.example.record` key")
 	}
 	datumValueMap, ok := datumValue.(map[string]interface{})
 	if !ok {
-		t.Errorf("Actual: %#v; Expected: %#v", ok, true)
+		t.Errorf("GOT: %#v; WANT: %#v", ok, true)
 	}
 	if actual, expected := len(datumValueMap), len(datum); actual != expected {
-		t.Errorf("Actual: %#v; Expected: %#v", actual, expected)
+		t.Errorf("GOT: %#v; WANT: %#v", actual, expected)
 	}
 	for k, v := range datum {
 		if actual, expected := fmt.Sprintf("%v", datumValueMap[k]), fmt.Sprintf("%v", v); actual != expected {
-			t.Errorf("Actual: %#v; Expected: %#v", actual, expected)
+			t.Errorf("GOT: %#v; WANT: %#v", actual, expected)
 		}
 	}
 }

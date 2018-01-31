@@ -39,17 +39,17 @@ func TestFixedDecodeBufferUnderflow(t *testing.T) {
 func TestFixedDecodeWithExtra(t *testing.T) {
 	c, err := NewCodec(`{"type":"fixed","name":"foo","size":4}`)
 	if err != nil {
-		t.Errorf("Actual: %#v; Expected: %#v", err, nil)
+		t.Errorf("GOT: %#v; WANT: %#v", err, nil)
 	}
 	val, buf, err := c.NativeFromBinary([]byte("abcdefgh"))
 	if actual, expected := string(val.([]byte)), "abcd"; actual != expected {
-		t.Errorf("Actual: %#v; Expected: %#v", actual, expected)
+		t.Errorf("GOT: %#v; WANT: %#v", actual, expected)
 	}
 	if actual, expected := string(buf), "efgh"; actual != expected {
-		t.Errorf("Actual: %#v; Expected: %#v", actual, expected)
+		t.Errorf("GOT: %#v; WANT: %#v", actual, expected)
 	}
 	if err != nil {
-		t.Errorf("Actual: %#v; Expected: %#v", err, nil)
+		t.Errorf("GOT: %#v; WANT: %#v", err, nil)
 	}
 }
 

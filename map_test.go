@@ -66,23 +66,23 @@ func TestMapDecodeNextBlockCountNegative(t *testing.T) {
 
 	decodedMap, ok := decoded.(map[string]interface{})
 	if !ok {
-		t.Fatalf("Actual: %v; Expected: %v", ok, true)
+		t.Fatalf("GOT: %v; WANT: %v", ok, true)
 	}
 
 	value, ok := decodedMap["k1"]
 	if !ok {
-		t.Errorf("Actual: %v; Expected: %v", ok, true)
+		t.Errorf("GOT: %v; WANT: %v", ok, true)
 	}
 	if actual, expected := value.(int32), int32(3); actual != expected {
-		t.Errorf("Actual: %v; Expected: %v", actual, expected)
+		t.Errorf("GOT: %v; WANT: %v", actual, expected)
 	}
 
 	value, ok = decodedMap["k2"]
 	if !ok {
-		t.Errorf("Actual: %v; Expected: %v", ok, true)
+		t.Errorf("GOT: %v; WANT: %v", ok, true)
 	}
 	if actual, expected := value.(int32), int32(13); actual != expected {
-		t.Errorf("Actual: %v; Expected: %v", actual, expected)
+		t.Errorf("GOT: %v; WANT: %v", actual, expected)
 	}
 }
 
