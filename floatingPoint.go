@@ -78,10 +78,10 @@ func floatBinaryFromNative(buf []byte, datum interface{}) ([]byte, error) {
 	case float32:
 		value = v
 	case float64:
-		// Assume runtime can cast special floats correctly
-		if value = float32(v); !math.IsNaN(v) && !math.IsInf(v, 1) && !math.IsInf(v, -1) && float64(value) != v {
-			return nil, fmt.Errorf("cannot encode binary float: provided Go float64 would lose precision: %f", v)
-		}
+		// Assume runtime can cast special floats correctly, and if there is a
+		// loss of precision from float64 and float32, that should be expected
+		// or at least understood by the client.
+		value = float32(v)
 	case int:
 		if value = float32(v); int(value) != v {
 			return nil, fmt.Errorf("cannot encode binary float: provided Go int would lose precision: %d", v)
