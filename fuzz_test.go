@@ -41,7 +41,7 @@ func TestCrashers_OCFReader(t *testing.T) {
 
 	for testName, f := range crashers {
 		t.Logf("Testing: %s", testName)
-		NewOCFReader(strings.NewReader(f))
+		_, _ = NewOCFReader(strings.NewReader(f)) // looking for panic rather than an error
 	}
 }
 

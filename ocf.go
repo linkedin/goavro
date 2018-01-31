@@ -103,7 +103,10 @@ func newOCFHeader(config OCFConfig) (*ocfHeader, error) {
 	//
 	// The 16-byte, randomly-generated sync marker for this file.
 	//
-	rand.Read(header.syncMarker[:])
+	_, err = rand.Read(header.syncMarker[:])
+	if err != nil {
+		return nil, err
+	}
 
 	return header, nil
 }
