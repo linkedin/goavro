@@ -264,16 +264,24 @@ native Go types and Avro encoded data.
 
 When translating from either binary or textual Avro to native Go data,
 goavro returns primitive Go data values for corresponding Avro data
-values. That is, a Go `nil` is returned for an Avro `null`; a Go
-`bool` for an Avro `boolean`; a Go `[]byte` for an Avro `bytes`; a Go
-`float32` for an Avro `float`, a Go `float64` for an Avro `double`; a
-Go `int64` for an Avro `long`; a Go `int32` for an Avro `int`; and a
-Go `string` for an Avro `string`.
+values. The table below shows how goavro translates Avro types to Go
+types.
 
-For complex Avro data types, a Go `[]interface{}` is returned for an
-Avro `array`; a Go `string` for an Avro `enum`; a Go `[]byte` for an
-Avro `fixed`; a Go `map[string]interface{}` for an Avro `map` and
-`record`.
+| Avro               | Go                       |
+| ------------------ | ------------------------ |
+| `null`             | `nil`                    |
+| `boolean`          | `bool`                   |
+| `bytes`            | `[]byte`                 |
+| `float`            | `float32`                |
+| `double`           | `float64`                |
+| `long`             | `int64`                  |
+| `int`              | `int32`                  |
+| `string`           | `string`                 |
+| `array`            | `[]interface{}`          |
+| `enum`             | `string`                 |
+| `fixed`            | `[]byte`                 |
+| `map` and `record` | `map[string]interface{}` |
+| `union`            | *see below*              |
 
 Because of encoding rules for Avro unions, when an union's value is
 `null`, a simple Go `nil` is returned. However when an union's value
