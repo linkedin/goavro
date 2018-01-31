@@ -55,12 +55,17 @@ func stringNativeFromBinary(buf []byte) (interface{}, []byte, error) {
 ////////////////////////////////////////
 
 func bytesBinaryFromNative(buf []byte, datum interface{}) ([]byte, error) {
-	someBytes, ok := datum.([]byte)
-	if !ok {
+	var d []byte
+	switch datum.(type) {
+	case []byte:
+		d = datum.([]byte)
+	case string:
+		d = []byte(datum.(string))
+	default:
 		return nil, fmt.Errorf("cannot encode binary bytes: expected: []byte; received: %T", datum)
 	}
-	buf, _ = longBinaryFromNative(buf, len(someBytes)) // only fails when given non integer
-	return append(buf, someBytes...), nil              // append datum bytes
+	buf, _ = longBinaryFromNative(buf, len(d)) // only fails when given non integer
+	return append(buf, d...), nil              // append datum bytes
 }
 
 func stringBinaryFromNative(buf []byte, datum interface{}) ([]byte, error) {
