@@ -44,8 +44,9 @@ var (
 // Codec is created as a stateless structure that can be safely used in multiple
 // go routines simultaneously.
 type Codec struct {
-	typeName *name
-	schema   string
+	typeName        *name
+	schema          string
+	canonicalSchema string
 
 	nativeFromTextual func([]byte) (interface{}, []byte, error)
 	binaryFromNative  func([]byte, interface{}) ([]byte, error)
@@ -168,6 +169,9 @@ func NewCodec(schemaSpecification string) (*Codec, error) {
 			return nil, fmt.Errorf("cannot remarshal schema: %s", err)
 		}
 		c.schema = string(compact)
+
+		// At this point we know we have a valid json and a valid schema
+		c.canonicalSchema = parsingCanonicalForm(schema)
 	}
 	return c, err
 }
@@ -357,6 +361,11 @@ func (c *Codec) TextualFromNative(buf []byte, datum interface{}) ([]byte, error)
 //     }
 func (c *Codec) Schema() string {
 	return c.schema
+}
+
+// CanonicalSchema returns the Parsing Canonical Form according to the specification
+func (c *Codec) CanonicalSchema() string {
+	return c.canonicalSchema
 }
 
 // convert a schema data structure to a codec, prefixing with specified
