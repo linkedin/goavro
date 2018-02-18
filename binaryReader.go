@@ -93,7 +93,7 @@ func metadataBinaryReader(ior io.Reader) (map[string][]byte, error) {
 		if blockCount == math.MinInt64 {
 			// The minimum number for any signed numerical type can never be
 			// made positive
-			return nil, fmt.Errorf("cannot read map with block count: %d", math.MinInt64)
+			return nil, fmt.Errorf("cannot read map with block count: %d", blockCount)
 		}
 		// NOTE: A negative block count implies there is a long encoded block
 		// size following the negative block count. We have no use for the block
@@ -141,7 +141,7 @@ func metadataBinaryReader(ior io.Reader) (map[string][]byte, error) {
 			if blockCount == math.MinInt64 {
 				// The minimum number for any signed numerical type can never be
 				// made positive
-				return nil, fmt.Errorf("cannot read map with block count: %d", math.MinInt64)
+				return nil, fmt.Errorf("cannot read map with block count: %d", blockCount)
 			}
 			// NOTE: A negative block count implies there is a long encoded
 			// block size following the negative block count. We have no use for
