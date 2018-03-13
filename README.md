@@ -74,7 +74,7 @@ The new version of this library eliminates the `goavro.Record` type,
 and accepts a native Go map for all records to be encoded. Keys are
 the field names, and values are the field values. Nothing could be
 more easy. Conversely, decoding Avro data yields a native Go map for
-the upstream client to pull data back out out.
+the upstream client to pull data back out of.
 
 Furthermore, there is never a reason to ever have to break your schema
 down into record schemas. Merely feed the entire schema into the
