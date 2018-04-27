@@ -7,9 +7,40 @@ Goavro is a library that encodes and decodes Avro data.
 * Encodes to and decodes from both binary and textual JSON Avro data.
 * `Codec` is stateless and is safe to use by multiple goroutines.
 
-With the exception of features not yet supported, goavro attempts to be
-fully compliant with the most recent version of the
-[Avro specification](http://avro.apache.org/docs/1.8.2/spec.html).
+With the exception of features not yet supported, goavro attempts to
+be fully compliant with the most recent version of the [Avro
+specification](http://avro.apache.org/docs/1.8.2/spec.html).
+
+## Use with Import Statement
+
+[The proposal to add package version support to the Go
+toolchain](https://github.com/golang/go/issues/24301) requires library
+authors to leave V1 code in the top level directory of the repository,
+and create a `v2` directory for V2 of the library.
+
+However this library was tagged with a `v2` release prior to that
+proposal, and V1 of this library is no longer at the top level of the
+repository. For a while this conflict prevented `go build` and `vgo
+build` from both being able to build a program that requires this
+library.
+
+Because of a [update to
+`vgo`](https://github.com/golang/go/issues/24099) that provides
+enhanced support for gopkg.in, now building projects that use either
+version agnostic *or* version aware Go build tools will work, provided
+this library is imported using its gopkg.in path.
+
+### To use V2 of this library:
+
+```Go
+import goavro "gopkg.in/linkedin/goavro.v2"
+```
+
+### To use V1 of this library:
+
+```Go
+import goavro "gopkg.in/linkedin/goavro.v1"
+```
 
 ## NOTICE
 
@@ -27,17 +58,6 @@ shortcomings:
 As a consequence of the rewrite, the API has been significantly
 simplified, taking into account suggestions from users received during
 the past few years since its original release.
-
-The original version of this library is still available, however the
-v1 branch does not support all the same features, has a number of
-outstanding bugs, and performs significantly slower than the v2
-branch. Users are highly encouraged to update their software to use
-the v2 branch, but until they do, they can continue to use the v1
-branch by modifying import statements:
-
-```Go
-import goavro "gopkg.in/linkedin/goavro.v1"
-```
 
 ### Justification for API Change
 
