@@ -44,75 +44,14 @@ var (
 // Codec is created as a stateless structure that can be safely used in multiple
 // go routines simultaneously.
 type Codec struct {
-	typeName *name
-	schema   string
+	typeName        *name
+	schemaOriginal  string
+	schemaCanonical string
 
 	nativeFromTextual func([]byte) (interface{}, []byte, error)
 	binaryFromNative  func([]byte, interface{}) ([]byte, error)
 	nativeFromBinary  func([]byte) (interface{}, []byte, error)
 	textualFromNative func([]byte, interface{}) ([]byte, error)
-}
-
-func newSymbolTable() map[string]*Codec {
-	return map[string]*Codec{
-		"boolean": {
-			typeName:          &name{"boolean", nullNamespace},
-			binaryFromNative:  booleanBinaryFromNative,
-			nativeFromBinary:  booleanNativeFromBinary,
-			nativeFromTextual: booleanNativeFromTextual,
-			textualFromNative: booleanTextualFromNative,
-		},
-		"bytes": {
-			typeName:          &name{"bytes", nullNamespace},
-			binaryFromNative:  bytesBinaryFromNative,
-			nativeFromBinary:  bytesNativeFromBinary,
-			nativeFromTextual: bytesNativeFromTextual,
-			textualFromNative: bytesTextualFromNative,
-		},
-		"double": {
-			typeName:          &name{"double", nullNamespace},
-			binaryFromNative:  doubleBinaryFromNative,
-			nativeFromBinary:  doubleNativeFromBinary,
-			nativeFromTextual: doubleNativeFromTextual,
-			textualFromNative: doubleTextualFromNative,
-		},
-		"float": {
-			typeName:          &name{"float", nullNamespace},
-			binaryFromNative:  floatBinaryFromNative,
-			nativeFromBinary:  floatNativeFromBinary,
-			nativeFromTextual: floatNativeFromTextual,
-			textualFromNative: floatTextualFromNative,
-		},
-		"int": {
-
-			typeName:          &name{"int", nullNamespace},
-			binaryFromNative:  intBinaryFromNative,
-			nativeFromBinary:  intNativeFromBinary,
-			nativeFromTextual: intNativeFromTextual,
-			textualFromNative: intTextualFromNative,
-		},
-		"long": {
-			typeName:          &name{"long", nullNamespace},
-			binaryFromNative:  longBinaryFromNative,
-			nativeFromBinary:  longNativeFromBinary,
-			nativeFromTextual: longNativeFromTextual,
-			textualFromNative: longTextualFromNative,
-		},
-		"null": {
-			typeName:          &name{"null", nullNamespace},
-			binaryFromNative:  nullBinaryFromNative,
-			nativeFromBinary:  nullNativeFromBinary,
-			nativeFromTextual: nullNativeFromTextual,
-			textualFromNative: nullTextualFromNative,
-		},
-		"string": {
-			typeName:          &name{"string", nullNamespace},
-			binaryFromNative:  stringBinaryFromNative,
-			nativeFromBinary:  stringNativeFromBinary,
-			nativeFromTextual: stringNativeFromTextual,
-			textualFromNative: stringTextualFromNative,
-		},
-	}
 }
 
 // NewCodec returns a Codec used to translate between a byte slice of either
@@ -142,34 +81,105 @@ func newSymbolTable() map[string]*Codec {
 //             fmt.Println(err)
 //     }
 func NewCodec(schemaSpecification string) (*Codec, error) {
-	// bootstrap a symbol table with primitive type codecs for the new codec
-	st := newSymbolTable()
-
-	// NOTE: Some clients might give us unadorned primitive type name for the
-	// schema, e.g., "long". While it is not valid JSON, it is a valid schema.
-	// Provide special handling for primitive type names.
-	if c, ok := st[schemaSpecification]; ok {
-		c.schema = schemaSpecification
-		return c, nil
-	}
-
-	// NOTE: At this point, schema should be valid JSON, otherwise it's an error
-	// condition.
 	var schema interface{}
+
 	if err := json.Unmarshal([]byte(schemaSpecification), &schema); err != nil {
 		return nil, fmt.Errorf("cannot unmarshal schema JSON: %s", err)
 	}
 
+	// bootstrap a symbol table with primitive type codecs for the new codec
+	st := newSymbolTable()
+
 	c, err := buildCodec(st, nullNamespace, schema)
 	if err == nil {
-		// compact schema and save it
-		compact, err := json.Marshal(schema)
-		if err != nil {
-			return nil, fmt.Errorf("cannot remarshal schema: %s", err)
-		}
-		c.schema = string(compact)
+		// // compact schema and save it
+		// compact, err := json.Marshal(schema)
+		// if err != nil {
+		// 	return nil, fmt.Errorf("cannot remarshal schema: %s", err)
+		// }
+		// c.schemaOriginal = string(compact)
+		c.schemaOriginal = schemaSpecification
+		c.schemaCanonical = parsingCanonicalForm(schema)
 	}
+
 	return c, err
+}
+
+func newSymbolTable() map[string]*Codec {
+	return map[string]*Codec{
+		"boolean": {
+			typeName:          &name{"boolean", nullNamespace},
+			schemaOriginal:    "boolean",
+			schemaCanonical:   "boolean",
+			binaryFromNative:  booleanBinaryFromNative,
+			nativeFromBinary:  booleanNativeFromBinary,
+			nativeFromTextual: booleanNativeFromTextual,
+			textualFromNative: booleanTextualFromNative,
+		},
+		"bytes": {
+			typeName:          &name{"bytes", nullNamespace},
+			schemaOriginal:    "bytes",
+			schemaCanonical:   "bytes",
+			binaryFromNative:  bytesBinaryFromNative,
+			nativeFromBinary:  bytesNativeFromBinary,
+			nativeFromTextual: bytesNativeFromTextual,
+			textualFromNative: bytesTextualFromNative,
+		},
+		"double": {
+			typeName:          &name{"double", nullNamespace},
+			schemaOriginal:    "double",
+			schemaCanonical:   "double",
+			binaryFromNative:  doubleBinaryFromNative,
+			nativeFromBinary:  doubleNativeFromBinary,
+			nativeFromTextual: doubleNativeFromTextual,
+			textualFromNative: doubleTextualFromNative,
+		},
+		"float": {
+			typeName:          &name{"float", nullNamespace},
+			schemaOriginal:    "float",
+			schemaCanonical:   "float",
+			binaryFromNative:  floatBinaryFromNative,
+			nativeFromBinary:  floatNativeFromBinary,
+			nativeFromTextual: floatNativeFromTextual,
+			textualFromNative: floatTextualFromNative,
+		},
+		"int": {
+			typeName:          &name{"int", nullNamespace},
+			schemaOriginal:    "int",
+			schemaCanonical:   "int",
+			binaryFromNative:  intBinaryFromNative,
+			nativeFromBinary:  intNativeFromBinary,
+			nativeFromTextual: intNativeFromTextual,
+			textualFromNative: intTextualFromNative,
+		},
+		"long": {
+			typeName:          &name{"long", nullNamespace},
+			schemaOriginal:    "long",
+			schemaCanonical:   "long",
+			binaryFromNative:  longBinaryFromNative,
+			nativeFromBinary:  longNativeFromBinary,
+			nativeFromTextual: longNativeFromTextual,
+			textualFromNative: longTextualFromNative,
+		},
+		"null": {
+			typeName:          &name{"null", nullNamespace},
+			schemaOriginal:    "null",
+			schemaCanonical:   "null",
+			binaryFromNative:  nullBinaryFromNative,
+			nativeFromBinary:  nullNativeFromBinary,
+			nativeFromTextual: nullNativeFromTextual,
+			textualFromNative: nullTextualFromNative,
+		},
+		"string": {
+			typeName:          &name{"string", nullNamespace},
+			schemaOriginal:    "string",
+			schemaCanonical:   "string",
+			binaryFromNative:  stringBinaryFromNative,
+			nativeFromBinary:  stringNativeFromBinary,
+			nativeFromTextual: stringNativeFromTextual,
+			textualFromNative: stringTextualFromNative,
+		},
+	}
 }
 
 // BinaryFromNative appends the binary encoded byte slice representation of the
@@ -344,19 +354,15 @@ func (c *Codec) TextualFromNative(buf []byte, datum interface{}) ([]byte, error)
 	return newBuf, nil
 }
 
-// Schema returns the compact schema used to create the Codec.
-//
-//     func ExampleCodecSchema() {
-//         schema := `{"type":"map","values":{"type":"enum","name":"foo","symbols":["alpha","bravo"]}}`
-//         codec, err := goavro.NewCodec(schema)
-//         if err != nil {
-//             fmt.Println(err)
-//         }
-//         fmt.Println(codec.Schema())
-//         // Output: {"type":"map","values":{"name":"foo","type":"enum","symbols":["alpha","bravo"]}}
-//     }
+// Schema returns the original schema used to create the Codec.
 func (c *Codec) Schema() string {
-	return c.schema
+	return c.schemaOriginal
+}
+
+// CanonicalSchema returns the Parsing Canonical Form of the schema according to
+// the Avro specification.
+func (c *Codec) CanonicalSchema() string {
+	return c.schemaCanonical
 }
 
 // convert a schema data structure to a codec, prefixing with specified
@@ -406,12 +412,14 @@ func buildCodecForTypeDescribedByString(st map[string]*Codec, enclosingNamespace
 	if cd, ok := st[typeName]; ok {
 		return cd, nil
 	}
-	// NOTE: Sometimes schema may abbreviate type name inside a namespace.
+
+	// Avro specification allows abbreviation of type name inside a namespace.
 	if enclosingNamespace != "" {
 		if cd, ok := st[enclosingNamespace+"."+typeName]; ok {
 			return cd, nil
 		}
 	}
+
 	// There are only a small handful of complex Avro data types.
 	switch typeName {
 	case "array":

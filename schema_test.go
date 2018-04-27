@@ -18,15 +18,11 @@ func testSchemaPrimativeCodec(t *testing.T, primitiveTypeName string) {
 	if _, err := NewCodec(primitiveTypeName); err != nil {
 		t.Errorf("Bare primitive type: Schema: %q; Actual: %#v; Expected: %#v", primitiveTypeName, err, nil)
 	}
-	quoted := `"` + primitiveTypeName + `"`
-	if _, err := NewCodec(quoted); err != nil {
-		t.Errorf("Bare primitive type: Schema: %q; Actual: %#v; Expected: %#v", quoted, err, nil)
-	}
-	full := fmt.Sprintf(`{"type":"%s"}`, primitiveTypeName)
+	full := fmt.Sprintf(`{"type":%s}`, primitiveTypeName)
 	if _, err := NewCodec(full); err != nil {
 		t.Errorf("Full primitive type: Schema: %q; Actual: %#v; Expected: %#v", full, err, nil)
 	}
-	extra := fmt.Sprintf(`{"type":"%s","ignoredKey":"ignoredValue"}`, primitiveTypeName)
+	extra := fmt.Sprintf(`{"type":%s,"ignoredKey":"ignoredValue"}`, primitiveTypeName)
 	if _, err := NewCodec(extra); err != nil {
 		t.Errorf("Full primitive type with extra attributes: Schema: %q; Actual: %#v; Expected: %#v", extra, err, nil)
 	}
@@ -46,16 +42,6 @@ func testSchemaValid(t *testing.T, schema string) {
 
 func TestSchemaFailInvalidType(t *testing.T) {
 	testSchemaInvalid(t, `{"type":"flubber"}`, "unknown type name")
-}
-
-func TestCodecSchema(t *testing.T) {
-	codec, err := NewCodec(` {  "type" : "string" } `)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if actual, expected := codec.Schema(), `{"type":"string"}`; actual != expected {
-		t.Errorf("GOT: %v; WANT: %v", actual, expected)
-	}
 }
 
 func TestSchemaWeather(t *testing.T) {

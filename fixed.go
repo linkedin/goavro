@@ -11,6 +11,7 @@ package goavro
 
 import (
 	"fmt"
+	"strconv"
 )
 
 // Fixed does not have child objects, therefore whatever namespace it defines is
@@ -21,15 +22,26 @@ func makeFixedCodec(st map[string]*Codec, enclosingNamespace string, schemaMap m
 		return nil, fmt.Errorf("Fixed ought to have valid name: %s", err)
 	}
 	// Fixed type must have size
-	s1, ok := schemaMap["size"]
+	sizeRaw, ok := schemaMap["size"]
 	if !ok {
 		return nil, fmt.Errorf("Fixed %q ought to have size key", c.typeName)
 	}
-	s2, ok := s1.(float64)
-	if !ok || s2 <= 0 {
-		return nil, fmt.Errorf("Fixed %q size ought to be number greater than zero: %v", c.typeName, s1)
+	var size uint
+	switch val := sizeRaw.(type) {
+	case string:
+		s, err := strconv.ParseUint(val, 10, 0)
+		if err != nil {
+			return nil, fmt.Errorf("Fixed %q size ought to be number greater than zero: %v", c.typeName, sizeRaw)
+		}
+		size = uint(s)
+	case float64:
+		if val <= 0 {
+			return nil, fmt.Errorf("Fixed %q size ought to be number greater than zero: %v", c.typeName, sizeRaw)
+		}
+		size = uint(val)
+	default:
+		return nil, fmt.Errorf("Fixed %q size ought to be number greater than zero: %v", c.typeName, sizeRaw)
 	}
-	size := uint(s2)
 
 	c.nativeFromBinary = func(buf []byte) (interface{}, []byte, error) {
 		if buflen := uint(len(buf)); size > buflen {

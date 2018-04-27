@@ -19,7 +19,7 @@ import (
 var morePositiveThanMaxBlockCount, morePositiveThanMaxBlockSize, moreNegativeThanMaxBlockCount, mostNegativeBlockCount []byte
 
 func init() {
-	c, err := NewCodec("long")
+	c, err := NewCodec(`"long"`)
 	if err != nil {
 		panic(err)
 	}

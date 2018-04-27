@@ -117,23 +117,13 @@ func newNameFromSchemaMap(enclosingNamespace string, schemaMap map[string]interf
 	}
 	nameString, ok = name.(string)
 	if !ok || nameString == nullNamespace {
-		return nil, fmt.Errorf("schema name ought to be non-empty string; received: %T", name)
+		return nil, fmt.Errorf("schema name ought to be non-empty string; received: %T: %v", name, name)
 	}
-	namespace, ok := schemaMap["namespace"]
-	if ok {
+	if namespace, ok := schemaMap["namespace"]; ok {
 		namespaceString, ok = namespace.(string)
 		if !ok || namespaceString == nullNamespace {
-			return nil, fmt.Errorf("schema namespace, if provided, ought to be non-empty string; received: %T", namespace)
+			return nil, fmt.Errorf("schema namespace, if provided, ought to be non-empty string; received: %T: %v", namespace, namespace)
 		}
-		// NOTE: One of the steps of schema canonization is to prefix all names
-		// with their namespaces, removing all namespaces from the schema.
-		combined := namespaceString + "." + nameString
-		unescaped, err := unescapeUnicodeString(combined)
-		if err != nil {
-			return nil, fmt.Errorf("%s: %q", err, combined)
-		}
-		schemaMap["name"] = unescaped
-		delete(schemaMap, "namespace")
 	}
 
 	return newName(nameString, namespaceString, enclosingNamespace)

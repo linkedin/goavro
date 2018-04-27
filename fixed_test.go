@@ -15,6 +15,7 @@ import (
 
 func TestSchemaFixed(t *testing.T) {
 	testSchemaValid(t, `{"type": "fixed", "size": 16, "name": "md5"}`)
+	testSchemaValid(t, `{"type":"fixed","name":"f1","size":"16"}`)
 }
 
 func TestFixedName(t *testing.T) {
@@ -27,7 +28,6 @@ func TestFixedName(t *testing.T) {
 
 func TestFixedSize(t *testing.T) {
 	testSchemaInvalid(t, `{"type":"fixed","name":"f1"}`, `Fixed "f1" ought to have size key`)
-	testSchemaInvalid(t, `{"type":"fixed","name":"f1","size":"16"}`, `Fixed "f1" size ought to be number greater than zero`)
 	testSchemaInvalid(t, `{"type":"fixed","name":"f1","size":-1}`, `Fixed "f1" size ought to be number greater than zero`)
 	testSchemaInvalid(t, `{"type":"fixed","name":"f1","size":0}`, `Fixed "f1" size ought to be number greater than zero`)
 }
