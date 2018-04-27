@@ -144,6 +144,9 @@ func TestUnescapeUnicode(t *testing.T) {
 	checkBad(t, "\\", "short buffer")
 	checkGood(t, "", "")
 	checkGood(t, "\\\\", "\\")
-	checkGood(t, "\\u0001\\uD83D\\uDE02 ", "😂 ")
+	checkGood(t, "\u0041\u0062\u0063", "Abc")
+	checkGood(t, "\u0001\\uD83D\\uDE02 ", "😂 ")
 	checkGood(t, "Hello, \u0022World!\"", "Hello, \"World!\"")
+	checkGood(t, "\u263a\ufe0f", "☺️")
+	checkGood(t, "\u65e5\u672c\u8a9e", "日本語")
 }
