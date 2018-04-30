@@ -365,6 +365,41 @@ func (c *Codec) CanonicalSchema() string {
 	return c.schemaCanonical
 }
 
+func (c *Codec) CRC64Avro() uint64 {
+	return 0
+}
+
+const crc64Empty = uint64(0xc15d213aa4d7a795)
+
+var crc64Table [256]uint64
+
+// func init() {
+// 	initCRC64AvroTable()
+// }
+
+func initCRC64AvroTable() {
+	for i := uint64(0); i < 256; i++ {
+		fp := i
+		for j := 0; j < 8; j++ {
+			fp = (fp >> 1) ^ (crc64Empty & -(fp & 1)) // unsigned right shift >>>
+		}
+		crc64Table[i] = fp
+	}
+}
+
+func calculateCRC64Avro(b []byte) uint64 {
+	initCRC64AvroTable()
+	fp := crc64Empty
+	for i := 0; i < len(b); i++ {
+		fp = (fp >> 8) ^ crc64Table[(byte(fp)^b[i])&0xff]
+	}
+	return fp
+}
+
+func (c *Codec) SchemaCRC64Avro() uint64 {
+	return calculateCRC64Avro([]byte(c.schemaCanonical))
+}
+
 // convert a schema data structure to a codec, prefixing with specified
 // namespace
 func buildCodec(st map[string]*Codec, enclosingNamespace string, schema interface{}) (*Codec, error) {
