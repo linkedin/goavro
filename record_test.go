@@ -25,8 +25,8 @@ func TestRecordName(t *testing.T) {
 
 func TestRecordFields(t *testing.T) {
 	testSchemaInvalid(t, `{"type":"record","name":"r1"}`, `Record "r1" ought to have fields key`)
-	testSchemaInvalid(t, `{"type":"record","name":"r1","fields":3}`, `Record "r1" fields ought to be non-empty array`)
-	testSchemaInvalid(t, `{"type":"record","name":"r1","fields":[]}`, `Record "r1" fields ought to be non-empty array`)
+	testSchemaInvalid(t, `{"type":"record","name":"r1","fields":3}`, `Record "r1" fields ought to be non-nil array`)
+	testSchemaInvalid(t, `{"type":"record","name":"r1","fields":null}`, `Record "r1" fields ought to be non-nil array`)
 }
 
 func TestRecordFieldInvalid(t *testing.T) {
@@ -534,7 +534,7 @@ func ExampleBinaryFromNative() {
 			"LongList": map[string]interface{}{
 				"next": map[string]interface{}{
 					"LongList": map[string]interface{}{
-					// NOTE: May omit fields when using default value
+						// NOTE: May omit fields when using default value
 					},
 				},
 			},
@@ -620,7 +620,7 @@ func ExampleTextualFromNative() {
 			"LongList": map[string]interface{}{
 				"next": map[string]interface{}{
 					"LongList": map[string]interface{}{
-					// NOTE: May omit fields when using default value
+						// NOTE: May omit fields when using default value
 					},
 				},
 			},
