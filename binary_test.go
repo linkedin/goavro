@@ -98,8 +98,22 @@ func testBinaryDecodePass(t *testing.T, schema string, datum interface{}, encode
 	}
 
 	// for testing purposes, to prevent big switch statement, convert each to
-	// string and compare.
-	if actual, expected := fmt.Sprintf("%v", value), fmt.Sprintf("%v", datum); actual != expected {
+	// string and compare. except for byte slices: we turn those straight into
+	// strings.
+	var actual, expected string
+	switch value.(type) {
+	case []byte:
+		actual = string(value.([]byte))
+	default:
+		actual = fmt.Sprintf("%v", value)
+	}
+	switch datum.(type) {
+	case []byte:
+		expected = string(datum.([]byte))
+	default:
+		expected = fmt.Sprintf("%v", datum)
+	}
+	if actual != expected {
 		t.Errorf("schema: %s; Datum: %v; Actual: %#v; Expected: %#v", schema, datum, actual, expected)
 	}
 }
