@@ -64,6 +64,7 @@ func TestFixedEncodeWrongSize(t *testing.T) {
 
 func TestFixedEncode(t *testing.T) {
 	testBinaryCodecPass(t, `{"type":"fixed","name":"foo","size":4}`, []byte("abcd"), []byte("abcd"))
+	testBinaryCodecPass(t, `{"type":"fixed","name":"foo","size":4}`, string("abcd"), []byte("abcd"))
 }
 
 func TestFixedTextCodec(t *testing.T) {

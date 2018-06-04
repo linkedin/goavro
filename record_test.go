@@ -418,6 +418,10 @@ func TestRecordFieldUnionInvalidDefaultValue(t *testing.T) {
 		"default value ought to encode using field schema")
 }
 
+func TestRecordFieldFixedDefaultValue(t *testing.T) {
+	testSchemaValid(t, `{"type": "record", "name": "r1", "fields":[{"name": "f1", "type": {"type": "fixed", "name": "fix", "size": 1}, "default": "\u0001"}]}`)
+}
+
 func TestRecordRecursiveRoundTrip(t *testing.T) {
 	codec, err := NewCodec(`
 {
@@ -534,7 +538,7 @@ func ExampleBinaryFromNative() {
 			"LongList": map[string]interface{}{
 				"next": map[string]interface{}{
 					"LongList": map[string]interface{}{
-					// NOTE: May omit fields when using default value
+						// NOTE: May omit fields when using default value
 					},
 				},
 			},
@@ -620,7 +624,7 @@ func ExampleTextualFromNative() {
 			"LongList": map[string]interface{}{
 				"next": map[string]interface{}{
 					"LongList": map[string]interface{}{
-					// NOTE: May omit fields when using default value
+						// NOTE: May omit fields when using default value
 					},
 				},
 			},

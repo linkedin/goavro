@@ -51,7 +51,18 @@ func makeFixedCodec(st map[string]*Codec, enclosingNamespace string, schemaMap m
 	}
 
 	c.binaryFromNative = func(buf []byte, datum interface{}) ([]byte, error) {
-		someBytes, ok := datum.([]byte)
+		var (
+			someBytes []byte
+			ok        = true
+		)
+		switch datum.(type) {
+		case []byte:
+			someBytes = datum.([]byte)
+		case string:
+			someBytes = []byte(datum.(string))
+		default:
+			ok = false
+		}
 		if !ok {
 			return nil, fmt.Errorf("cannot encode binary fixed %q: expected []byte; received: %T", c.typeName, datum)
 		}
