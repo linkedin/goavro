@@ -534,7 +534,7 @@ func ExampleBinaryFromNative() {
 			"LongList": map[string]interface{}{
 				"next": map[string]interface{}{
 					"LongList": map[string]interface{}{
-					// NOTE: May omit fields when using default value
+						// NOTE: May omit fields when using default value
 					},
 				},
 			},
@@ -620,7 +620,7 @@ func ExampleTextualFromNative() {
 			"LongList": map[string]interface{}{
 				"next": map[string]interface{}{
 					"LongList": map[string]interface{}{
-					// NOTE: May omit fields when using default value
+						// NOTE: May omit fields when using default value
 					},
 				},
 			},
