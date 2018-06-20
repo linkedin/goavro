@@ -179,6 +179,16 @@ func newSymbolTable() map[string]*Codec {
 			nativeFromTextual: stringNativeFromTextual,
 			textualFromNative: stringTextualFromNative,
 		},
+		// Start of logical types using format typeName.logicalType
+		"long.timestamp-millis": {
+			typeName:          &name{"timestamp-millis", nullNamespace},
+			schemaOriginal:    "long",
+			schemaCanonical:   "long",
+			nativeFromTextual: timeStampMillisToNative(longNativeFromTextual),
+			binaryFromNative:  timeStampMillisFromNative(longBinaryFromNative),
+			nativeFromBinary:  timeStampMillisToNative(longNativeFromBinary),
+			textualFromNative: timeStampMillisFromNative(longTextualFromNative),
+		},
 	}
 }
 
@@ -406,10 +416,15 @@ func buildCodecForTypeDescribedByMap(st map[string]*Codec, enclosingNamespace st
 }
 
 func buildCodecForTypeDescribedByString(st map[string]*Codec, enclosingNamespace string, typeName string, schemaMap map[string]interface{}) (*Codec, error) {
-	// NOTE: When codec already exists, return it. This includes both primitive
-	// type codecs added in NewCodec, and user-defined types, added while
+	searchType := typeName
+	// logicalType will be non-nil for those fields without a logicalType property set
+	if lt := schemaMap["logicalType"]; lt != nil {
+		searchType = fmt.Sprintf("%s.%s", typeName, lt)
+	}
+	// NOTE: When codec already exists, return it. This includes both primitive and
+	// logicalType codecs added in NewCodec, and user-defined types, added while
 	// building the codec.
-	if cd, ok := st[typeName]; ok {
+	if cd, ok := st[searchType]; ok {
 		return cd, nil
 	}
 
