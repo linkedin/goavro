@@ -189,6 +189,15 @@ func newSymbolTable() map[string]*Codec {
 			nativeFromBinary:  timeStampMillisToNative(longNativeFromBinary),
 			textualFromNative: timeStampMillisFromNative(longTextualFromNative),
 		},
+		"int.date": {
+			typeName:          &name{"date", nullNamespace},
+			schemaOriginal:    "int",
+			schemaCanonical:   "int",
+			nativeFromTextual: dateToNative(intNativeFromTextual),
+			binaryFromNative:  dateFromNative(intBinaryFromNative),
+			nativeFromBinary:  dateToNative(intNativeFromBinary),
+			textualFromNative: dateFromNative(intTextualFromNative),
+		},
 	}
 }
 
@@ -448,7 +457,7 @@ func buildCodecForTypeDescribedByString(st map[string]*Codec, enclosingNamespace
 	case "record":
 		return makeRecordCodec(st, enclosingNamespace, schemaMap)
 	default:
-		return nil, fmt.Errorf("unknown type name: %q", typeName)
+		return nil, fmt.Errorf("unknown type name: %q", searchType)
 	}
 }
 
