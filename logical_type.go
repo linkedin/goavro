@@ -8,9 +8,9 @@ import (
 type toNativeFn func([]byte) (interface{}, []byte, error)
 type fromNativeFn func([]byte, interface{}) ([]byte, error)
 
-//////////////////////////////////////////
-// timestamp-millis logical type support
-//////////////////////////////////////////
+///////////////////////////////////////////////
+// timestamp-millis logical type - to/from UTC
+///////////////////////////////////////////////
 func timeStampMillisToNative(fn toNativeFn) toNativeFn {
 	return func(b []byte) (interface{}, []byte, error) {
 		l, b, err := fn(b)
@@ -19,9 +19,10 @@ func timeStampMillisToNative(fn toNativeFn) toNativeFn {
 		}
 		i, ok := l.(int64)
 		if !ok {
+			// This error condition will not trigger with the existing longX functions as they only error on short buffer error
 			return l, b, fmt.Errorf("cannot transform native timestamp-millis, expected int64, received %t", l)
 		}
-		return time.Unix(i, 0), b, nil
+		return time.Unix(i, 0).UTC(), b, nil
 	}
 }
 
