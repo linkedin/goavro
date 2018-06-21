@@ -179,9 +179,10 @@ func newSymbolTable() map[string]*Codec {
 			nativeFromTextual: stringNativeFromTextual,
 			textualFromNative: stringTextualFromNative,
 		},
-		// Start of logical types using format typeName.logicalType
+		// Start of compiled logical types using format typeName.logicalType where there is
+		// no dependence on schema.
 		"long.timestamp-millis": {
-			typeName:          &name{"timestamp-millis", nullNamespace},
+			typeName:          &name{"long.timestamp-millis", nullNamespace},
 			schemaOriginal:    "long",
 			schemaCanonical:   "long",
 			nativeFromTextual: timeStampMillisToNative(longNativeFromTextual),
@@ -190,7 +191,7 @@ func newSymbolTable() map[string]*Codec {
 			textualFromNative: timeStampMillisFromNative(longTextualFromNative),
 		},
 		"int.date": {
-			typeName:          &name{"date", nullNamespace},
+			typeName:          &name{"int.date", nullNamespace},
 			schemaOriginal:    "int",
 			schemaCanonical:   "int",
 			nativeFromTextual: dateToNative(intNativeFromTextual),
@@ -445,7 +446,7 @@ func buildCodecForTypeDescribedByString(st map[string]*Codec, enclosingNamespace
 	}
 
 	// There are only a small handful of complex Avro data types.
-	switch typeName {
+	switch searchType {
 	case "array":
 		return makeArrayCodec(st, enclosingNamespace, schemaMap)
 	case "enum":
@@ -456,6 +457,8 @@ func buildCodecForTypeDescribedByString(st map[string]*Codec, enclosingNamespace
 		return makeMapCodec(st, enclosingNamespace, schemaMap)
 	case "record":
 		return makeRecordCodec(st, enclosingNamespace, schemaMap)
+	case "bytes.decimal":
+		return makeDecimalBytesCodec(st, enclosingNamespace, schemaMap)
 	default:
 		return nil, fmt.Errorf("unknown type name: %q", searchType)
 	}
