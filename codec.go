@@ -459,6 +459,8 @@ func buildCodecForTypeDescribedByString(st map[string]*Codec, enclosingNamespace
 		return makeRecordCodec(st, enclosingNamespace, schemaMap)
 	case "bytes.decimal":
 		return makeDecimalBytesCodec(st, enclosingNamespace, schemaMap)
+	case "fixed.decimal":
+		return makeDecimalFixedCodec(st, enclosingNamespace, schemaMap)
 	default:
 		return nil, fmt.Errorf("unknown type name: %q", searchType)
 	}

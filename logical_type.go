@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"strconv"
 	"time"
 )
 
@@ -131,25 +132,94 @@ func decimalBytesFromNative(fn fromNativeFn, precision, scale int) fromNativeFn 
 		if scale < 0 || scale > precision {
 			return nil, fmt.Errorf("cannot transform to bytes, expected scale to be 0 or scale to be greater than precision")
 		}
-		denomdigits := len(r.Denom().String())
 		// we reduce accuracy to precision by dividing and multiplying by digit length
-		i := big.NewInt(0).Div(r.Num().Mul(r.Num(), big.NewInt(int64(math.Pow10(denomdigits)))), r.Denom())
-		// we create a new bigint and copy the original so we can use abs to check digit length
-		checksign := big.NewInt(0)
-		checksign.Set(i)
-		digits := len(checksign.Abs(checksign).String())
-		out := big.NewInt(0)
-		precnum := i
-		if digits-precision > 0 {
-			precnum = out.Mul(out.Div(i, big.NewInt(int64(math.Pow10(digits-precision)))), big.NewInt(int64(math.Pow10(digits-precision))))
-		}
+		num := big.NewInt(0).Set(r.Num())
+		denom := big.NewInt(0).Set(r.Denom())
+
+		// we get the scaled decimal representation
+		i := new(big.Int).Mul(num, big.NewInt(int64(math.Pow10(scale))))
+		// divide that by the denominator
+		precnum := new(big.Int).Div(i, denom)
 		bout, err := toSignedBytes(precnum)
 		if err != nil {
 			return nil, err
 		}
 		return fn(b, bout)
 	}
+}
 
+func makeDecimalFixedCodec(st map[string]*Codec, enclosingNamespace string, schemaMap map[string]interface{}) (*Codec, error) {
+	schemaMap["name"] = "fixed.decimal"
+	c, err := makeFixedCodec(st, enclosingNamespace, schemaMap)
+	if err != nil {
+		return nil, err
+	}
+	precision := schemaMap["precision"]
+	scale := schemaMap["scale"]
+	size, err := getSize(c.typeName, schemaMap)
+	if err != nil {
+		return nil, err
+	}
+	p := int(precision.(float64))
+	s := int(scale.(float64))
+	c.binaryFromNative = decimalBytesFromNative(padBytes(c.binaryFromNative, int(size)), p, s)
+	c.textualFromNative = decimalBytesFromNative(padBytes(c.textualFromNative, int(size)), p, s)
+	c.nativeFromBinary = decimalBytesToNative(unpadBytes(c.nativeFromBinary), p, s)
+	c.nativeFromTextual = decimalBytesToNative(unpadBytes(c.nativeFromTextual), p, s)
+	return c, nil
+}
+
+func getSize(typeName *name, schemaMap map[string]interface{}) (uint, error) {
+	// Fixed type must have size
+	sizeRaw, ok := schemaMap["size"]
+	if !ok {
+		return 0, fmt.Errorf("Fixed %q ought to have size key", typeName)
+	}
+	var size uint
+	switch val := sizeRaw.(type) {
+	case string:
+		s, err := strconv.ParseUint(val, 10, 0)
+		if err != nil {
+			return 0, fmt.Errorf("Fixed %q size ought to be number greater than zero: %v", typeName, sizeRaw)
+		}
+		size = uint(s)
+	case float64:
+		if val <= 0 {
+			return 0, fmt.Errorf("Fixed %q size ought to be number greater than zero: %v", typeName, sizeRaw)
+		}
+		size = uint(val)
+	default:
+		return 0, fmt.Errorf("Fixed %q size ought to be number greater than zero: %v", typeName, sizeRaw)
+	}
+	return size, nil
+}
+
+func padBytes(fn fromNativeFn, size int) fromNativeFn {
+	return func(bytes []byte, datum interface{}) ([]byte, error) {
+		padded := make([]byte, size, size)
+		dbytes := datum.([]byte)
+		copy(padded[size-len(dbytes):], dbytes)
+
+		return fn(bytes, padded)
+	}
+}
+
+func unpadBytes(fn toNativeFn) toNativeFn {
+	return func(bytes []byte) (interface{}, []byte, error) {
+		d, b, err := fn(bytes)
+		if err != nil {
+			return nil, b, err
+		}
+		unpadded := d.([]byte)
+		pos := -1
+		for idx, ib := range unpadded {
+			if ib != []byte("\x00")[0] {
+				pos = idx
+				break
+			}
+		}
+		return unpadded[pos:], b, nil
+	}
 }
 
 // fromSignedBytes sets the value of n to the big-endian two's complement
