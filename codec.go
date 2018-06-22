@@ -190,6 +190,33 @@ func newSymbolTable() map[string]*Codec {
 			nativeFromBinary:  timeStampMillisToNative(longNativeFromBinary),
 			textualFromNative: timeStampMillisFromNative(longTextualFromNative),
 		},
+		"long.timestamp-micros": {
+			typeName:          &name{"long.timestamp-micros", nullNamespace},
+			schemaOriginal:    "long",
+			schemaCanonical:   "long",
+			nativeFromTextual: timeStampMicrosToNative(longNativeFromTextual),
+			binaryFromNative:  timeStampMicrosFromNative(longBinaryFromNative),
+			nativeFromBinary:  timeStampMicrosToNative(longNativeFromBinary),
+			textualFromNative: timeStampMicrosFromNative(longTextualFromNative),
+		},
+		"long.time-millis": {
+			typeName:          &name{"long.time-millis", nullNamespace},
+			schemaOriginal:    "long",
+			schemaCanonical:   "long",
+			nativeFromTextual: timeMillisToNative(longNativeFromTextual),
+			binaryFromNative:  timeMillisFromNative(longBinaryFromNative),
+			nativeFromBinary:  timeMillisToNative(longNativeFromBinary),
+			textualFromNative: timeMillisFromNative(longTextualFromNative),
+		},
+		"long.time-micros": {
+			typeName:          &name{"long.time-micros", nullNamespace},
+			schemaOriginal:    "long",
+			schemaCanonical:   "long",
+			nativeFromTextual: timeMicrosToNative(longNativeFromTextual),
+			binaryFromNative:  timeMicrosFromNative(longBinaryFromNative),
+			nativeFromBinary:  timeMicrosToNative(longNativeFromBinary),
+			textualFromNative: timeMicrosFromNative(longTextualFromNative),
+		},
 		"int.date": {
 			typeName:          &name{"int.date", nullNamespace},
 			schemaOriginal:    "int",
@@ -461,6 +488,8 @@ func buildCodecForTypeDescribedByString(st map[string]*Codec, enclosingNamespace
 		return makeDecimalBytesCodec(st, enclosingNamespace, schemaMap)
 	case "fixed.decimal":
 		return makeDecimalFixedCodec(st, enclosingNamespace, schemaMap)
+	case "fixed.duration":
+		return makeDurationFixedCodec(st, enclosingNamespace, schemaMap)
 	default:
 		return nil, fmt.Errorf("unknown type name: %q", searchType)
 	}
