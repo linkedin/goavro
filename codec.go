@@ -199,14 +199,14 @@ func newSymbolTable() map[string]*Codec {
 			nativeFromBinary:  timeStampMicrosToNative(longNativeFromBinary),
 			textualFromNative: timeStampMicrosFromNative(longTextualFromNative),
 		},
-		"long.time-millis": {
-			typeName:          &name{"long.time-millis", nullNamespace},
-			schemaOriginal:    "long",
-			schemaCanonical:   "long",
-			nativeFromTextual: timeMillisToNative(longNativeFromTextual),
-			binaryFromNative:  timeMillisFromNative(longBinaryFromNative),
-			nativeFromBinary:  timeMillisToNative(longNativeFromBinary),
-			textualFromNative: timeMillisFromNative(longTextualFromNative),
+		"int.time-millis": {
+			typeName:          &name{"int.time-millis", nullNamespace},
+			schemaOriginal:    "int",
+			schemaCanonical:   "int",
+			nativeFromTextual: timeMillisToNative(intNativeFromTextual),
+			binaryFromNative:  timeMillisFromNative(intBinaryFromNative),
+			nativeFromBinary:  timeMillisToNative(intNativeFromBinary),
+			textualFromNative: timeMillisFromNative(intTextualFromNative),
 		},
 		"long.time-micros": {
 			typeName:          &name{"long.time-micros", nullNamespace},
@@ -488,8 +488,6 @@ func buildCodecForTypeDescribedByString(st map[string]*Codec, enclosingNamespace
 		return makeDecimalBytesCodec(st, enclosingNamespace, schemaMap)
 	case "fixed.decimal":
 		return makeDecimalFixedCodec(st, enclosingNamespace, schemaMap)
-	case "fixed.duration":
-		return makeDurationFixedCodec(st, enclosingNamespace, schemaMap)
 	default:
 		return nil, fmt.Errorf("unknown type name: %q", searchType)
 	}

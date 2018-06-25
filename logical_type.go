@@ -55,20 +55,20 @@ func timeMillisToNative(fn toNativeFn) toNativeFn {
 		}
 		i, ok := l.(int32)
 		if !ok {
-			return l, b, fmt.Errorf("cannot transform to native time.Time, expected int, received %t", l)
+			return l, b, fmt.Errorf("cannot transform to native time.Duration, expected int, received %t", l)
 		}
-		t := time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC).Add(time.Duration(i) * time.Millisecond).UTC()
+		t := time.Duration(i) * time.Millisecond
 		return t, b, nil
 	}
 }
 
 func timeMillisFromNative(fn fromNativeFn) fromNativeFn {
 	return func(b []byte, d interface{}) ([]byte, error) {
-		t, ok := d.(time.Time)
+		t, ok := d.(time.Duration)
 		if !ok {
-			return nil, fmt.Errorf("cannot transform to binary time-millis, expected time.Time, received %T", d)
+			return nil, fmt.Errorf("cannot transform to binary time-millis, expected time.Duration, received %T", d)
 		}
-		duration := t.Sub(time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)) * time.Millisecond
+		duration := int32(t.Nanoseconds() / 1e6)
 		return fn(b, duration)
 	}
 }
@@ -82,22 +82,22 @@ func timeMicrosToNative(fn toNativeFn) toNativeFn {
 		if err != nil {
 			return l, b, err
 		}
-		i, ok := l.(int32)
+		i, ok := l.(int64)
 		if !ok {
-			return l, b, fmt.Errorf("cannot transform to native time.Time, expected int, received %t", l)
+			return l, b, fmt.Errorf("cannot transform to native time.Duration, expected long, received %t", l)
 		}
-		t := time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC).Add(time.Duration(i) * time.Microsecond).UTC()
+		t := time.Duration(i) * time.Microsecond
 		return t, b, nil
 	}
 }
 
 func timeMicrosFromNative(fn fromNativeFn) fromNativeFn {
 	return func(b []byte, d interface{}) ([]byte, error) {
-		t, ok := d.(time.Time)
+		t, ok := d.(time.Duration)
 		if !ok {
-			return nil, fmt.Errorf("cannot transform to binary time-micros, expected time.Time, received %T", d)
+			return nil, fmt.Errorf("cannot transform to binary time-micros, expected time.Duration, received %T", d)
 		}
-		duration := t.Sub(time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)) * time.Microsecond
+		duration := t.Nanoseconds() / 1e3
 		return fn(b, duration)
 	}
 }
@@ -344,25 +344,4 @@ func toSignedBytes(n *big.Int) ([]byte, error) {
 		return b, nil
 	}
 	return nil, fmt.Errorf("toSignedBytes: error big.Int.Sign() returned unexpected value")
-}
-
-func makeDurationFixedCodec(st map[string]*Codec, enclosingNamespace string, schemaMap map[string]interface{}) (*Codec, error) {
-	schemaMap["name"] = "fixed.decimal"
-	c, err := makeFixedCodec(st, enclosingNamespace, schemaMap)
-	if err != nil {
-		return nil, err
-	}
-	precision := schemaMap["precision"]
-	scale := schemaMap["scale"]
-	size, err := getSize(c.typeName, schemaMap)
-	if err != nil {
-		return nil, err
-	}
-	p := int(precision.(float64))
-	s := int(scale.(float64))
-	c.binaryFromNative = decimalBytesFromNative(padBytes(c.binaryFromNative, int(size)), p, s)
-	c.textualFromNative = decimalBytesFromNative(padBytes(c.textualFromNative, int(size)), p, s)
-	c.nativeFromBinary = decimalBytesToNative(unpadBytes(c.nativeFromBinary), p, s)
-	c.nativeFromTextual = decimalBytesToNative(unpadBytes(c.nativeFromTextual), p, s)
-	return c, nil
 }
