@@ -181,8 +181,8 @@ func makeDecimalBytesCodec(st map[string]*Codec, enclosingNamespace string, sche
 	scale := schemaMap["scale"]
 	p := int(precision.(float64))
 	s := int(scale.(float64))
-	c.binaryFromNative = decimalBytesFromNative(bytesBinaryFromNative, p, s)
-	c.textualFromNative = decimalBytesFromNative(bytesTextualFromNative, p, s)
+	c.binaryFromNative = decimalBytesFromNative(bytesBinaryFromNative, toSignedBytes, p, s)
+	c.textualFromNative = decimalBytesFromNative(bytesTextualFromNative, toSignedBytes, p, s)
 	c.nativeFromBinary = decimalBytesToNative(bytesNativeFromBinary, p, s)
 	c.nativeFromTextual = decimalBytesToNative(bytesNativeFromTextual, p, s)
 	return c, nil
@@ -208,7 +208,7 @@ func decimalBytesToNative(fn toNativeFn, precision, scale int) toNativeFn {
 	}
 }
 
-func decimalBytesFromNative(fn fromNativeFn, precision, scale int) fromNativeFn {
+func decimalBytesFromNative(fromNativeFn fromNativeFn, toBytesFn toBytesFn, precision, scale int) fromNativeFn {
 	return func(b []byte, d interface{}) ([]byte, error) {
 		r, ok := d.(*big.Rat)
 		if !ok {
@@ -228,11 +228,11 @@ func decimalBytesFromNative(fn fromNativeFn, precision, scale int) fromNativeFn 
 		i := new(big.Int).Mul(num, big.NewInt(int64(math.Pow10(scale))))
 		// divide that by the denominator
 		precnum := new(big.Int).Div(i, denom)
-		bout, err := toSignedBytes(precnum)
+		bout, err := toBytesFn(precnum)
 		if err != nil {
 			return nil, err
 		}
-		return fn(b, bout)
+		return fromNativeFn(b, bout)
 	}
 }
 
@@ -250,10 +250,10 @@ func makeDecimalFixedCodec(st map[string]*Codec, enclosingNamespace string, sche
 	}
 	p := int(precision.(float64))
 	s := int(scale.(float64))
-	c.binaryFromNative = decimalBytesFromNative(padBytes(c.binaryFromNative, int(size)), p, s)
-	c.textualFromNative = decimalBytesFromNative(padBytes(c.textualFromNative, int(size)), p, s)
-	c.nativeFromBinary = decimalBytesToNative(unpadBytes(c.nativeFromBinary), p, s)
-	c.nativeFromTextual = decimalBytesToNative(unpadBytes(c.nativeFromTextual), p, s)
+	c.binaryFromNative = decimalBytesFromNative(c.binaryFromNative, toSignedFixedBytes(size), p, s)
+	c.textualFromNative = decimalBytesFromNative(c.textualFromNative, toSignedFixedBytes(size), p, s)
+	c.nativeFromBinary = decimalBytesToNative(c.nativeFromBinary, p, s)
+	c.nativeFromTextual = decimalBytesToNative(c.nativeFromTextual, p, s)
 	return c, nil
 }
 
@@ -281,34 +281,16 @@ func getSize(typeName *name, schemaMap map[string]interface{}) (uint, error) {
 	}
 	return size, nil
 }
-
-func padBytes(fn fromNativeFn, size int) fromNativeFn {
-	return func(bytes []byte, datum interface{}) ([]byte, error) {
-		padded := make([]byte, size, size)
-		dbytes := datum.([]byte)
-		copy(padded[size-len(dbytes):], dbytes)
-
-		return fn(bytes, padded)
+func padBytes(bytes []byte, fixedSize uint) []byte {
+	s := int(fixedSize)
+	padded := make([]byte, s, s)
+	if s >= len(bytes) {
+		copy(padded[s-len(bytes):], bytes)
 	}
+	return padded
 }
 
-func unpadBytes(fn toNativeFn) toNativeFn {
-	return func(bytes []byte) (interface{}, []byte, error) {
-		d, b, err := fn(bytes)
-		if err != nil {
-			return nil, b, err
-		}
-		unpadded := d.([]byte)
-		pos := -1
-		for idx, ib := range unpadded {
-			if ib != []byte("\x00")[0] {
-				pos = idx
-				break
-			}
-		}
-		return unpadded[pos:], b, nil
-	}
-}
+type toBytesFn func(n *big.Int) ([]byte, error)
 
 // fromSignedBytes sets the value of n to the big-endian two's complement
 // value stored in the given data. If data[0]&80 != 0, the number
@@ -344,4 +326,27 @@ func toSignedBytes(n *big.Int) ([]byte, error) {
 		return b, nil
 	}
 	return nil, fmt.Errorf("toSignedBytes: error big.Int.Sign() returned unexpected value")
+}
+
+// toSignedFixedBytes returns the big-endian two's complement
+// form of n for a given length of bytes.
+func toSignedFixedBytes(size uint) func(*big.Int) ([]byte, error) {
+	return func(n *big.Int) ([]byte, error) {
+		switch n.Sign() {
+		case 0:
+			return []byte{0}, nil
+		case 1:
+			b := n.Bytes()
+			if b[0]&0x80 > 0 {
+				b = append([]byte{0}, b...)
+			}
+			return padBytes(b, size), nil
+		case -1:
+			length := size * 8
+			b := new(big.Int).Add(n, new(big.Int).Lsh(one, length)).Bytes()
+			// Unlike a variable length byte length we need the extra bits to meet byte length
+			return b, nil
+		}
+		return nil, fmt.Errorf("toSignedBytes: error big.Int.Sign() returned unexpected value")
+	}
 }
