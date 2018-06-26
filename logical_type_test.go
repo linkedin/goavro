@@ -1,6 +1,7 @@
 package goavro
 
 import (
+	"fmt"
 	"math/big"
 	"testing"
 	"time"
@@ -85,4 +86,33 @@ func TestDecimalFixedLogicalTypeEncode(t *testing.T) {
 	// Encodes to 12 due to scale: 0
 	testBinaryEncodePass(t, schema0scale, big.NewRat(617, 50), []byte("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x0c"))
 	testBinaryDecodePass(t, schema0scale, big.NewRat(12, 1), []byte("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x0c"))
+}
+
+func ExampleUnion_logicalType() {
+	// Supported logical types and their native go types:
+	// * timestamp-millis - time.Time
+	// * timestamp-micros - time.Time
+	// * time-millis      - time.Duration
+	// * time-micros      - time.Duration
+	// * date             - int
+	// * decimal          - big.Rat
+	codec, err := NewCodec(`["null", {"type": "long", "logicalType": "timestamp-millis"}]`)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	// Note the usage of type.logicalType i.e. `long.timestamp-millis` to denote the type in a union. This is due to the single string naming format
+	// used by goavro. Decimal can be both bytes.decimal or fixed.decimal
+	bytes, err := codec.BinaryFromNative(nil, map[string]interface{}{"long.timestamp-millis": time.Date(2006, 1, 2, 15, 4, 5, 0, time.UTC)})
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	decoded, _, err := codec.NativeFromBinary(bytes)
+	if err != nil {
+		fmt.Println(err)
+	}
+	out := decoded.(map[string]interface{})
+	fmt.Printf("%#v\n", out["long.timestamp-millis"].(time.Time).String())
+	// Output: 2006-01-02 15:04:05 +0000 UTC
 }

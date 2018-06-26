@@ -201,7 +201,8 @@ func decimalBytesToNative(fn toNativeFn, precision, scale int) toNativeFn {
 		i := big.NewInt(0)
 		fromSignedBytes(i, bs)
 		if i.BitLen() > 64 {
-			return nil, b, fmt.Errorf("cannot transform to native decimal, max value is 64bit but received: %dbit", i.BitLen())
+			// Avro spec specifies we return underlying type if the logicalType is invalid
+			return d, o, err
 		}
 		r := big.NewRat(i.Int64(), int64(math.Pow10(scale)))
 		return r, o, nil
