@@ -22,7 +22,7 @@ func dateToNative(fn toNativeFn) toNativeFn {
 		}
 		i, ok := l.(int32)
 		if !ok {
-			return l, b, fmt.Errorf("cannot transform to native date, expected int, received %t", l)
+			return l, b, fmt.Errorf("cannot transform to native date, expected int, received %T", l)
 		}
 		t := time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC).AddDate(0, 0, int(i)).UTC()
 		return t, b, nil
@@ -55,7 +55,7 @@ func timeMillisToNative(fn toNativeFn) toNativeFn {
 		}
 		i, ok := l.(int32)
 		if !ok {
-			return l, b, fmt.Errorf("cannot transform to native time.Duration, expected int, received %t", l)
+			return l, b, fmt.Errorf("cannot transform to native time.Duration, expected int, received %T", l)
 		}
 		t := time.Duration(i) * time.Millisecond
 		return t, b, nil
@@ -84,7 +84,7 @@ func timeMicrosToNative(fn toNativeFn) toNativeFn {
 		}
 		i, ok := l.(int64)
 		if !ok {
-			return l, b, fmt.Errorf("cannot transform to native time.Duration, expected long, received %t", l)
+			return l, b, fmt.Errorf("cannot transform to native time.Duration, expected long, received %T", l)
 		}
 		t := time.Duration(i) * time.Microsecond
 		return t, b, nil
@@ -113,7 +113,7 @@ func timeStampMillisToNative(fn toNativeFn) toNativeFn {
 		}
 		i, ok := l.(int64)
 		if !ok {
-			return l, b, fmt.Errorf("cannot transform native timestamp-millis, expected int64, received %t", l)
+			return l, b, fmt.Errorf("cannot transform native timestamp-millis, expected int64, received %T", l)
 		}
 		secs := i / int64(time.Microsecond)
 		nanosecs := i - (secs * int64(time.Microsecond))
@@ -143,7 +143,7 @@ func timeStampMicrosToNative(fn toNativeFn) toNativeFn {
 		}
 		i, ok := l.(int64)
 		if !ok {
-			return l, b, fmt.Errorf("cannot transform native timestamp-micros, expected int64, received %t", l)
+			return l, b, fmt.Errorf("cannot transform native timestamp-micros, expected int64, received %T", l)
 		}
 		secs := i / int64(time.Millisecond)
 		nanosecs := i - (secs * int64(time.Millisecond))
