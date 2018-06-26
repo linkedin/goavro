@@ -114,5 +114,5 @@ func ExampleUnion_logicalType() {
 	}
 	out := decoded.(map[string]interface{})
 	fmt.Printf("%#v\n", out["long.timestamp-millis"].(time.Time).String())
-	// Output: 2006-01-02 15:04:05 +0000 UTC
+	// Output: "2006-01-02 15:04:05 +0000 UTC"
 }

@@ -15,8 +15,8 @@ type fromNativeFn func([]byte, interface{}) ([]byte, error)
 // date logical type - to/from time.Time, time.UTC location
 //////////////////////////////////////////////////////////////////////////////////////////////
 func dateToNative(fn toNativeFn) toNativeFn {
-	return func(b []byte) (interface{}, []byte, error) {
-		l, b, err := fn(b)
+	return func(bytes []byte) (interface{}, []byte, error) {
+		l, b, err := fn(bytes)
 		if err != nil {
 			return l, b, err
 		}
@@ -48,8 +48,8 @@ func dateFromNative(fn fromNativeFn) fromNativeFn {
 // time-millis logical type - to/from time.Time, time.UTC location
 //////////////////////////////////////////////////////////////////////////////////////////////
 func timeMillisToNative(fn toNativeFn) toNativeFn {
-	return func(b []byte) (interface{}, []byte, error) {
-		l, b, err := fn(b)
+	return func(bytes []byte) (interface{}, []byte, error) {
+		l, b, err := fn(bytes)
 		if err != nil {
 			return l, b, err
 		}
@@ -77,8 +77,8 @@ func timeMillisFromNative(fn fromNativeFn) fromNativeFn {
 // time-micros logical type - to/from time.Time, time.UTC location
 //////////////////////////////////////////////////////////////////////////////////////////////
 func timeMicrosToNative(fn toNativeFn) toNativeFn {
-	return func(b []byte) (interface{}, []byte, error) {
-		l, b, err := fn(b)
+	return func(bytes []byte) (interface{}, []byte, error) {
+		l, b, err := fn(bytes)
 		if err != nil {
 			return l, b, err
 		}
@@ -106,8 +106,8 @@ func timeMicrosFromNative(fn fromNativeFn) fromNativeFn {
 // timestamp-millis logical type - to/from time.Time, time.UTC location
 //////////////////////////////////////////////////////////////////////////////////////////////
 func timeStampMillisToNative(fn toNativeFn) toNativeFn {
-	return func(b []byte) (interface{}, []byte, error) {
-		l, b, err := fn(b)
+	return func(bytes []byte) (interface{}, []byte, error) {
+		l, b, err := fn(bytes)
 		if err != nil {
 			return l, b, err
 		}
@@ -136,8 +136,8 @@ func timeStampMillisFromNative(fn fromNativeFn) fromNativeFn {
 // timestamp-micros logical type - to/from time.Time, time.UTC location
 //////////////////////////////////////////////////////////////////////////////////////////////
 func timeStampMicrosToNative(fn toNativeFn) toNativeFn {
-	return func(b []byte) (interface{}, []byte, error) {
-		l, b, err := fn(b)
+	return func(bytes []byte) (interface{}, []byte, error) {
+		l, b, err := fn(bytes)
 		if err != nil {
 			return l, b, err
 		}
@@ -189,23 +189,23 @@ func makeDecimalBytesCodec(st map[string]*Codec, enclosingNamespace string, sche
 }
 
 func decimalBytesToNative(fn toNativeFn, precision, scale int) toNativeFn {
-	return func(b []byte) (interface{}, []byte, error) {
-		d, o, err := fn(b)
+	return func(bytes []byte) (interface{}, []byte, error) {
+		d, b, err := fn(bytes)
 		if err != nil {
-			return d, o, err
+			return d, b, err
 		}
 		bs, ok := d.([]byte)
 		if !ok {
-			return nil, b, fmt.Errorf("cannot transform to native decimal, expected []byte, received %T", d)
+			return nil, bytes, fmt.Errorf("cannot transform to native decimal, expected []byte, received %T", d)
 		}
 		i := big.NewInt(0)
 		fromSignedBytes(i, bs)
 		if i.BitLen() > 64 {
 			// Avro spec specifies we return underlying type if the logicalType is invalid
-			return d, o, err
+			return d, b, err
 		}
 		r := big.NewRat(i.Int64(), int64(math.Pow10(scale)))
-		return r, o, nil
+		return r, b, nil
 	}
 }
 
