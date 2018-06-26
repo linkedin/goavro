@@ -39,7 +39,7 @@ func dateFromNative(fn fromNativeFn) fromNativeFn {
 		// between the given time and unix epoch and divide that by (24 * time.Hour)
 		// This accuracy seems acceptable given the relation to unix epoch for now
 		// TODO: replace with a better method
-		numDays := t.Sub(time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)).Nanoseconds() / (24 * time.Hour.Nanoseconds())
+		numDays := t.UnixNano() / int64(24*time.Hour)
 		return fn(b, numDays)
 	}
 }
@@ -68,7 +68,7 @@ func timeMillisFromNative(fn fromNativeFn) fromNativeFn {
 		if !ok {
 			return nil, fmt.Errorf("cannot transform to binary time-millis, expected time.Duration, received %T", d)
 		}
-		duration := int32(t.Nanoseconds() / 1e6)
+		duration := int32(t.Nanoseconds() / int64(time.Millisecond))
 		return fn(b, duration)
 	}
 }
@@ -97,7 +97,7 @@ func timeMicrosFromNative(fn fromNativeFn) fromNativeFn {
 		if !ok {
 			return nil, fmt.Errorf("cannot transform to binary time-micros, expected time.Duration, received %T", d)
 		}
-		duration := t.Nanoseconds() / 1e3
+		duration := t.Nanoseconds() / int64(time.Microsecond)
 		return fn(b, duration)
 	}
 }
@@ -115,8 +115,8 @@ func timeStampMillisToNative(fn toNativeFn) toNativeFn {
 		if !ok {
 			return l, b, fmt.Errorf("cannot transform native timestamp-millis, expected int64, received %t", l)
 		}
-		secs := i / 1e3
-		nanosecs := i - (secs * 1e3)
+		secs := i / int64(time.Microsecond)
+		nanosecs := i - (secs * int64(time.Microsecond))
 		return time.Unix(secs, nanosecs).UTC(), b, nil
 	}
 }
@@ -127,7 +127,7 @@ func timeStampMillisFromNative(fn fromNativeFn) fromNativeFn {
 		if !ok {
 			return nil, fmt.Errorf("cannot transform binary timestamp-millis, expected time.Time, received %T", d)
 		}
-		millisecs := t.UnixNano() / 1e6
+		millisecs := t.UnixNano() / int64(time.Millisecond)
 		return fn(b, millisecs)
 	}
 }
@@ -145,8 +145,8 @@ func timeStampMicrosToNative(fn toNativeFn) toNativeFn {
 		if !ok {
 			return l, b, fmt.Errorf("cannot transform native timestamp-micros, expected int64, received %t", l)
 		}
-		secs := i / 1e6
-		nanosecs := i - (secs * 1e6)
+		secs := i / int64(time.Millisecond)
+		nanosecs := i - (secs * int64(time.Millisecond))
 		return time.Unix(secs, nanosecs).UTC(), b, nil
 	}
 }
@@ -157,7 +157,7 @@ func timeStampMicrosFromNative(fn fromNativeFn) fromNativeFn {
 		if !ok {
 			return nil, fmt.Errorf("cannot transform binary timestamp-micros, expected time.Time, received %T", d)
 		}
-		microsecs := t.UnixNano() / 1e3
+		microsecs := t.UnixNano() / int64(time.Microsecond)
 		return fn(b, microsecs)
 	}
 }
