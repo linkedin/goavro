@@ -92,14 +92,12 @@ func NewCodec(schemaSpecification string) (*Codec, error) {
 
 	c, err := buildCodec(st, nullNamespace, schema)
 	if err == nil {
-		// // compact schema and save it
-		// compact, err := json.Marshal(schema)
-		// if err != nil {
-		// 	return nil, fmt.Errorf("cannot remarshal schema: %s", err)
-		// }
-		// c.schemaOriginal = string(compact)
 		c.schemaOriginal = schemaSpecification
-		c.schemaCanonical = parsingCanonicalForm(schema)
+		c.schemaCanonical, err = parsingCanonicalForm(schema)
+		if err != nil {
+			// Should not get here because schema is already validated above.
+			return nil, err
+		}
 	}
 
 	return c, err
