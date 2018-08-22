@@ -92,8 +92,9 @@ func pcfMap(jsonMap map[string]interface{}, proc pcfProcessor) string {
 		// float.
 		if k == "size" {
 			if s, ok := v.(string); ok {
-				s, err := strconv.Atoi(s)
+				s, err := strconv.ParseUint(s, 10, 0)
 				if err != nil {
+					// should never get here because already validated schema
 					panic(fmt.Errorf("Fixed size ought to be number greater than zero: %v", s))
 				}
 				v = float64(s)
