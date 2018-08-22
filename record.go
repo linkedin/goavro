@@ -26,8 +26,8 @@ func makeRecordCodec(st map[string]*Codec, enclosingNamespace string, schemaMap 
 		return nil, fmt.Errorf("Record %q ought to have fields key", c.typeName)
 	}
 	fieldSchemas, ok := fields.([]interface{})
-	if !ok || len(fieldSchemas) == 0 {
-		return nil, fmt.Errorf("Record %q fields ought to be non-empty array: %v", c.typeName, fields)
+	if !ok || fieldSchemas == nil {
+		return nil, fmt.Errorf("Record %q fields ought to be non-nil array: %v", c.typeName, fields)
 	}
 
 	codecFromFieldName := make(map[string]*Codec)

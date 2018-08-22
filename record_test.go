@@ -25,8 +25,8 @@ func TestRecordName(t *testing.T) {
 
 func TestRecordFields(t *testing.T) {
 	testSchemaInvalid(t, `{"type":"record","name":"r1"}`, `Record "r1" ought to have fields key`)
-	testSchemaInvalid(t, `{"type":"record","name":"r1","fields":3}`, `Record "r1" fields ought to be non-empty array`)
-	testSchemaInvalid(t, `{"type":"record","name":"r1","fields":[]}`, `Record "r1" fields ought to be non-empty array`)
+	testSchemaInvalid(t, `{"type":"record","name":"r1","fields":3}`, `Record "r1" fields ought to be non-nil array`)
+	testSchemaInvalid(t, `{"type":"record","name":"r1","fields":null}`, `Record "r1" fields ought to be non-nil array`)
 }
 
 func TestRecordFieldInvalid(t *testing.T) {
