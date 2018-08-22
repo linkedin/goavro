@@ -56,22 +56,27 @@ func stringNativeFromBinary(buf []byte) (interface{}, []byte, error) {
 ////////////////////////////////////////
 
 func bytesBinaryFromNative(buf []byte, datum interface{}) ([]byte, error) {
-	var d []byte
-	switch datum.(type) {
+	var someBytes []byte
+	switch d := datum.(type) {
 	case []byte:
-		d = datum.([]byte)
+		someBytes = d
 	case string:
-		d = []byte(datum.(string))
+		someBytes = []byte(d)
 	default:
-		return nil, fmt.Errorf("cannot encode binary bytes: expected: []byte; received: %T", datum)
+		return nil, fmt.Errorf("cannot encode binary bytes: expected: []byte or string; received: %T", datum)
 	}
-	buf, _ = longBinaryFromNative(buf, len(d)) // only fails when given non integer
-	return append(buf, d...), nil              // append datum bytes
+	buf, _ = longBinaryFromNative(buf, len(someBytes)) // only fails when given non integer
+	return append(buf, someBytes...), nil              // append datum bytes
 }
 
 func stringBinaryFromNative(buf []byte, datum interface{}) ([]byte, error) {
-	someBytes, ok := datum.(string)
-	if !ok {
+	var someBytes []byte
+	switch d := datum.(type) {
+	case []byte:
+		someBytes = d
+	case string:
+		someBytes = []byte(d)
+	default:
 		return nil, fmt.Errorf("cannot encode binary bytes: expected: string; received: %T", datum)
 	}
 	buf, _ = longBinaryFromNative(buf, len(someBytes)) // only fails when given non integer
@@ -339,9 +344,14 @@ func unescapeSpecialJSON(b byte) (byte, bool) {
 ////////////////////////////////////////
 
 func bytesTextualFromNative(buf []byte, datum interface{}) ([]byte, error) {
-	someBytes, ok := datum.([]byte)
-	if !ok {
-		return nil, fmt.Errorf("cannot encode textual bytes: expected: []byte; received: %T", datum)
+	var someBytes []byte
+	switch d := datum.(type) {
+	case []byte:
+		someBytes = d
+	case string:
+		someBytes = []byte(d)
+	default:
+		return nil, fmt.Errorf("cannot encode textual bytes: expected: []byte or string; received: %T", datum)
 	}
 	buf = append(buf, '"') // prefix buffer with double quote
 	for _, b := range someBytes {
@@ -363,9 +373,14 @@ func bytesTextualFromNative(buf []byte, datum interface{}) ([]byte, error) {
 }
 
 func stringTextualFromNative(buf []byte, datum interface{}) ([]byte, error) {
-	someString, ok := datum.(string)
-	if !ok {
-		return nil, fmt.Errorf("cannot encode textual string: expected: string; received: %T", datum)
+	var someString string
+	switch d := datum.(type) {
+	case []byte:
+		someString = string(d)
+	case string:
+		someString = d
+	default:
+		return nil, fmt.Errorf("cannot encode textual string: expected: []byte or string; received: %T", datum)
 	}
 	buf = append(buf, '"') // prefix buffer with double quote
 	for _, r := range someString {

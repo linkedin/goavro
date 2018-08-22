@@ -177,3 +177,23 @@ func TestJSONUnmarshalStrings(t *testing.T) {
 		}
 	}
 }
+
+func TestBytesCodecAcceptsString(t *testing.T) {
+	schema := `{"type":"bytes"}`
+	t.Run("binary", func(t *testing.T) {
+		testBinaryEncodePass(t, schema, "abcd", []byte("\x08abcd"))
+	})
+	t.Run("text", func(t *testing.T) {
+		testTextEncodePass(t, schema, "abcd", []byte(`"abcd"`))
+	})
+}
+
+func TestStringCodecAcceptsBytes(t *testing.T) {
+	schema := `{"type":"string"}`
+	t.Run("binary", func(t *testing.T) {
+		testBinaryEncodePass(t, schema, []byte("abcd"), []byte("\x08abcd"))
+	})
+	t.Run("text", func(t *testing.T) {
+		testTextEncodePass(t, schema, []byte("abcd"), []byte(`"abcd"`))
+	})
+}

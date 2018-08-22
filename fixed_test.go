@@ -74,3 +74,13 @@ func TestFixedTextCodec(t *testing.T) {
 	testTextEncodeFail(t, schema, []byte{1, 2, 3, 4, 5}, "datum size ought to equal schema size")
 	testTextEncodePass(t, schema, []byte{1, 2, 3, 4}, []byte(`"\u0001\u0002\u0003\u0004"`))
 }
+
+func TestFixedCodecAcceptsString(t *testing.T) {
+	schema := `{"type":"fixed","name":"f1","size":4}`
+	t.Run("binary", func(t *testing.T) {
+		testBinaryEncodePass(t, schema, "abcd", []byte(`abcd`))
+	})
+	t.Run("text", func(t *testing.T) {
+		testTextEncodePass(t, schema, "abcd", []byte(`"abcd"`))
+	})
+}

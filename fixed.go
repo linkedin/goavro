@@ -51,9 +51,14 @@ func makeFixedCodec(st map[string]*Codec, enclosingNamespace string, schemaMap m
 	}
 
 	c.binaryFromNative = func(buf []byte, datum interface{}) ([]byte, error) {
-		someBytes, ok := datum.([]byte)
-		if !ok {
-			return nil, fmt.Errorf("cannot encode binary fixed %q: expected []byte; received: %T", c.typeName, datum)
+		var someBytes []byte
+		switch d := datum.(type) {
+		case []byte:
+			someBytes = d
+		case string:
+			someBytes = []byte(d)
+		default:
+			return nil, fmt.Errorf("cannot encode binary fixed %q: expected []byte or string; received: %T", c.typeName, datum)
 		}
 		if count := uint(len(someBytes)); count != size {
 			return nil, fmt.Errorf("cannot encode binary fixed %q: datum size ought to equal schema size: %d != %d", c.typeName, count, size)
@@ -79,9 +84,14 @@ func makeFixedCodec(st map[string]*Codec, enclosingNamespace string, schemaMap m
 	}
 
 	c.textualFromNative = func(buf []byte, datum interface{}) ([]byte, error) {
-		someBytes, ok := datum.([]byte)
-		if !ok {
-			return nil, fmt.Errorf("cannot encode textual fixed %q: expected []byte; received: %T", c.typeName, datum)
+		var someBytes []byte
+		switch d := datum.(type) {
+		case []byte:
+			someBytes = d
+		case string:
+			someBytes = []byte(d)
+		default:
+			return nil, fmt.Errorf("cannot encode textual fixed %q: expected []byte or string; received: %T", c.typeName, datum)
 		}
 		if count := uint(len(someBytes)); count != size {
 			return nil, fmt.Errorf("cannot encode textual fixed %q: datum size ought to equal schema size: %d != %d", c.typeName, count, size)
