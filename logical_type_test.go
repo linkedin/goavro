@@ -9,6 +9,8 @@ import (
 
 func TestSchemaLogicalType(t *testing.T) {
 	testSchemaValid(t, `{"type": "long", "logicalType": "timestamp-millis"}`)
+	testSchemaInvalid(t, `{"type": "bytes", "logicalType": "decimal"}`, "precision")
+	testSchemaInvalid(t, `{"type": "fixed", "size": 16, "logicalType": "decimal"}`, "precision")
 }
 
 func TestTimeStampMillisLogicalTypeEncode(t *testing.T) {

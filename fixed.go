@@ -21,26 +21,9 @@ func makeFixedCodec(st map[string]*Codec, enclosingNamespace string, schemaMap m
 	if err != nil {
 		return nil, fmt.Errorf("Fixed ought to have valid name: %s", err)
 	}
-	// Fixed type must have size
-	sizeRaw, ok := schemaMap["size"]
-	if !ok {
-		return nil, fmt.Errorf("Fixed %q ought to have size key", c.typeName)
-	}
-	var size uint
-	switch val := sizeRaw.(type) {
-	case string:
-		s, err := strconv.ParseUint(val, 10, 0)
-		if err != nil {
-			return nil, fmt.Errorf("Fixed %q size ought to be number greater than zero: %v", c.typeName, sizeRaw)
-		}
-		size = uint(s)
-	case float64:
-		if val <= 0 {
-			return nil, fmt.Errorf("Fixed %q size ought to be number greater than zero: %v", c.typeName, sizeRaw)
-		}
-		size = uint(val)
-	default:
-		return nil, fmt.Errorf("Fixed %q size ought to be number greater than zero: %v", c.typeName, sizeRaw)
+	size, err := sizeFromSchemaMap(c.typeName, schemaMap)
+	if err != nil {
+		return nil, err
 	}
 
 	c.nativeFromBinary = func(buf []byte) (interface{}, []byte, error) {
@@ -100,4 +83,29 @@ func makeFixedCodec(st map[string]*Codec, enclosingNamespace string, schemaMap m
 	}
 
 	return c, nil
+}
+
+func sizeFromSchemaMap(typeName *name, schemaMap map[string]interface{}) (uint, error) {
+	// Fixed type must have size
+	sizeRaw, ok := schemaMap["size"]
+	if !ok {
+		return 0, fmt.Errorf("Fixed %q ought to have size key", typeName)
+	}
+	var size uint
+	switch val := sizeRaw.(type) {
+	case string:
+		s, err := strconv.ParseUint(val, 10, 0)
+		if err != nil {
+			return 0, fmt.Errorf("Fixed %q size ought to be number greater than zero: %v", typeName, sizeRaw)
+		}
+		size = uint(s)
+	case float64:
+		if val <= 0 {
+			return 0, fmt.Errorf("Fixed %q size ought to be number greater than zero: %v", typeName, sizeRaw)
+		}
+		size = uint(val)
+	default:
+		return 0, fmt.Errorf("Fixed %q size ought to be number greater than zero: %v", typeName, sizeRaw)
+	}
+	return size, nil
 }

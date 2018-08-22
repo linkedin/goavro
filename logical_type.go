@@ -1,10 +1,10 @@
 package goavro
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"math/big"
-	"strconv"
 	"time"
 )
 
@@ -14,7 +14,7 @@ type fromNativeFn func([]byte, interface{}) ([]byte, error)
 //////////////////////////////////////////////////////////////////////////////////////////////
 // date logical type - to/from time.Time, time.UTC location
 //////////////////////////////////////////////////////////////////////////////////////////////
-func dateToNative(fn toNativeFn) toNativeFn {
+func nativeFromDate(fn toNativeFn) toNativeFn {
 	return func(bytes []byte) (interface{}, []byte, error) {
 		l, b, err := fn(bytes)
 		if err != nil {
@@ -47,7 +47,7 @@ func dateFromNative(fn fromNativeFn) fromNativeFn {
 //////////////////////////////////////////////////////////////////////////////////////////////
 // time-millis logical type - to/from time.Time, time.UTC location
 //////////////////////////////////////////////////////////////////////////////////////////////
-func timeMillisToNative(fn toNativeFn) toNativeFn {
+func nativeFromTimeMillis(fn toNativeFn) toNativeFn {
 	return func(bytes []byte) (interface{}, []byte, error) {
 		l, b, err := fn(bytes)
 		if err != nil {
@@ -76,7 +76,7 @@ func timeMillisFromNative(fn fromNativeFn) fromNativeFn {
 //////////////////////////////////////////////////////////////////////////////////////////////
 // time-micros logical type - to/from time.Time, time.UTC location
 //////////////////////////////////////////////////////////////////////////////////////////////
-func timeMicrosToNative(fn toNativeFn) toNativeFn {
+func nativeFromTimeMicros(fn toNativeFn) toNativeFn {
 	return func(bytes []byte) (interface{}, []byte, error) {
 		l, b, err := fn(bytes)
 		if err != nil {
@@ -105,7 +105,7 @@ func timeMicrosFromNative(fn fromNativeFn) fromNativeFn {
 //////////////////////////////////////////////////////////////////////////////////////////////
 // timestamp-millis logical type - to/from time.Time, time.UTC location
 //////////////////////////////////////////////////////////////////////////////////////////////
-func timeStampMillisToNative(fn toNativeFn) toNativeFn {
+func nativeFromTimeStampMillis(fn toNativeFn) toNativeFn {
 	return func(bytes []byte) (interface{}, []byte, error) {
 		l, b, err := fn(bytes)
 		if err != nil {
@@ -135,7 +135,7 @@ func timeStampMillisFromNative(fn fromNativeFn) fromNativeFn {
 //////////////////////////////////////////////////////////////////////////////////////////////
 // timestamp-micros logical type - to/from time.Time, time.UTC location
 //////////////////////////////////////////////////////////////////////////////////////////////
-func timeStampMicrosToNative(fn toNativeFn) toNativeFn {
+func nativeFromTimeStampMicros(fn toNativeFn) toNativeFn {
 	return func(bytes []byte) (interface{}, []byte, error) {
 		l, b, err := fn(bytes)
 		if err != nil {
@@ -169,26 +169,56 @@ func timeStampMicrosFromNative(fn fromNativeFn) fromNativeFn {
 /////////////////////////////////////////////////////////////////////////////////////////////
 type makeCodecFn func(st map[string]*Codec, enclosingNamespace string, schemaMap map[string]interface{}) (*Codec, error)
 
+func precisionAndScaleFromSchemaMap(schemaMap map[string]interface{}) (int, int, error) {
+	p1, ok := schemaMap["precision"]
+	if !ok {
+		return 0, 0, errors.New("cannot create decimal logical type without precision")
+	}
+	p2, ok := p1.(float64)
+	if !ok {
+		return 0, 0, fmt.Errorf("cannot create decimal logical type with wrong precision type; expected: float64; received: %T", p1)
+	}
+	p3 := int(p2)
+	if p3 <= 1 {
+		return 0, 0, fmt.Errorf("cannot create decimal logical type when precision is less than one: %d", p3)
+	}
+	var s3 int // scale defaults to 0 if not set
+	if s1, ok := schemaMap["scale"]; ok {
+		s2, ok := s1.(float64)
+		if !ok {
+			return 0, 0, fmt.Errorf("cannot create decimal logical type with wrong precision type; expected: float64; received: %T", p1)
+		}
+		s3 = int(s2)
+		if s3 < 0 {
+			return 0, 0, fmt.Errorf("cannot create decimal logical type when scale is less than zero: %d", s3)
+		}
+		if s3 > p3 {
+			return 0, 0, fmt.Errorf("cannot create decimal logical type when scale is larger than precision: %d > %d", s3, p3)
+		}
+	}
+	return p3, s3, nil
+}
+
 var one = big.NewInt(1)
 
 func makeDecimalBytesCodec(st map[string]*Codec, enclosingNamespace string, schemaMap map[string]interface{}) (*Codec, error) {
+	precision, scale, err := precisionAndScaleFromSchemaMap(schemaMap)
+	if err != nil {
+		return nil, err
+	}
 	schemaMap["name"] = "bytes.decimal"
 	c, err := registerNewCodec(st, schemaMap, enclosingNamespace)
 	if err != nil {
 		return nil, fmt.Errorf("Bytes ought to have valid name: %s", err)
 	}
-	precision := schemaMap["precision"]
-	scale := schemaMap["scale"]
-	p := int(precision.(float64))
-	s := int(scale.(float64))
-	c.binaryFromNative = decimalBytesFromNative(bytesBinaryFromNative, toSignedBytes, p, s)
-	c.textualFromNative = decimalBytesFromNative(bytesTextualFromNative, toSignedBytes, p, s)
-	c.nativeFromBinary = decimalBytesToNative(bytesNativeFromBinary, p, s)
-	c.nativeFromTextual = decimalBytesToNative(bytesNativeFromTextual, p, s)
+	c.binaryFromNative = decimalBytesFromNative(bytesBinaryFromNative, toSignedBytes, precision, scale)
+	c.textualFromNative = decimalBytesFromNative(bytesTextualFromNative, toSignedBytes, precision, scale)
+	c.nativeFromBinary = nativeFromDecimalBytes(bytesNativeFromBinary, precision, scale)
+	c.nativeFromTextual = nativeFromDecimalBytes(bytesNativeFromTextual, precision, scale)
 	return c, nil
 }
 
-func decimalBytesToNative(fn toNativeFn, precision, scale int) toNativeFn {
+func nativeFromDecimalBytes(fn toNativeFn, precision, scale int) toNativeFn {
 	return func(bytes []byte) (interface{}, []byte, error) {
 		d, b, err := fn(bytes)
 		if err != nil {
@@ -215,12 +245,6 @@ func decimalBytesFromNative(fromNativeFn fromNativeFn, toBytesFn toBytesFn, prec
 		if !ok {
 			return nil, fmt.Errorf("cannot transform to bytes, expected *big.Rat, received %T", d)
 		}
-		if precision < 0 {
-			return nil, fmt.Errorf("cannot transform to bytes, expected precision to be greater than 0")
-		}
-		if scale < 0 || scale > precision {
-			return nil, fmt.Errorf("cannot transform to bytes, expected scale to be 0 or scale to be greater than precision")
-		}
 		// we reduce accuracy to precision by dividing and multiplying by digit length
 		num := big.NewInt(0).Set(r.Num())
 		denom := big.NewInt(0).Set(r.Denom())
@@ -238,50 +262,26 @@ func decimalBytesFromNative(fromNativeFn fromNativeFn, toBytesFn toBytesFn, prec
 }
 
 func makeDecimalFixedCodec(st map[string]*Codec, enclosingNamespace string, schemaMap map[string]interface{}) (*Codec, error) {
+	precision, scale, err := precisionAndScaleFromSchemaMap(schemaMap)
+	if err != nil {
+		return nil, err
+	}
 	schemaMap["name"] = "fixed.decimal"
 	c, err := makeFixedCodec(st, enclosingNamespace, schemaMap)
 	if err != nil {
 		return nil, err
 	}
-	precision := schemaMap["precision"]
-	scale := schemaMap["scale"]
-	size, err := getSize(c.typeName, schemaMap)
+	size, err := sizeFromSchemaMap(c.typeName, schemaMap)
 	if err != nil {
 		return nil, err
 	}
-	p := int(precision.(float64))
-	s := int(scale.(float64))
-	c.binaryFromNative = decimalBytesFromNative(c.binaryFromNative, toSignedFixedBytes(size), p, s)
-	c.textualFromNative = decimalBytesFromNative(c.textualFromNative, toSignedFixedBytes(size), p, s)
-	c.nativeFromBinary = decimalBytesToNative(c.nativeFromBinary, p, s)
-	c.nativeFromTextual = decimalBytesToNative(c.nativeFromTextual, p, s)
+	c.binaryFromNative = decimalBytesFromNative(c.binaryFromNative, toSignedFixedBytes(size), precision, scale)
+	c.textualFromNative = decimalBytesFromNative(c.textualFromNative, toSignedFixedBytes(size), precision, scale)
+	c.nativeFromBinary = nativeFromDecimalBytes(c.nativeFromBinary, precision, scale)
+	c.nativeFromTextual = nativeFromDecimalBytes(c.nativeFromTextual, precision, scale)
 	return c, nil
 }
 
-func getSize(typeName *name, schemaMap map[string]interface{}) (uint, error) {
-	// Fixed type must have size
-	sizeRaw, ok := schemaMap["size"]
-	if !ok {
-		return 0, fmt.Errorf("Fixed %q ought to have size key", typeName)
-	}
-	var size uint
-	switch val := sizeRaw.(type) {
-	case string:
-		s, err := strconv.ParseUint(val, 10, 0)
-		if err != nil {
-			return 0, fmt.Errorf("Fixed %q size ought to be number greater than zero: %v", typeName, sizeRaw)
-		}
-		size = uint(s)
-	case float64:
-		if val <= 0 {
-			return 0, fmt.Errorf("Fixed %q size ought to be number greater than zero: %v", typeName, sizeRaw)
-		}
-		size = uint(val)
-	default:
-		return 0, fmt.Errorf("Fixed %q size ought to be number greater than zero: %v", typeName, sizeRaw)
-	}
-	return size, nil
-}
 func padBytes(bytes []byte, fixedSize uint) []byte {
 	s := int(fixedSize)
 	padded := make([]byte, s, s)
