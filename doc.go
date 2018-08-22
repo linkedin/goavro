@@ -25,7 +25,7 @@ Usage Example:
               "type": "record",
               "name": "LongList",
               "fields" : [
-                {"name": "next", "type": ["null", "LongList"], "default": null}
+	      {"name": "next", "type": ["null", "LongList", {"type": "long", "logicalType": "timestamp-millis"}], "default": null}
               ]
             }`)
         if err != nil {

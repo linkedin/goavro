@@ -179,6 +179,53 @@ func newSymbolTable() map[string]*Codec {
 			nativeFromTextual: stringNativeFromTextual,
 			textualFromNative: stringTextualFromNative,
 		},
+		// Start of compiled logical types using format typeName.logicalType where there is
+		// no dependence on schema.
+		"long.timestamp-millis": {
+			typeName:          &name{"long.timestamp-millis", nullNamespace},
+			schemaOriginal:    "long",
+			schemaCanonical:   "long",
+			nativeFromTextual: timeStampMillisToNative(longNativeFromTextual),
+			binaryFromNative:  timeStampMillisFromNative(longBinaryFromNative),
+			nativeFromBinary:  timeStampMillisToNative(longNativeFromBinary),
+			textualFromNative: timeStampMillisFromNative(longTextualFromNative),
+		},
+		"long.timestamp-micros": {
+			typeName:          &name{"long.timestamp-micros", nullNamespace},
+			schemaOriginal:    "long",
+			schemaCanonical:   "long",
+			nativeFromTextual: timeStampMicrosToNative(longNativeFromTextual),
+			binaryFromNative:  timeStampMicrosFromNative(longBinaryFromNative),
+			nativeFromBinary:  timeStampMicrosToNative(longNativeFromBinary),
+			textualFromNative: timeStampMicrosFromNative(longTextualFromNative),
+		},
+		"int.time-millis": {
+			typeName:          &name{"int.time-millis", nullNamespace},
+			schemaOriginal:    "int",
+			schemaCanonical:   "int",
+			nativeFromTextual: timeMillisToNative(intNativeFromTextual),
+			binaryFromNative:  timeMillisFromNative(intBinaryFromNative),
+			nativeFromBinary:  timeMillisToNative(intNativeFromBinary),
+			textualFromNative: timeMillisFromNative(intTextualFromNative),
+		},
+		"long.time-micros": {
+			typeName:          &name{"long.time-micros", nullNamespace},
+			schemaOriginal:    "long",
+			schemaCanonical:   "long",
+			nativeFromTextual: timeMicrosToNative(longNativeFromTextual),
+			binaryFromNative:  timeMicrosFromNative(longBinaryFromNative),
+			nativeFromBinary:  timeMicrosToNative(longNativeFromBinary),
+			textualFromNative: timeMicrosFromNative(longTextualFromNative),
+		},
+		"int.date": {
+			typeName:          &name{"int.date", nullNamespace},
+			schemaOriginal:    "int",
+			schemaCanonical:   "int",
+			nativeFromTextual: dateToNative(intNativeFromTextual),
+			binaryFromNative:  dateFromNative(intBinaryFromNative),
+			nativeFromBinary:  dateToNative(intNativeFromBinary),
+			textualFromNative: dateFromNative(intTextualFromNative),
+		},
 	}
 }
 
@@ -406,10 +453,15 @@ func buildCodecForTypeDescribedByMap(st map[string]*Codec, enclosingNamespace st
 }
 
 func buildCodecForTypeDescribedByString(st map[string]*Codec, enclosingNamespace string, typeName string, schemaMap map[string]interface{}) (*Codec, error) {
-	// NOTE: When codec already exists, return it. This includes both primitive
-	// type codecs added in NewCodec, and user-defined types, added while
+	searchType := typeName
+	// logicalType will be non-nil for those fields without a logicalType property set
+	if lt := schemaMap["logicalType"]; lt != nil {
+		searchType = fmt.Sprintf("%s.%s", typeName, lt)
+	}
+	// NOTE: When codec already exists, return it. This includes both primitive and
+	// logicalType codecs added in NewCodec, and user-defined types, added while
 	// building the codec.
-	if cd, ok := st[typeName]; ok {
+	if cd, ok := st[searchType]; ok {
 		return cd, nil
 	}
 
@@ -421,7 +473,7 @@ func buildCodecForTypeDescribedByString(st map[string]*Codec, enclosingNamespace
 	}
 
 	// There are only a small handful of complex Avro data types.
-	switch typeName {
+	switch searchType {
 	case "array":
 		return makeArrayCodec(st, enclosingNamespace, schemaMap)
 	case "enum":
@@ -432,8 +484,12 @@ func buildCodecForTypeDescribedByString(st map[string]*Codec, enclosingNamespace
 		return makeMapCodec(st, enclosingNamespace, schemaMap)
 	case "record":
 		return makeRecordCodec(st, enclosingNamespace, schemaMap)
+	case "bytes.decimal":
+		return makeDecimalBytesCodec(st, enclosingNamespace, schemaMap)
+	case "fixed.decimal":
+		return makeDecimalFixedCodec(st, enclosingNamespace, schemaMap)
 	default:
-		return nil, fmt.Errorf("unknown type name: %q", typeName)
+		return nil, fmt.Errorf("unknown type name: %q", searchType)
 	}
 }
 
