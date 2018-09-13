@@ -72,7 +72,7 @@ func buildCodecForTypeDescribedBySlice(st map[string]*Codec, enclosingNamespace 
 		// NOTE: To support record field default values, union schema set to the
 		// type name of first member
 		// TODO: add/change to schemaCanonical below
-		schemaOriginal: codecFromIndex[0].typeName.short(),
+		schemaOriginal: codecFromIndex[0].typeName.fullName,
 
 		typeName: &name{"union", nullNamespace},
 		nativeFromBinary: func(buf []byte) (interface{}, []byte, error) {

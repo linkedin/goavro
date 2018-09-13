@@ -219,3 +219,50 @@ func TestDefaultValueOughtToEncodeUsingFieldSchemaOK(t *testing.T) {
 	}`)
 
 }
+
+func TestUnionOfRecordsDefaultValueOughtToEncodeUsingFieldSchemaOK(t *testing.T) {
+
+	testSchemaValid(t, `
+	{
+		"type": "record",
+		"name": "Thing",
+		"namespace": "universe.of.things",
+		"fields": [
+			{
+				"name": "layout",
+				"type": [
+					{
+						"type": "record",
+						"name": "AnotherThing",
+						"namespace": "another.universe.of.things",
+						"fields": [
+							{
+								"name": "text",
+								"type": "string",
+								"default": "someText"
+							}
+						]
+					},
+					{
+						"type": "record",
+						"name": "AnotherThing2",
+						"namespace": "another.universe.of.things",
+						"fields": [
+							{
+								"name": "text",
+								"type": "string",
+								"default": "someOtherText"
+							}
+						]
+					}
+				],
+				"default": {
+					"another.universe.of.things.AnotherThing": {
+						"text": "someDefaultText"
+					}
+				}
+			}
+		]
+	}`)
+
+}
