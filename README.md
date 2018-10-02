@@ -213,13 +213,13 @@ func main() {
     }
 
     // Convert binary Avro data back to native Go form
-    native, _, err = codec.NativeFromBinary(binary)
+    native, _, err := codec.NativeFromBinary(binary)
     if err != nil {
         fmt.Println(err)
     }
 
     // Convert native Go form to textual Avro data
-    textual, err = codec.TextualFromNative(nil, native)
+    textual, err := codec.TextualFromNative(nil, native)
     if err != nil {
         fmt.Println(err)
     }
