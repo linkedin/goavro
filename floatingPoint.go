@@ -140,6 +140,9 @@ func floatingTextDecoder(buf []byte, bitSize int) (interface{}, []byte, error) {
 	if err != nil {
 		return nil, nil, err
 	}
+	if bitSize == 32 {
+		return float32(datum), buf[index:], nil
+	}
 	return datum, buf[index:], nil
 }
 
