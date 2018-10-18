@@ -90,6 +90,12 @@ func TestDecimalFixedLogicalTypeEncode(t *testing.T) {
 	testBinaryDecodePass(t, schema0scale, big.NewRat(12, 1), []byte("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x0c"))
 }
 
+func TestDecimalBytesLogicalTypeInRecordEncode(t *testing.T) {
+	schema := `{"type": "record", "name": "myrecord", "fields" : [
+	       {"name": "mydecimal", "type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2}]}`
+	testBinaryCodecPass(t, schema, map[string]interface{}{"mydecimal": big.NewRat(617, 50)}, []byte("\x04\x04\xd2"))
+}
+
 func ExampleUnion_logicalType() {
 	// Supported logical types and their native go types:
 	// * timestamp-millis - time.Time
