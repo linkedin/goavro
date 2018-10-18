@@ -8,15 +8,14 @@ Goavro is a library that encodes and decodes Avro data.
 * `Codec` is stateless and is safe to use by multiple goroutines.
 
 With the exception of features not yet supported, goavro attempts to
-be fully compliant with the most recent version of the [Avro
-specification](http://avro.apache.org/docs/1.8.2/spec.html).
+be fully compliant with the most recent version of the
+[Avro specification](http://avro.apache.org/docs/1.8.2/spec.html).
 
 ## Use with Import Statement
 
-[The proposal to add package version support to the Go
-toolchain](https://github.com/golang/go/issues/24301) requires library
-authors to leave V1 code in the top level directory of the repository,
-and create a `v2` directory for V2 of the library.
+[The proposal to add package version support to the Go toolchain](https://github.com/golang/go/issues/24301)
+requires library authors to leave V1 code in the top level directory
+of the repository, and create a `v2` directory for V2 of the library.
 
 However this library was tagged with a `v2` release prior to that
 proposal, and V1 of this library is no longer at the top level of the
@@ -24,11 +23,10 @@ repository. For a while this conflict prevented `go build` and `vgo
 build` from both being able to build a program that requires this
 library.
 
-Because of a [update to
-`vgo`](https://github.com/golang/go/issues/24099) that provides
-enhanced support for gopkg.in, now building projects that use either
-version agnostic *or* version aware Go build tools will work, provided
-this library is imported using its gopkg.in path.
+Because of a [update to `vgo`](https://github.com/golang/go/issues/24099)
+that provides enhanced support for gopkg.in, now building projects
+that use either version agnostic *or* version aware Go build tools
+will work, provided this library is imported using its gopkg.in path.
 
 ### To use V2 of this library:
 
