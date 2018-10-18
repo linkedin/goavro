@@ -116,7 +116,7 @@ func nativeFromTimeStampMillis(fn toNativeFn) toNativeFn {
 			return l, b, fmt.Errorf("cannot transform native timestamp-millis, expected int64, received %T", l)
 		}
 		secs := i / int64(time.Microsecond)
-		nanosecs := i - (secs * int64(time.Microsecond))
+		nanosecs := (i - secs * int64(time.Microsecond)) * int64(time.Millisecond)
 		return time.Unix(secs, nanosecs).UTC(), b, nil
 	}
 }
@@ -146,7 +146,7 @@ func nativeFromTimeStampMicros(fn toNativeFn) toNativeFn {
 			return l, b, fmt.Errorf("cannot transform native timestamp-micros, expected int64, received %T", l)
 		}
 		secs := i / int64(time.Millisecond)
-		nanosecs := i - (secs * int64(time.Millisecond))
+		nanosecs := (i - secs * int64(time.Millisecond)) * int64(time.Microsecond)
 		return time.Unix(secs, nanosecs).UTC(), b, nil
 	}
 }
