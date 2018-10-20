@@ -11,6 +11,20 @@ import (
 type toNativeFn func([]byte) (interface{}, []byte, error)
 type fromNativeFn func([]byte, interface{}) ([]byte, error)
 
+func timeFromInterface(i interface{}) (time.Time, error) {
+	switch i.(type) {
+	case time.Time:
+		return i.(time.Time), nil
+	case string:
+		t, err := time.Parse(time.RFC3339, i.(string))
+		if err != nil {
+			return time.Time{}, fmt.Errorf("expected time.Time or RFC3339 string received %t", i)
+		}
+		return t, nil
+	}
+	return time.Time{}, errors.New("expected time.Time or RFC3339 string")
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////
 // date logical type - to/from time.Time, time.UTC location
 //////////////////////////////////////////////////////////////////////////////////////////////
@@ -31,9 +45,9 @@ func nativeFromDate(fn toNativeFn) toNativeFn {
 
 func dateFromNative(fn fromNativeFn) fromNativeFn {
 	return func(b []byte, d interface{}) ([]byte, error) {
-		t, ok := d.(time.Time)
-		if !ok {
-			return nil, fmt.Errorf("cannot transform to binary date, expected time.Time, received %T", d)
+		t, err := timeFromInterface(d)
+		if err != nil {
+			return nil, fmt.Errorf("cannot transform to binary date, %s", err.Error())
 		}
 		// The number of days calculation is incredibly naive we take the time.Duration
 		// between the given time and unix epoch and divide that by (24 * time.Hour)
@@ -123,9 +137,9 @@ func nativeFromTimeStampMillis(fn toNativeFn) toNativeFn {
 
 func timeStampMillisFromNative(fn fromNativeFn) fromNativeFn {
 	return func(b []byte, d interface{}) ([]byte, error) {
-		t, ok := d.(time.Time)
-		if !ok {
-			return nil, fmt.Errorf("cannot transform binary timestamp-millis, expected time.Time, received %T", d)
+		t, err := timeFromInterface(d)
+		if err != nil {
+			return nil, fmt.Errorf("cannot transform binary timestamp-millis, %s", err)
 		}
 		millisecs := t.UnixNano() / int64(time.Millisecond)
 		return fn(b, millisecs)
@@ -153,9 +167,9 @@ func nativeFromTimeStampMicros(fn toNativeFn) toNativeFn {
 
 func timeStampMicrosFromNative(fn fromNativeFn) fromNativeFn {
 	return func(b []byte, d interface{}) ([]byte, error) {
-		t, ok := d.(time.Time)
-		if !ok {
-			return nil, fmt.Errorf("cannot transform binary timestamp-micros, expected time.Time, received %T", d)
+		t, err := timeFromInterface(d)
+		if err != nil {
+			return nil, fmt.Errorf("cannot transform binary timestamp-micros, %s", err)
 		}
 		microsecs := t.UnixNano() / int64(time.Microsecond)
 		return fn(b, microsecs)
