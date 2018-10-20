@@ -484,9 +484,11 @@ func buildCodecForTypeDescribedByMap(st map[string]*Codec, enclosingNamespace st
 }
 
 func buildCodecForTypeDescribedByString(st map[string]*Codec, enclosingNamespace string, typeName string, schemaMap map[string]interface{}) (*Codec, error) {
+	isLogicalType := false
 	searchType := typeName
 	// logicalType will be non-nil for those fields without a logicalType property set
 	if lt := schemaMap["logicalType"]; lt != nil {
+		isLogicalType = true
 		searchType = fmt.Sprintf("%s.%s", typeName, lt)
 	}
 	// NOTE: When codec already exists, return it. This includes both primitive and
@@ -520,6 +522,10 @@ func buildCodecForTypeDescribedByString(st map[string]*Codec, enclosingNamespace
 	case "fixed.decimal":
 		return makeDecimalFixedCodec(st, enclosingNamespace, schemaMap)
 	default:
+		if isLogicalType {
+			delete(schemaMap, "logicalType")
+			return buildCodecForTypeDescribedByString(st, enclosingNamespace, typeName, schemaMap)
+		}
 		return nil, fmt.Errorf("unknown type name: %q", searchType)
 	}
 }
