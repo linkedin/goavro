@@ -13,6 +13,18 @@ func TestSchemaLogicalType(t *testing.T) {
 	testSchemaInvalid(t, `{"type": "fixed", "size": 16, "logicalType": "decimal"}`, "precision")
 }
 
+func TestStringLogicalTypeFallback(t *testing.T) {
+	schema := `{"type": "string", "logicalType": "this_logical_type_does_not_exist"}`
+	testSchemaValid(t, schema)
+	testBinaryCodecPass(t, schema, "test string", []byte("\x16\x74\x65\x73\x74\x20\x73\x74\x72\x69\x6e\x67"))
+}
+
+func TestLongLogicalTypeFallback(t *testing.T) {
+	schema := `{"type": "long", "logicalType": "this_logical_type_does_not_exist"}`
+	testSchemaValid(t, schema)
+	testBinaryCodecPass(t, schema, 12345, []byte("\xf2\xc0\x01"))
+}
+
 func TestTimeStampMillisLogicalTypeEncode(t *testing.T) {
 	schema := `{"type": "long", "logicalType": "timestamp-millis"}`
 	testBinaryDecodeFail(t, schema, []byte(""), "short buffer")
