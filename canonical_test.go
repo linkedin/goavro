@@ -3,7 +3,7 @@ package goavro_test
 import (
 	"testing"
 
-	"github.com/linkedin/goavro"
+	"github.com/linkedin/goavro/v2"
 )
 
 func TestCanonicalSchema(t *testing.T) {
