@@ -7,18 +7,16 @@
 // distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
 // WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
-package goavro_test
+package goavro
 
 import (
 	"fmt"
 	"testing"
-
-	"github.com/linkedin/goavro"
 )
 
 func ExampleCodecCanonicalSchema() {
 	schema := `{"type":"map","values":{"type":"enum","name":"foo","symbols":["alpha","bravo"]}}`
-	codec, err := goavro.NewCodec(schema)
+	codec, err := NewCodec(schema)
 	if err != nil {
 		fmt.Println(err)
 	} else {
@@ -135,7 +133,7 @@ func TestSchemaCRC64Avro(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		codec, err := goavro.NewCodec(c.Schema)
+		codec, err := NewCodec(c.Schema)
 		if err != nil {
 			t.Fatalf("CASE: %s; cannot create code: %s", c.Schema, err)
 		}

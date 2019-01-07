@@ -7,12 +7,10 @@
 // distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
 // WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
-package goavro_test
+package goavro
 
 import (
 	"testing"
-
-	"github.com/linkedin/goavro"
 )
 
 func TestCanonicalSchema(t *testing.T) {
@@ -248,7 +246,7 @@ func TestCanonicalSchema(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		codec, err := goavro.NewCodec(c.Schema)
+		codec, err := NewCodec(c.Schema)
 		if err != nil {
 			t.Errorf("Unable to create codec for schema: %s\nwith error: %s", c.Schema, err)
 		} else {
