@@ -93,7 +93,7 @@ func NewCodec(schemaSpecification string) (*Codec, error) {
 	c, err := buildCodec(st, nullNamespace, schema)
 	if err == nil {
 		c.schemaOriginal = schemaSpecification
-		c.schemaCanonical, err = parsingCanonicalForm(schema)
+		c.schemaCanonical, err = parsingCanonicalForm(schema, "", make(map[string]string))
 		if err != nil {
 			// Should not get here because schema is already validated above.
 			return nil, err
