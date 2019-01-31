@@ -2,6 +2,18 @@
 
 Goavro is a library that encodes and decodes Avro data.
 
+This repo is a fork of linkedin go avro with two fixes to canonical schemas.
+
+The first fix propagates the namespace of parent to subtypes declared in fields that
+are of type record.
+
+The second fix renames the referenced types to their full name, i.e., namespace.name.
+
+Look at the last two tests in canonical_test.go:
+<br>
+// propagate namespace "bar" to subtype "baz", i.e., "bar.baz"
+<br>
+// replace the second reference to type "baz" in bye to "bar.baz
 ## Description
 
 * Encodes to and decodes from both binary and textual JSON Avro data.
@@ -31,13 +43,13 @@ will work, provided this library is imported using its gopkg.in path.
 ### To use V2 of this library:
 
 ```Go
-import goavro "gopkg.in/linkedin/goavro.v2"
+import goavro "gopkg.in/behdadforghani/goavro.v2"
 ```
 
 ### To use V1 of this library:
 
 ```Go
-import goavro "gopkg.in/linkedin/goavro.v1"
+import goavro "gopkg.in/behdadforghani/goavro.v1"
 ```
 
 ## NOTICE
