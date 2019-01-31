@@ -2,7 +2,7 @@
 
 Goavro is a library that encodes and decodes Avro data.
 
-This repo is a fork of linkedin go avro with two fixes to canonical schemas.
+This repo is a fork of linkedin goavro with two fixes to canonical schemas.
 
 The first fix propagates the namespace of parent to subtypes declared in fields that
 are of type record.
