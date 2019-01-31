@@ -4,12 +4,12 @@ Goavro is a library that encodes and decodes Avro data.
 
 This repo is a fork of linkedin goavro with two fixes to canonical schemas.
 
-The first fix propagates the namespace of parent to subtypes declared in fields that
-are of type record.
+The first fix propagates the namespace of parent to subtypes, i.e., child nodes inside the "fields" that
+are of type "record".
 
-The second fix renames the referenced types to their full name, i.e., namespace.name.
+The second fix renames the referenced types to their full name, i.e., it converts "reftype" to "namespace.reftype".
 
-Look at the last two tests in canonical_test.go:
+The changes are reflected in the last two tests in canonical_test.go:
 <br>
 // propagate namespace "bar" to subtype "baz", i.e., "bar.baz"
 <br>
