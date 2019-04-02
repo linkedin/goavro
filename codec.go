@@ -277,8 +277,8 @@ func (c *Codec) BinaryFromNative(buf []byte, datum interface{}) ([]byte, error) 
 
 // NativeFromBinary returns a native datum value from the binary encoded byte
 // slice in accordance with the Avro schema supplied when creating the Codec. On
-// success, it returns the decoded datum, along with a new byte slice with the
-// decoded bytes consumed, and a nil error value. On error, it returns nil for
+// success, it returns the decoded datum, a byte slice containing the remaining
+// undecoded bytes, and a nil error value. On error, it returns nil for
 // the datum value, the original byte slice, and the error message.
 //
 //     func ExampleNativeFromBinary() {
