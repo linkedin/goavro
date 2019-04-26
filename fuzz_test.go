@@ -40,8 +40,9 @@ func TestCrashers_OCFReader(t *testing.T) {
 	}
 
 	for testName, f := range crashers {
-		t.Logf("Testing: %s", testName)
-		_, _ = NewOCFReader(strings.NewReader(f)) // looking for panic rather than an error
+		ensureNoPanic(t, testName, func() {
+			_, _ = NewOCFReader(strings.NewReader(f)) // ensure does not panic
+		})
 	}
 }
 
@@ -382,32 +383,34 @@ func TestCrashers_OCF_e2e(t *testing.T) {
 	}
 
 	for testName, f := range crashers {
-		t.Logf("Testing: %s", testName)
-
-		// TODO: replace this with a call out to the e2e Fuzz function
-		ocfr, err := NewOCFReader(strings.NewReader(f))
-		if err != nil {
-			continue
-		}
-
-		var datums []interface{}
-		for ocfr.Scan() {
-			if datum, err := ocfr.Read(); err == nil {
-				datums = append(datums, datum)
+		ensureNoPanic(t, testName, func() {
+			// TODO: replace this with a call out to the e2e Fuzz function
+			ocfr, err := NewOCFReader(strings.NewReader(f))
+			if err != nil {
+				// We want the library to catch the erroneous condition and
+				// return an error rather than causing a panic.
+				return
 			}
-		}
 
-		b := new(bytes.Buffer)
-		ocfw, err := NewOCFWriter(
-			OCFConfig{
-				W:      b,
-				Schema: ocfr.Codec().Schema(),
-			})
-		if err != nil {
-			panic(err)
-		}
-		if err := ocfw.Append(datums); err != nil {
-			panic(err)
-		}
+			var datums []interface{}
+			for ocfr.Scan() {
+				if datum, err := ocfr.Read(); err == nil {
+					datums = append(datums, datum)
+				}
+			}
+
+			b := new(bytes.Buffer)
+			ocfw, err := NewOCFWriter(
+				OCFConfig{
+					W:      b,
+					Schema: ocfr.Codec().Schema(),
+				})
+			if err != nil {
+				t.Fatalf("GOT: %v; WANT: %v", err, nil)
+			}
+			if err := ocfw.Append(datums); err != nil {
+				t.Fatalf("GOT: %v; WANT: %v", err, nil)
+			}
+		})
 	}
 }
