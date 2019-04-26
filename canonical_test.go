@@ -14,7 +14,6 @@ import (
 )
 
 func TestCanonicalSchema(t *testing.T) {
-
 	// Test cases are taken from the reference implementation here:
 	// https://github.com/apache/avro/blob/master/share/test/data/schema-tests.txt
 
