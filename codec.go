@@ -91,15 +91,15 @@ func NewCodec(schemaSpecification string) (*Codec, error) {
 	st := newSymbolTable()
 
 	c, err := buildCodec(st, nullNamespace, schema)
-	if err == nil {
-		c.schemaCanonical, err = parsingCanonicalForm(schema)
-		if err != nil {
-			// Should not get here because schema is already validated above.
-			return nil, err
-		}
-		c.schemaOriginal = schemaSpecification
+	if err != nil {
+		return nil, err
 	}
-	return c, err
+	c.schemaCanonical, err = parsingCanonicalForm(schema)
+	if err != nil {
+		return nil, err // should not get here because schema was validated above
+	}
+	c.schemaOriginal = schemaSpecification
+	return c, nil
 }
 
 func newSymbolTable() map[string]*Codec {
