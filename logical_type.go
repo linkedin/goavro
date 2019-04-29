@@ -125,7 +125,7 @@ func nativeFromTimeStampMillis(fn toNativeFn) toNativeFn {
 			return l, b, fmt.Errorf("cannot transform native timestamp-millis, expected int64, received %T", l)
 		}
 		secs := i / int64(time.Microsecond)
-		nanosecs := (i - secs * int64(time.Microsecond)) * int64(time.Millisecond)
+		nanosecs := (i - secs*int64(time.Microsecond)) * int64(time.Millisecond)
 		return time.Unix(secs, nanosecs).UTC(), b, nil
 	}
 }
@@ -150,13 +150,18 @@ func nativeFromTimeStampMicros(fn toNativeFn) toNativeFn {
 		if err != nil {
 			return l, b, err
 		}
-		i, ok := l.(int64)
+		microseconds, ok := l.(int64)
 		if !ok {
 			return l, b, fmt.Errorf("cannot transform native timestamp-micros, expected int64, received %T", l)
 		}
-		secs := i / int64(time.Millisecond)
-		nanosecs := (i - secs * int64(time.Millisecond)) * int64(time.Microsecond)
-		return time.Unix(secs, nanosecs).UTC(), b, nil
+		// While this code performs a few more steps than seem required, it is
+		// written this way to allow the best time resolution on UNIX and
+		// Windows without overflowing the int64 value.  Windows has a zero-time
+		// value of 1601-01-01 UTC, and the number of nanoseconds since that
+		// zero-time overflows 64-bit integers.
+		seconds := microseconds / 1e6
+		nanoseconds := (microseconds - (seconds * 1e6)) * 1e3
+		return time.Unix(seconds, nanoseconds).UTC(), b, nil
 	}
 }
 
@@ -166,8 +171,12 @@ func timeStampMicrosFromNative(fn fromNativeFn) fromNativeFn {
 		if !ok {
 			return nil, fmt.Errorf("cannot transform binary timestamp-micros, expected time.Time, received %T", d)
 		}
-		microsecs := t.UnixNano() / int64(time.Microsecond)
-		return fn(b, microsecs)
+		// While this code performs a few more steps than seem required, it is
+		// written this way to allow the best time resolution on UNIX and
+		// Windows without overflowing the int64 value.  Windows has a zero-time
+		// value of 1601-01-01 UTC, and the number of nanoseconds since that
+		// zero-time overflows 64-bit integers.
+		return fn(b, t.Unix()*1e6+int64(t.Nanosecond()/1e3))
 	}
 }
 
