@@ -68,80 +68,113 @@ func testTextDecodePass(t *testing.T, schema string, datum interface{}, encoded 
 		t.Errorf("schema: %s; Datum: %#v; Actual: %v; Expected: %v", schema, datum, actual, expected)
 	}
 
-	var datumIsMap, datumIsNumerical, datumIsSlice, datumIsString bool
-	var datumFloat float64
+	const (
+		_         = iota
+		isInt     = iota
+		isFloat32 = iota
+		isFloat64 = iota
+		isMap     = iota
+		isSlice   = iota
+		isString  = iota
+	)
+
+	var datumType int
+	var datumInt int64
+	var datumFloat32 float32
+	var datumFloat64 float64
 	var datumMap map[string]interface{}
 	var datumSlice []interface{}
 	var datumString string
 	switch v := datum.(type) {
 	case float64:
-		datumFloat = v
-		datumIsNumerical = true
+		datumFloat64 = v
+		datumType = isFloat64
 	case float32:
-		datumFloat = float64(v)
-		datumIsNumerical = true
+		datumFloat32 = v
+		datumType = isFloat32
 	case int:
-		datumFloat = float64(v)
-		datumIsNumerical = true
+		datumInt = int64(v)
+		datumType = isInt
 	case int32:
-		datumFloat = float64(v)
-		datumIsNumerical = true
+		datumInt = int64(v)
+		datumType = isInt
 	case int64:
-		datumFloat = float64(v)
-		datumIsNumerical = true
+		datumInt = v
+		datumType = isInt
 	case string:
 		datumString = v
-		datumIsString = true
+		datumType = isString
 	case []interface{}:
-		datumIsSlice = true
 		datumSlice = v
+		datumType = isSlice
 	case map[string]interface{}:
-		datumIsMap = true
 		datumMap = v
+		datumType = isMap
 	}
 
-	var decodedIsMap, decodedIsNumerical, decodedIsSlice, decodedIsString bool
+	var decodedType int
+	var decodedInt int64
+	var decodedFloat32 float32
+	var decodedFloat64 float64
 	var decodedMap map[string]interface{}
-	var decodedFloat float64
 	var decodedSlice []interface{}
 	var decodedString string
 	switch v := decoded.(type) {
 	case float64:
-		decodedFloat = v
-		decodedIsNumerical = true
+		decodedFloat64 = v
+		decodedType = isFloat64
 	case float32:
-		decodedFloat = float64(v)
-		decodedIsNumerical = true
+		decodedFloat32 = v
+		decodedType = isFloat32
 	case int:
-		decodedFloat = float64(v)
-		decodedIsNumerical = true
+		decodedInt = int64(v)
+		decodedType = isInt
 	case int32:
-		decodedFloat = float64(v)
-		decodedIsNumerical = true
+		decodedInt = int64(v)
+		decodedType = isInt
 	case int64:
-		decodedFloat = float64(v)
-		decodedIsNumerical = true
+		decodedInt = v
+		decodedType = isInt
 	case string:
 		decodedString = v
-		decodedIsString = true
+		decodedType = isString
 	case []interface{}:
-		decodedIsSlice = true
 		decodedSlice = v
+		decodedType = isSlice
 	case map[string]interface{}:
-		decodedIsMap = true
 		decodedMap = v
+		decodedType = isMap
 	}
 
+	if datumType == isInt && decodedType == isInt {
+		if datumInt != decodedInt {
+			t.Errorf("numerical comparison: schema: %s; Datum: %v; Actual: %v; Expected: %v", schema, datum, decodedInt, datumInt)
+		}
+		return
+	}
 	// NOTE: Special handling when both datum and decoded values are floating
 	// point to test whether both are NaN, -Inf, or +Inf.
-	if datumIsNumerical && decodedIsNumerical {
-		if (math.IsNaN(datumFloat) != math.IsNaN(decodedFloat)) &&
-			(math.IsInf(datumFloat, 1) != math.IsInf(decodedFloat, 1)) &&
-			(math.IsInf(datumFloat, -1) != math.IsInf(decodedFloat, -1)) &&
-			datumFloat != decodedFloat {
-			t.Errorf("numerical comparison: schema: %s; Datum: %v; Actual: %v; Expected: %v", schema, datum, decodedFloat, datumFloat)
+	if datumType == isFloat64 && decodedType == isFloat64 {
+		if !(math.IsNaN(datumFloat64) && math.IsNaN(decodedFloat64)) &&
+			!(math.IsInf(datumFloat64, 1) && math.IsInf(decodedFloat64, 1)) &&
+			!(math.IsInf(datumFloat64, -1) && math.IsInf(decodedFloat64, -1)) &&
+			datumFloat64 != decodedFloat64 {
+			t.Errorf("numerical comparison: schema: %s; Datum: %v; Actual: %v; Expected: %v", schema, datum, decodedFloat64, datumFloat64)
 		}
-	} else if datumIsMap && decodedIsMap {
+		return
+	}
+	if datumType == isFloat32 && decodedType == isFloat32 {
+		a := float64(datumFloat32)
+		b := float64(decodedFloat32)
+		if !(math.IsNaN(a) && math.IsNaN(b)) &&
+			!(math.IsInf(a, 1) && math.IsInf(b, 1)) &&
+			!(math.IsInf(a, -1) && math.IsInf(b, -1)) &&
+			a != b {
+			t.Errorf("numerical comparison: schema: %s; Datum: %v; Actual: %v; Expected: %v", schema, datum, decodedFloat32, datumFloat32)
+		}
+		return
+	}
+	if datumType == isMap && decodedType == isMap {
 		if actual, expected := len(decodedMap), len(datumMap); actual != expected {
 			t.Fatalf("map comparison: length mismatch; Actual: %v; Expected: %v", actual, expected)
 		}
@@ -154,7 +187,9 @@ func testTextDecodePass(t *testing.T, schema string, datum interface{}, encoded 
 				t.Errorf("map comparison: values differ for key: %q; Actual: %v; Expected: %v", key, actual, expected)
 			}
 		}
-	} else if datumIsSlice && decodedIsSlice {
+		return
+	}
+	if datumType == isSlice && decodedType == isSlice {
 		if actual, expected := len(decodedMap), len(datumMap); actual != expected {
 			t.Fatalf("slice comparison: length mismatch; Actual: %v; Expected: %v", actual, expected)
 		}
@@ -164,11 +199,15 @@ func testTextDecodePass(t *testing.T, schema string, datum interface{}, encoded 
 				t.Errorf("slice comparison: values differ for index: %d: Actual: %v; Expected: %v", i+1, actual, expected)
 			}
 		}
-	} else if datumIsString && decodedIsString {
+		return
+	}
+	if datumType == isString && decodedType == isString {
 		if actual, expected := decodedString, datumString; actual != expected {
 			t.Errorf("string comparison: Actual: %v; Expected: %v", actual, expected)
 		}
-	} else if actual, expected := fmt.Sprintf("%v", decoded), fmt.Sprintf("%v", datum); actual != expected {
+		return
+	}
+	if actual, expected := fmt.Sprintf("%v", decoded), fmt.Sprintf("%v", datum); actual != expected {
 		t.Errorf("schema: %s; Datum: %v; Actual: %s; Expected: %s", schema, datum, actual, expected)
 	}
 }
