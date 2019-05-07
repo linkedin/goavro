@@ -29,7 +29,7 @@ import (
 //        if err != nil {
 //            fmt.Println(err)
 //        }
-//        buf, err := codec.TextFromNative(nil, goavro.Union("string", "some string"))
+//        buf, err := codec.TextualFromNative(nil, goavro.Union("string", "some string"))
 //        if err != nil {
 //            fmt.Println(err)
 //        }
