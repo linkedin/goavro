@@ -52,11 +52,11 @@ func ensurePanic(tb testing.TB, want string, callback func()) {
 
 // ensureNoPanic prettifies the output so one knows which test case caused a
 // panic.
-func ensureNoPanic(tb testing.TB, test string, callback func()) {
+func ensureNoPanic(tb testing.TB, label string, callback func()) {
 	tb.Helper()
 	defer func() {
 		if r := recover(); r != nil {
-			tb.Fatalf("TEST: %s: GOT: %v", test, r)
+			tb.Fatalf("TEST: %s: GOT: %v", label, r)
 		}
 	}()
 	callback()
