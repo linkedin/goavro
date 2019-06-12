@@ -10,6 +10,7 @@
 package goavro
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
 )
@@ -141,4 +142,63 @@ func TestSchemaCRC64Avro(t *testing.T) {
 			t.Errorf("CASE: %s; GOT: %#x; WANT: %#x", c.Schema, got, want)
 		}
 	}
+}
+
+func TestSingleObjectEncoding(t *testing.T) {
+	schema := `"int"`
+
+	codec, err := NewCodec(schema)
+	if err != nil {
+		t.Fatalf("cannot create code: %s", err)
+	}
+
+	t.Run("encoding", func(t *testing.T) {
+		t.Run("does not modify source buf when cannot encode", func(t *testing.T) {
+			buf := []byte{0xDE, 0xAD, 0xBE, 0xEF}
+
+			buf, err = codec.singleFromNative(buf, "strings cannot be encoded as int")
+			ensureError(t, err, "cannot encode binary int")
+
+			if got, want := buf, []byte("\xDE\xAD\xBE\xEF"); !bytes.Equal(got, want) {
+				t.Errorf("GOT: %v; WANT: %v", got, want)
+			}
+		})
+
+		t.Run("appends header then encoded data", func(t *testing.T) {
+			const original = "\x01\x02\x03\x04"
+			buf := []byte(original)
+
+			buf, err = codec.singleFromNative(buf, 3)
+			ensureError(t, err)
+
+			// FIXME: need 8 byte little-endian CRC-64-AVRO fingerprint in below
+			fp := "\xC3\x01" + "\x8F\x5C\x39\x3F\x1A\xD5\x75\x72"
+
+			if got, want := buf, []byte(original+fp+"\x06"); !bytes.Equal(got, want) {
+				t.Errorf("\nGOT:\n\t%v;\nWANT:\n\t%v", got, want)
+			}
+		})
+	})
+
+	t.Run("decoding", func(t *testing.T) {
+		const original = ""
+		buf := []byte(original)
+
+		buf, err = codec.singleFromNative(nil, 3)
+		ensureError(t, err)
+
+		buf = append(buf, "\xDE\xAD"...) // append some junk
+
+		datum, newBuf, err := codec.nativeFromSingle(buf)
+		ensureError(t, err)
+
+		if got, want := datum, int32(3); got != want {
+			t.Errorf("GOT: %v; WANT: %v", got, want)
+		}
+
+		// ensure junk is left alone
+		if got, want := newBuf, []byte("\xDE\xAD"); !bytes.Equal(got, want) {
+			t.Errorf("\nGOT:\n\t%q;\nWANT:\n\t%q", got, want)
+		}
+	})
 }
