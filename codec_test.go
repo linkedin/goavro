@@ -157,7 +157,7 @@ func TestSingleObjectEncoding(t *testing.T) {
 			t.Run("does not modify source buf when cannot encode", func(t *testing.T) {
 				buf := []byte{0xDE, 0xAD, 0xBE, 0xEF}
 
-				buf, err = codec.singleFromNative(buf, "strings cannot be encoded as int")
+				buf, err = codec.SingleFromNative(buf, "strings cannot be encoded as int")
 				ensureError(t, err, "cannot encode binary int")
 
 				if got, want := buf, []byte("\xDE\xAD\xBE\xEF"); !bytes.Equal(got, want) {
@@ -169,7 +169,7 @@ func TestSingleObjectEncoding(t *testing.T) {
 				const original = "\x01\x02\x03\x04"
 				buf := []byte(original)
 
-				buf, err = codec.singleFromNative(buf, 3)
+				buf, err = codec.SingleFromNative(buf, 3)
 				ensureError(t, err)
 
 				fp := "\xC3\x01" + "\x8F\x5C\x39\x3F\x1A\xD5\x75\x72"
@@ -184,19 +184,19 @@ func TestSingleObjectEncoding(t *testing.T) {
 			const original = ""
 			buf := []byte(original)
 
-			buf, err = codec.singleFromNative(nil, 3)
+			buf, err = codec.SingleFromNative(nil, 3)
 			ensureError(t, err)
 
 			buf = append(buf, "\xDE\xAD"...) // append some junk
 
-			datum, newBuf, err := codec.nativeFromSingle(buf)
+			datum, newBuf, err := codec.NativeFromSingle(buf)
 			ensureError(t, err)
 
 			if got, want := datum, int32(3); got != want {
 				t.Errorf("GOT: %v; WANT: %v", got, want)
 			}
 
-			// ensure junk is left alone
+			// ensure junk is not disturbed
 			if got, want := newBuf, []byte("\xDE\xAD"); !bytes.Equal(got, want) {
 				t.Errorf("\nGOT:\n\t%q;\nWANT:\n\t%q", got, want)
 			}
@@ -227,11 +227,11 @@ func TestSingleObjectEncoding(t *testing.T) {
 		ensureError(t, err)
 
 		// Convert native Go form to single-object encoding form
-		buf, err := codec.singleFromNative(nil, datum)
+		buf, err := codec.SingleFromNative(nil, datum)
 		ensureError(t, err)
 
 		// Convert single-object encoding form back to native Go form
-		datum, _, err = codec.nativeFromSingle(buf)
+		datum, _, err = codec.NativeFromSingle(buf)
 		ensureError(t, err)
 
 		// Convert native Go form to textual Avro data

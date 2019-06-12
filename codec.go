@@ -324,6 +324,35 @@ func (c *Codec) NativeFromBinary(buf []byte) (interface{}, []byte, error) {
 	return value, newBuf, nil
 }
 
+// NativeFromSingle converts Avro data from Single-Object-Encoded format from
+// the provided byte slice to Go native data types in accordance with the Avro
+// schema supplied when creating the Codec.  On success, it returns the decoded
+// datum, along with a new byte slice with the decoded bytes consumed, and a nil
+// error value.  On error, it returns nil for the datum value, the original byte
+// slice, and the error message.
+func (c *Codec) NativeFromSingle(buf []byte) (interface{}, []byte, error) {
+	lh := len(c.soeHeader)
+	if len(buf) < lh {
+		return nil, buf, ErrNotSingleObjectEncoded(io.ErrShortBuffer.Error())
+	}
+
+	// Only recognizes single-object encodings format version 1.
+	if buf[0] != 0xC3 || buf[1] != 0x01 {
+		return nil, buf, ErrNotSingleObjectEncoded("invalid magic prefix")
+	}
+
+	if got, want := buf[:lh], c.soeHeader; !bytes.Equal(got, want) {
+		fingerprint := binary.LittleEndian.Uint64(buf[2:])
+		return nil, buf, ErrWrongCodec(fingerprint)
+	}
+
+	value, newBuf, err := c.nativeFromBinary(buf[lh:])
+	if err != nil {
+		return nil, buf, err // if error, return original byte slice
+	}
+	return value, newBuf, nil
+}
+
 // NativeFromTextual converts Avro data in JSON text format from the provided byte
 // slice to Go native data types in accordance with the Avro schema supplied
 // when creating the Codec. On success, it returns the decoded datum, along with
@@ -363,48 +392,19 @@ func (c *Codec) NativeFromTextual(buf []byte) (interface{}, []byte, error) {
 	return value, newBuf, nil
 }
 
-// singleFromNative appends the single-object-encoding byte slice representation
+// SingleFromNative appends the single-object-encoding byte slice representation
 // of the provided native datum value to the provided byte slice in accordance
 // with the Avro schema supplied when creating the Codec.  It is supplied a byte
 // slice to which to append the header and binary encoded data, along with the
 // actual data to encode.  On success, it returns a new byte slice with the
 // encoded bytes appended, and a nil error value.  On error, it returns the
 // original byte slice, and the error message.
-func (c *Codec) singleFromNative(buf []byte, datum interface{}) ([]byte, error) {
+func (c *Codec) SingleFromNative(buf []byte, datum interface{}) ([]byte, error) {
 	newBuf, err := c.binaryFromNative(append(buf, c.soeHeader...), datum)
 	if err != nil {
 		return buf, err
 	}
 	return newBuf, nil
-}
-
-// nativeFromSingle converts Avro data from Single-Object-Encoded format from
-// the provided byte slice to Go native data types in accordance with the Avro
-// schema supplied when creating the Codec.  On success, it returns the decoded
-// datum, along with a new byte slice with the decoded bytes consumed, and a nil
-// error value.  On error, it returns nil for the datum value, the original byte
-// slice, and the error message.
-func (c *Codec) nativeFromSingle(buf []byte) (interface{}, []byte, error) {
-	lh := len(c.soeHeader)
-	if len(buf) < lh {
-		return nil, buf, ErrNotSingleObjectEncoded(io.ErrShortBuffer.Error())
-	}
-
-	// Only recognizes single-object encodings format version 1.
-	if buf[0] != 0xC3 || buf[1] != 0x01 {
-		return nil, buf, ErrNotSingleObjectEncoded("invalid magic prefix")
-	}
-
-	if got, want := buf[:lh], c.soeHeader; !bytes.Equal(got, want) {
-		fingerprint := binary.LittleEndian.Uint64(buf[2:])
-		return nil, buf, ErrWrongCodec(fingerprint)
-	}
-
-	value, newBuf, err := c.nativeFromBinary(buf[lh:])
-	if err != nil {
-		return nil, buf, err // if error, return original byte slice
-	}
-	return value, newBuf, nil
 }
 
 // TextualFromNative converts Go native data types to Avro data in JSON text format in
