@@ -202,3 +202,32 @@ func TestSingleObjectEncoding(t *testing.T) {
 		}
 	})
 }
+
+func TestCrc64Table(t *testing.T) {
+	t.Run("remains constant", func(t *testing.T) {
+		t.Run("int", func(t *testing.T) {
+			cInt1, err := NewCodec(`"int"`)
+			ensureError(t, err)
+
+			cInt2, err := NewCodec(`"int"`)
+			ensureError(t, err)
+
+			if got, want := cInt1.SchemaCRC64Avro(), cInt2.SchemaCRC64Avro(); got != want {
+				t.Errorf("GOT: %x; WANT: %x", got, want)
+			}
+
+			if got, want := cInt1.SchemaCRC64Avro(), int64(0x7275d51a3f395c8f); got != want {
+				t.Errorf("GOT: %x; WANT: %x", got, want)
+			}
+		})
+
+		t.Run("string", func(t *testing.T) {
+			cString1, err := NewCodec(`"string"`)
+			ensureError(t, err)
+
+			if got, want := cString1.SchemaCRC64Avro(), int64(-0x70feb78d9cbafc39); got != want {
+				t.Errorf("GOT: %x; WANT: %x", got, want)
+			}
+		})
+	})
+}
