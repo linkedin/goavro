@@ -105,9 +105,7 @@ func NewCodec(schemaSpecification string) (*Codec, error) {
 		return nil, err // should not get here because schema was validated above
 	}
 
-	// Must perform the bitwise calculations using unsigned 64-bit integer math,
-	// but the Avro code and test files return a signed 64-bit integer.
-	c.crc64avro = calculateCRC64Avro([]byte(c.schemaCanonical))
+	c.crc64avro = crc64Avro([]byte(c.schemaCanonical))
 	c.soeHeader = []byte{0xC3, 0x01, 0, 0, 0, 0, 0, 0, 0, 0}
 	binary.LittleEndian.PutUint64(c.soeHeader[2:], c.crc64avro)
 
@@ -460,32 +458,11 @@ func (c *Codec) CanonicalSchema() string {
 	return c.schemaCanonical
 }
 
-const crc64Empty = uint64(0xc15d213aa4d7a795)
-
-func initCRC64AvroTable() [256]uint64 {
-	var crc64Table [256]uint64
-	for i := uint64(0); i < 256; i++ {
-		fp := i
-		for j := 0; j < 8; j++ {
-			fp = (fp >> 1) ^ (crc64Empty & -(fp & 1)) // unsigned right shift >>>
-		}
-		crc64Table[i] = fp
-	}
-	return crc64Table
-}
-
-func calculateCRC64Avro(b []byte) uint64 {
-	crc64Table := initCRC64AvroTable()
-	fp := crc64Empty
-	for i := 0; i < len(b); i++ {
-		fp = (fp >> 8) ^ crc64Table[(byte(fp)^b[i])&0xff] // unsigned right shift >>>
-	}
-	return fp
-}
-
 // SchemaCRC64Avro returns a signed 64-bit integer Rabin fingerprint for the
 // canonical schema.
 func (c *Codec) SchemaCRC64Avro() int64 {
+	// Must perform the bitwise calculations using unsigned 64-bit integer math,
+	// but the Avro code and test files return a signed 64-bit integer.
 	return int64(c.crc64avro)
 }
 
