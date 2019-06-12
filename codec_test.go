@@ -26,110 +26,110 @@ func ExampleCodecCanonicalSchema() {
 	// Output: {"type":"map","values":{"name":"foo","type":"enum","symbols":["alpha","bravo"]}}
 }
 
-func TestCodecSchemaCRC64Avro(t *testing.T) {
+func TestCodecRabin(t *testing.T) {
 	cases := []struct {
-		Schema      string
-		Fingerprint int64
+		Schema string
+		Rabin  uint64
 	}{
 		{
-			Schema:      `"null"`,
-			Fingerprint: 7195948357588979594,
+			Schema: `"null"`,
+			Rabin:  0x63dd24e7cc258f8a,
 		},
 		{
-			Schema:      `"boolean"`,
-			Fingerprint: -6970731678124411036,
+			Schema: `"boolean"`,
+			Rabin:  0x9f42fc78a4d4f764,
 		},
 		{
-			Schema:      `"int"`,
-			Fingerprint: 8247732601305521295,
+			Schema: `"int"`,
+			Rabin:  0x7275d51a3f395c8f,
 		},
 		{
-			Schema:      `"long"`,
-			Fingerprint: -3434872931120570953,
+			Schema: `"long"`,
+			Rabin:  0xd054e14493f41db7,
 		},
 		{
-			Schema:      `"float"`,
-			Fingerprint: 5583340709985441680,
+			Schema: `"float"`,
+			Rabin:  0x4d7c02cb3ea8d790,
 		},
 		{
-			Schema:      `"double"`,
-			Fingerprint: -8181574048448539266,
+			Schema: `"double"`,
+			Rabin:  0x8e7535c032ab957e,
 		},
 		{
-			Schema:      `"bytes"`,
-			Fingerprint: 5746618253357095269,
+			Schema: `"bytes"`,
+			Rabin:  0x4fc016dac3201965,
 		},
 		{
-			Schema:      `"string"`,
-			Fingerprint: -8142146995180207161,
+			Schema: `"string"`,
+			Rabin:  0x8f014872634503c7,
 		},
 		{
-			Schema:      `[ "int"  ]`,
-			Fingerprint: -5232228896498058493,
+			Schema: `[ "int"  ]`,
+			Rabin:  0xb763638a48b2fb03,
 		},
 		{
-			Schema:      `[ "int" , {"type":"boolean"} ]`,
-			Fingerprint: 5392556393470105090,
+			Schema: `[ "int" , {"type":"boolean"} ]`,
+			Rabin:  0x4ad63578080c1602,
 		},
 		{
-			Schema:      `{"fields":[], "type":"record", "name":"foo"}`,
-			Fingerprint: -4824392279771201922,
+			Schema: `{"fields":[], "type":"record", "name":"foo"}`,
+			Rabin:  0xbd0c50c84319be7e,
 		},
 		{
-			Schema:      `{"fields":[], "type":"record", "name":"foo", "namespace":"x.y"}`,
-			Fingerprint: 5916914534497305771,
+			Schema: `{"fields":[], "type":"record", "name":"foo", "namespace":"x.y"}`,
+			Rabin:  0x521d1a6b830ec4ab,
 		},
 		{
-			Schema:      `{"fields":[], "type":"record", "name":"a.b.foo", "namespace":"x.y"}`,
-			Fingerprint: -4616218487480524110,
+			Schema: `{"fields":[], "type":"record", "name":"a.b.foo", "namespace":"x.y"}`,
+			Rabin:  0xbfefe5be5021e2b2,
 		},
 		{
-			Schema:      `{"fields":[], "type":"record", "name":"foo", "doc":"Useful info"}`,
-			Fingerprint: -4824392279771201922,
+			Schema: `{"fields":[], "type":"record", "name":"foo", "doc":"Useful info"}`,
+			Rabin:  0xbd0c50c84319be7e,
 		},
 		{
-			Schema:      `{"fields":[], "type":"record", "name":"foo", "aliases":["foo","bar"]}`,
-			Fingerprint: -4824392279771201922,
+			Schema: `{"fields":[], "type":"record", "name":"foo", "aliases":["foo","bar"]}`,
+			Rabin:  0xbd0c50c84319be7e,
 		},
 		{
-			Schema:      `{"fields":[], "type":"record", "name":"foo", "doc":"foo", "aliases":["foo","bar"]}`,
-			Fingerprint: -4824392279771201922,
+			Schema: `{"fields":[], "type":"record", "name":"foo", "doc":"foo", "aliases":["foo","bar"]}`,
+			Rabin:  0xbd0c50c84319be7e,
 		},
 		{
-			Schema:      `{"fields":[{"type":{"type":"boolean"}, "name":"f1"}], "type":"record", "name":"foo"}`,
-			Fingerprint: 7843277075252814651,
+			Schema: `{"fields":[{"type":{"type":"boolean"}, "name":"f1"}], "type":"record", "name":"foo"}`,
+			Rabin:  0x6cd8eaf1c968a33b,
 		},
 		{
-			Schema:      `{ "fields":[{"type":"boolean", "aliases":[], "name":"f1", "default":true}, {"order":"descending","name":"f2","doc":"Hello","type":"int"}], "type":"record", "name":"foo"}`,
-			Fingerprint: -4860222112080293046,
+			Schema: `{ "fields":[{"type":"boolean", "aliases":[], "name":"f1", "default":true}, {"order":"descending","name":"f2","doc":"Hello","type":"int"}], "type":"record", "name":"foo"}`,
+			Rabin:  0xbc8d05bd57f4934a,
 		},
 		{
-			Schema:      `{"type":"enum", "name":"foo", "symbols":["A1"]}`,
-			Fingerprint: -6342190197741309591,
+			Schema: `{"type":"enum", "name":"foo", "symbols":["A1"]}`,
+			Rabin:  0xa7fc039e15aa3169,
 		},
 		{
-			Schema:      `{"namespace":"x.y.z", "type":"enum", "name":"foo", "doc":"foo bar", "symbols":["A1", "A2"]}`,
-			Fingerprint: -4448647247586288245,
+			Schema: `{"namespace":"x.y.z", "type":"enum", "name":"foo", "doc":"foo bar", "symbols":["A1", "A2"]}`,
+			Rabin:  0xc2433ae5f4999d8b,
 		},
 		{
-			Schema:      `{"name":"foo","type":"fixed","size":15}`,
-			Fingerprint: 1756455273707447556,
+			Schema: `{"name":"foo","type":"fixed","size":15}`,
+			Rabin:  0x18602ec3ed31a504,
 		},
 		{
-			Schema:      `{"namespace":"x.y.z", "type":"fixed", "name":"foo", "doc":"foo bar", "size":32}`,
-			Fingerprint: -3064184465700546786,
+			Schema: `{"namespace":"x.y.z", "type":"fixed", "name":"foo", "doc":"foo bar", "size":32}`,
+			Rabin:  0xd579d47693a6171e,
 		},
 		{
-			Schema:      `{ "items":{"type":"null"}, "type":"array"}`,
-			Fingerprint: -589620603366471059,
+			Schema: `{ "items":{"type":"null"}, "type":"array"}`,
+			Rabin:  0xf7d13f2f68170a6d,
 		},
 		{
-			Schema:      `{ "values":"string", "type":"map"}`,
-			Fingerprint: -8732877298790414990,
+			Schema: `{ "values":"string", "type":"map"}`,
+			Rabin:  0x86ce965d92864572,
 		},
 		{
-			Schema:      `{"name":"PigValue","type":"record", "fields":[{"name":"value", "type":["null", "int", "long", "PigValue"]}]}`,
-			Fingerprint: -1759257747318642341,
+			Schema: `{"name":"PigValue","type":"record", "fields":[{"name":"value", "type":["null", "int", "long", "PigValue"]}]}`,
+			Rabin:  0xe795dc6656b7e95b,
 		},
 	}
 
@@ -138,7 +138,7 @@ func TestCodecSchemaCRC64Avro(t *testing.T) {
 		if err != nil {
 			t.Fatalf("CASE: %s; cannot create code: %s", c.Schema, err)
 		}
-		if got, want := codec.SchemaCRC64Avro(), c.Fingerprint; got != want {
+		if got, want := codec.Rabin, c.Rabin; got != want {
 			t.Errorf("CASE: %s; GOT: %#x; WANT: %#x", c.Schema, got, want)
 		}
 	}
