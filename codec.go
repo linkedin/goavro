@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"strconv"
 )
 
 var (
@@ -386,11 +387,17 @@ func (c *Codec) singleFromNative(buf []byte, datum interface{}) ([]byte, error) 
 func (c *Codec) nativeFromSingle(buf []byte) (interface{}, []byte, error) {
 	lh := len(c.soeHeader)
 	if len(buf) < lh {
-		return nil, buf, io.ErrShortBuffer
+		return nil, buf, ErrNotSingleObjectEncoded(io.ErrShortBuffer.Error())
+	}
+
+	// Only recognizes single-object encodings format version 1.
+	if buf[0] != 0xC3 || buf[1] != 0x01 {
+		return nil, buf, ErrNotSingleObjectEncoded("invalid magic prefix")
 	}
 
 	if got, want := buf[:lh], c.soeHeader; !bytes.Equal(got, want) {
-		return nil, buf, fmt.Errorf("mismatch header: GOT: %v; WANT: %v", got, want)
+		fingerprint := binary.LittleEndian.Uint64(buf[2:])
+		return nil, buf, ErrWrongCodec(fingerprint)
 	}
 
 	value, newBuf, err := c.nativeFromBinary(buf[lh:])
@@ -555,4 +562,19 @@ func registerNewCodec(st map[string]*Codec, schemaMap map[string]interface{}, en
 	c := &Codec{typeName: n}
 	st[n.fullName] = c
 	return c, nil
+}
+
+// ErrWrongCodec is returned when an attempt is made to decode a single-object
+// encoded value using the wrong codec.
+type ErrWrongCodec uint64
+
+func (e ErrWrongCodec) Error() string { return "wrong codec: " + strconv.FormatUint(uint64(e), 10) }
+
+// ErrNotSingleObjectEncoded is returned when an attempt is made to decode a
+// single-object encoded value from a buffer that does not have the correct
+// magic prefix.
+type ErrNotSingleObjectEncoded string
+
+func (e ErrNotSingleObjectEncoded) Error() string {
+	return "cannot decode buffer as single-object encoding: " + string(e)
 }
