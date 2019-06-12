@@ -57,7 +57,7 @@ type Codec struct {
 	nativeFromBinary  func([]byte) (interface{}, []byte, error)
 	textualFromNative func([]byte, interface{}) ([]byte, error)
 
-	crc64avro uint64
+	rabin uint64
 }
 
 // NewCodec returns a Codec used to translate between a byte slice of either
@@ -105,9 +105,9 @@ func NewCodec(schemaSpecification string) (*Codec, error) {
 		return nil, err // should not get here because schema was validated above
 	}
 
-	c.crc64avro = crc64Avro([]byte(c.schemaCanonical))
+	c.rabin = rabin([]byte(c.schemaCanonical))
 	c.soeHeader = []byte{0xC3, 0x01, 0, 0, 0, 0, 0, 0, 0, 0}
-	binary.LittleEndian.PutUint64(c.soeHeader[2:], c.crc64avro)
+	binary.LittleEndian.PutUint64(c.soeHeader[2:], c.rabin)
 
 	c.schemaOriginal = schemaSpecification
 	return c, nil
@@ -463,7 +463,7 @@ func (c *Codec) CanonicalSchema() string {
 func (c *Codec) SchemaCRC64Avro() int64 {
 	// Must perform the bitwise calculations using unsigned 64-bit integer math,
 	// but the Avro code and test files return a signed 64-bit integer.
-	return int64(c.crc64avro)
+	return int64(c.rabin)
 }
 
 // convert a schema data structure to a codec, prefixing with specified

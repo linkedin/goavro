@@ -1,12 +1,12 @@
 package goavro
 
-// crc64Empty is a constant used to initialize the crc64Table, and to compute
+// rabinEmpty is a constant used to initialize the crc64Table, and to compute
 // the CRC-64-AVRO fingerprint of every object schema.
-const crc64Empty = uint64(0xc15d213aa4d7a795)
+const rabinEmpty = uint64(0xc15d213aa4d7a795)
 
-// crc64Table is never modified after initialization but its values are read to
+// rabinTable is never modified after initialization but its values are read to
 // compute the CRC-64-AVRO fingerprint of every schema its given.
-var crc64Table = [256]uint64{
+var rabinTable = [256]uint64{
 	0,
 	3238593523956797946,
 	6477187047913595892,
@@ -265,11 +265,11 @@ var crc64Table = [256]uint64{
 	11113046258555286960,
 }
 
-// crc64Avro returns an unsigned 64-bit integer Rabin fingerprint for buf.
-func crc64Avro(buf []byte) uint64 {
-	fp := crc64Empty
+// rabin returns an unsigned 64-bit integer Rabin fingerprint for buf.
+func rabin(buf []byte) uint64 {
+	fp := rabinEmpty
 	for i := 0; i < len(buf); i++ {
-		fp = (fp >> 8) ^ crc64Table[(byte(fp)^buf[i])&0xff] // unsigned right shift >>>
+		fp = (fp >> 8) ^ rabinTable[(byte(fp)^buf[i])&0xff] // unsigned right shift >>>
 	}
 	return fp
 }
