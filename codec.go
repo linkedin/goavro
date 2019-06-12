@@ -465,6 +465,16 @@ func (c *Codec) CanonicalSchema() string {
 	return c.schemaCanonical
 }
 
+// SchemaCRC64Avro returns a signed 64-bit integer Rabin fingerprint for the
+// canonical schema.  This method returns the signed 64-bit cast of the unsigned
+// 64-bit schema Rabin fingerprint.
+//
+// DEPRECATED: This method has been replaced by the Rabin structure Codec field
+// and is provided for backward compatibility only.
+func (c *Codec) SchemaCRC64Avro() int64 {
+	return int64(c.Rabin)
+}
+
 // convert a schema data structure to a codec, prefixing with specified
 // namespace
 func buildCodec(st map[string]*Codec, enclosingNamespace string, schema interface{}) (*Codec, error) {
