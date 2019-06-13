@@ -22,19 +22,25 @@ read data that was once written using an older version of that schema.
 I do not believe the Avro specification properly handles schema
 evolution.  Here's a simple example:
 
+```
 Record v0:
     name: string
     nickname: string, default: ""
+```
 
+```
 Record v1:
     name: string
     nickname: string, default: ""
     title: string, default: ""
+```
 
 Okay, now a binary stream of records is just a bunch of strings.  Let's
 do that now.
 
+```
 0x0A, A, l, i, c, e, 0x06, B, o, b, 0x0A, B, r, u, c, e, 0x0A, S, a, l, l, y, 0x06, A, n, n
+```
 
 How many records is that? It could be as many as 5 records, each of a
 single name and no nicknames.  It could be as few as 2 records, one of
@@ -62,7 +68,9 @@ this feature, and would support schema evolution.  Here's an example
 stream of bytes that could be unambiguously decoded using the new
 schema:
 
+```
 0x02, 0x0A, A, l, i, c, e, 0x02, 0x06, B, o, B, 0x04, 0x0A, B, r, u, c, e, 0x02, 0x0C, C, h, a, r, l, i, e, 0x06, 0x04, M, r
+```
 
 In the above example of my fake Avro 2.0, this can be
 deterministically decoded because 0x02 indicates the following is
