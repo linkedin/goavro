@@ -1,17 +1,12 @@
 package goavro
 
-import (
-	"encoding/binary"
-	"io"
-)
-
-// rabinEmpty is a constant used to initialize the crc64Table, and to compute
+// ravinEmpty is a constant used to initialize the crc64Table, and to compute
 // the CRC-64-AVRO fingerprint of every object schema.
-const rabinEmpty = uint64(0xc15d213aa4d7a795)
+const ravinEmpty = uint64(0xc15d213aa4d7a795)
 
-// rabinTable is never modified after initialization but its values are read to
+// ravinTable is never modified after initialization but its values are read to
 // compute the CRC-64-AVRO fingerprint of every schema its given.
-var rabinTable = [256]uint64{
+var ravinTable = [256]uint64{
 	0,
 	3238593523956797946,
 	6477187047913595892,
@@ -270,35 +265,11 @@ var rabinTable = [256]uint64{
 	11113046258555286960,
 }
 
-// rabin returns an unsigned 64-bit integer Rabin fingerprint for buf.  NOTE:
-// This is only used during Codec instantiation to calculate the Rabin
-// fingerprint of the canonical schema.
-func rabin(buf []byte) uint64 {
-	fp := rabinEmpty
+// ravin returns an unsigned 64-bit integer Rabin fingerprint for buf.
+func ravin(buf []byte) uint64 {
+	fp := ravinEmpty
 	for i := 0; i < len(buf); i++ {
-		fp = (fp >> 8) ^ rabinTable[(byte(fp)^buf[i])&0xff] // unsigned right shift >>>
+		fp = (fp >> 8) ^ ravinTable[(byte(fp)^buf[i])&0xff] // unsigned right shift >>>
 	}
 	return fp
-}
-
-const soeHeaderLen = 10 // 2-byte prefix plus 8-byte fingerprint
-
-// FingerprintFromSOE returns the unsigned 64-bit Rabin fingerprint from the
-// header of a buffer that encodes a single-object encoded datum.  This function
-// is designed to be used to lookup a Codec that can decode the contents of the
-// buffer.  Once a Codec is found that has the matching Rabin fingerprint, its
-// NativeFromSingle method may be used to decode the encoded datum.  On failure
-// this function returns an ErrNotSingleObjectEncoded error.
-//
-func FingerprintFromSOE(buf []byte) (uint64, error) {
-	if len(buf) < soeHeaderLen {
-		return 0, ErrNotSingleObjectEncoded(io.ErrShortBuffer.Error())
-	}
-
-	// Only recognizes single-object encodings format version 1.
-	if buf[0] != 0xC3 || buf[1] != 0x01 {
-		return 0, ErrNotSingleObjectEncoded("invalid magic prefix")
-	}
-
-	return binary.LittleEndian.Uint64(buf[2:]), nil
 }

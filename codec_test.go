@@ -12,6 +12,7 @@ package goavro
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"testing"
 )
 
@@ -242,4 +243,60 @@ func TestSingleObjectEncoding(t *testing.T) {
 			t.Fatalf("GOT: %v; WANT: %v", got, want)
 		}
 	})
+}
+
+func ExampleSingleItemEncoding() {
+	codec, err := NewCodec(`"int"`)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err)
+		return
+	}
+
+	buf, err := codec.SingleFromNative(nil, 3)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err)
+		return
+	}
+
+	fmt.Println(buf)
+	// Output: [195 1 143 92 57 63 26 213 117 114 6]
+}
+
+func ExampleSingleItemDecoding() {
+	codec1, err := NewCodec(`"int"`)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err)
+		return
+	}
+
+	// Create a map of fingerprint values to corresponding Codec instances.
+	codex := make(map[uint64]*Codec)
+	codex[codec1.Rabin] = codec1
+
+	// Later on when you want to decode such a slice of bytes as a Single-Object
+	// Encoding, obtain the Rabin fingerprint of the schema used to encode the
+	// data.
+	buf := []byte{195, 1, 143, 92, 57, 63, 26, 213, 117, 114, 6}
+
+	fingerprint, err := FingerprintFromSOE(buf)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err)
+		return
+	}
+
+	// Get a previously stored Codec from the codex map.
+	codec2, ok := codex[fingerprint]
+	if !ok {
+		fmt.Fprintf(os.Stderr, "unknown codec: %d\n", fingerprint)
+		return
+	}
+
+	// Use the fetched Codec to decode the buffer as a SOE.
+	datum, _, err := codec2.NativeFromSingle(buf)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err)
+		return
+	}
+	fmt.Println(datum)
+	// Output: 3
 }
