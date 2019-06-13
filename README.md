@@ -353,6 +353,11 @@ clients are able to override if deemed necessary for their
 purposes. Their initial default values are (`math.MaxInt32` or
 ~2.2GB).
 
+### Schema Evolution
+
+Please see [my reasons why schema evolution is broken for Avro
+1.x](https://github.com/linkedin/goavro/blob/master/SCHEMA-EVOLUTION.md).
+
 ## License
 
 ### Goavro license
