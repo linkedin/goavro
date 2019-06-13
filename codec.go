@@ -14,7 +14,6 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"io"
 	"math"
 	"strconv"
 )
@@ -330,23 +329,24 @@ func (c *Codec) NativeFromBinary(buf []byte) (interface{}, []byte, error) {
 // datum, along with a new byte slice with the decoded bytes consumed, and a nil
 // error value.  On error, it returns nil for the datum value, the original byte
 // slice, and the error message.
+//
+//     func decode(codec *goavro.Codec, buf []byte) error {
+//         datum, _, err := codec.NativeFromSingle(buf)
+//         if err != nil {
+//             return err
+//         }
+//         _, err = fmt.Println(datum)
+//         return err
+//     }
 func (c *Codec) NativeFromSingle(buf []byte) (interface{}, []byte, error) {
-	lh := len(c.soeHeader)
-	if len(buf) < lh {
-		return nil, buf, ErrNotSingleObjectEncoded(io.ErrShortBuffer.Error())
+	fingerprint, newBuf, err := FingerprintFromSOE(buf)
+	if err != nil {
+		return nil, buf, err
 	}
-
-	// Only recognizes single-object encodings format version 1.
-	if buf[0] != 0xC3 || buf[1] != 0x01 {
-		return nil, buf, ErrNotSingleObjectEncoded("invalid magic prefix")
-	}
-
-	if got, want := buf[:lh], c.soeHeader; !bytes.Equal(got, want) {
-		fingerprint := binary.LittleEndian.Uint64(buf[2:])
+	if !bytes.Equal(buf[:len(c.soeHeader)], c.soeHeader) {
 		return nil, buf, ErrWrongCodec(fingerprint)
 	}
-
-	value, newBuf, err := c.nativeFromBinary(buf[lh:])
+	value, newBuf, err := c.nativeFromBinary(newBuf)
 	if err != nil {
 		return nil, buf, err // if error, return original byte slice
 	}
@@ -399,6 +399,23 @@ func (c *Codec) NativeFromTextual(buf []byte) (interface{}, []byte, error) {
 // actual data to encode.  On success, it returns a new byte slice with the
 // encoded bytes appended, and a nil error value.  On error, it returns the
 // original byte slice, and the error message.
+//
+//     func ExampleSingleItemEncoding() {
+//         codec, err := goavro.NewCodec(`"int"`)
+//         if err != nil {
+//             fmt.Fprintf(os.Stderr, "%s\n", err)
+//             return
+//         }
+//
+//         buf, err := codec.SingleFromNative(nil, 3)
+//         if err != nil {
+//             fmt.Fprintf(os.Stderr, "%s\n", err)
+//             return
+//         }
+//
+//         fmt.Println(buf)
+//         // Output: [195 1 143 92 57 63 26 213 117 114 6]
+//     }
 func (c *Codec) SingleFromNative(buf []byte, datum interface{}) ([]byte, error) {
 	newBuf, err := c.binaryFromNative(append(buf, c.soeHeader...), datum)
 	if err != nil {

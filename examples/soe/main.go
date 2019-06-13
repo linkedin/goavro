@@ -44,9 +44,9 @@ func initCodex() map[uint64]*goavro.Codec {
 // called codex in this case, and finally sends the buf to be decoded by that
 // Codec.
 func decode(codex map[uint64]*goavro.Codec, buf []byte) error {
-	// Sanity check on the buffer, then return the Rabin fingerprint of the
-	// schema used to encode the data.
-	fingerprint, err := goavro.FingerprintFromSOE(buf)
+	// Perform a sanity check on the buffer, then return the Rabin fingerprint
+	// of the schema used to encode the data.
+	fingerprint, newBuf, err := goavro.FingerprintFromSOE(buf)
 	if err != nil {
 		panic(err)
 		return err
@@ -59,11 +59,26 @@ func decode(codex map[uint64]*goavro.Codec, buf []byte) error {
 	}
 
 	// Use the fetched Codec to decode the buffer as a SOE.
-	datum, _, err := codec.NativeFromSingle(buf)
+	var datum interface{}
+
+	// Both of the following branches work, but provided to illustrate two
+	// use-cases.
+	if true {
+		// Faster because SOE magic prefix and schema fingerprint already
+		// checked and used to fetch the Codec.  Just need to decode the binary
+		// bytes remaining after the prefix were removed.
+		datum, _, err = codec.NativeFromBinary(newBuf)
+	} else {
+		// This way re-checks the SOE magic prefix and Codec fingerprint, doing
+		// repetitive work, but provided as an example for cases when there is
+		// only a single schema, a single Codec, and you do not use
+		// the FingerprintFromSOE function above.
+		datum, _, err = codec.NativeFromSingle(buf)
+	}
 	if err != nil {
 		panic(err)
-		return err
 	}
+
 	_, err = fmt.Println(datum)
 	return err
 }

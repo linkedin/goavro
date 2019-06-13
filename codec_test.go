@@ -278,7 +278,7 @@ func ExampleSingleItemDecoding() {
 	// data.
 	buf := []byte{195, 1, 143, 92, 57, 63, 26, 213, 117, 114, 6}
 
-	fingerprint, err := FingerprintFromSOE(buf)
+	fingerprint, newBuf, err := FingerprintFromSOE(buf)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
 		return
@@ -292,7 +292,7 @@ func ExampleSingleItemDecoding() {
 	}
 
 	// Use the fetched Codec to decode the buffer as a SOE.
-	datum, _, err := codec2.NativeFromSingle(buf)
+	datum, _, err := codec2.NativeFromBinary(newBuf)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
 		return

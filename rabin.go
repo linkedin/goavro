@@ -2,6 +2,7 @@ package goavro
 
 import (
 	"encoding/binary"
+	"fmt"
 	"io"
 )
 
@@ -281,24 +282,55 @@ func rabin(buf []byte) uint64 {
 	return fp
 }
 
-const soeHeaderLen = 10 // 2-byte prefix plus 8-byte fingerprint
+const soeMagicPrefix = 2                // 2-byte prefix for SOE encoded data
+const soeHeaderLen = soeMagicPrefix + 8 // 2-byte prefix plus 8-byte fingerprint
 
 // FingerprintFromSOE returns the unsigned 64-bit Rabin fingerprint from the
-// header of a buffer that encodes a single-object encoded datum.  This function
+// header of a buffer that encodes a Single-Object Encoded datum.  This function
 // is designed to be used to lookup a Codec that can decode the contents of the
 // buffer.  Once a Codec is found that has the matching Rabin fingerprint, its
-// NativeFromSingle method may be used to decode the encoded datum.  On failure
-// this function returns an ErrNotSingleObjectEncoded error.
+// NativeFromBinary method may be used to decode the remaining bytes returned as
+// the second return value.  On failure this function returns an
+// ErrNotSingleObjectEncoded error.
 //
-func FingerprintFromSOE(buf []byte) (uint64, error) {
+//     func decode(codex map[uint64]*goavro.Codec, buf []byte) error {
+//         // Perform a sanity check on the buffer, then return the Rabin fingerprint
+//         // of the schema used to encode the data.
+//         fingerprint, newBuf, err := goavro.FingerprintFromSOE(buf)
+//         if err != nil {
+//             return err
+//         }
+//
+//         // Get a previously stored Codec from the codex map.
+//         codec, ok := codex[fingerprint]
+//         if !ok {
+//             return fmt.Errorf("unknown codec: %#x", fingerprint)
+//         }
+//
+//         // Use the fetched Codec to decode the buffer as a SOE.
+//         //
+//         // Faster because SOE magic prefix and schema fingerprint already
+//         // checked and used to fetch the Codec.  Just need to decode the binary
+//         // bytes remaining after the prefix were removed.
+//         datum, _, err := codec.NativeFromBinary(newBuf)
+//         if err != nil {
+//             return err
+//         }
+//
+//         _, err = fmt.Println(datum)
+//         return err
+//     }
+func FingerprintFromSOE(buf []byte) (uint64, []byte, error) {
 	if len(buf) < soeHeaderLen {
-		return 0, ErrNotSingleObjectEncoded(io.ErrShortBuffer.Error())
+		// Not enough bytes to encode schema fingerprint.
+		return 0, nil, ErrNotSingleObjectEncoded(io.ErrShortBuffer.Error())
+	}
+
+	if buf[0] != 0xC3 || buf[1] != 0x01 {
+		// Currently only one SOE prefix is recognized.
+		return 0, nil, ErrNotSingleObjectEncoded(fmt.Sprintf("unknown SOE prefix: %#x", buf[:soeMagicPrefix]))
 	}
 
 	// Only recognizes single-object encodings format version 1.
-	if buf[0] != 0xC3 || buf[1] != 0x01 {
-		return 0, ErrNotSingleObjectEncoded("invalid magic prefix")
-	}
-
-	return binary.LittleEndian.Uint64(buf[2:]), nil
+	return binary.LittleEndian.Uint64(buf[soeMagicPrefix:]), buf[soeHeaderLen:], nil
 }
