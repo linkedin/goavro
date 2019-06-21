@@ -52,6 +52,10 @@ var (
 	ocfMetadataCodec *Codec
 )
 
+func init() {
+	ocfMetadataCodec, _ = NewCodec(`{"type":"map","values":"bytes"}`) // elide error checking for known good schema
+}
+
 // OCFHeader represents the unvalidated values from the header of an OCF file.
 type OCFHeader struct {
 	// SyncMarker is a 16-byte, randomly-generated sync marker for a given OCF
@@ -209,14 +213,8 @@ func readOCFHeader(ior io.Reader) (*ocfHeader, error) {
 	return header, nil
 }
 
-func init() {
-	ocfMetadataCodec, _ = NewCodec(`{"type":"map","values":"bytes"}`) // elide error checking for known good schema
-}
-
 func writeOCFHeader(header *ocfHeader, iow io.Writer) (err error) {
-	//
 	// avro.codec
-	//
 	var avroCodec string
 	switch header.compressionID {
 	case compressionNull:
@@ -239,9 +237,7 @@ func writeOCFHeader(header *ocfHeader, iow io.Writer) (err error) {
 	buf := make([]byte, 4, len(schema)+ocfHeaderSizeConst)
 	_ = copy(buf, ocfMagicBytes)
 
-	//
 	// file metadata, including the schema
-	//
 	meta := make(map[string]interface{})
 	for k, v := range header.metadata {
 		meta[k] = v
@@ -254,12 +250,10 @@ func writeOCFHeader(header *ocfHeader, iow io.Writer) (err error) {
 		return fmt.Errorf("should not get here: cannot write OCF header: %s", err)
 	}
 
-	//
 	// 16-byte sync marker
-	//
 	buf = append(buf, header.syncMarker[:]...)
 
-	// emit OCF header
+	// emit buffer with encoded OCF header
 	_, err = iow.Write(buf)
 	if err != nil {
 		return fmt.Errorf("cannot write OCF header: %s", err)
