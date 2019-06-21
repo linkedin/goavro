@@ -227,10 +227,10 @@ func (ocfr *OCFReader) Scan() bool {
 		}
 
 		// read and ensure sync marker matches
-		sync := make([]byte, ocfSyncLength)
+		sync := make([]byte, OCFSyncLength)
 		var n int
 		if n, ocfr.rerr = io.ReadFull(ocfr.ior, sync); ocfr.rerr != nil {
-			ocfr.rerr = fmt.Errorf("cannot read sync marker: read %d out of %d bytes: %s", n, ocfSyncLength, ocfr.rerr)
+			ocfr.rerr = fmt.Errorf("cannot read sync marker: read %d out of %d bytes: %s", n, OCFSyncLength, ocfr.rerr)
 			return false
 		}
 		if !bytes.Equal(sync, ocfr.header.syncMarker[:]) {

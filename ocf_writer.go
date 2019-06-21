@@ -52,8 +52,8 @@ type OCFConfig struct {
 	// this field is ignored.
 	CompressionName string
 
-	// MetaData specifies application specific meta data to be added to
-	// the OCF file.  When appending to an existing OCF, this field
+	// MetaData specifies application specific meta data to be added
+	// to the OCF file.  When appending to an existing OCF, this field
 	// is ignored.
 	MetaData map[string][]byte
 }
@@ -112,7 +112,7 @@ func NewOCFWriter(config OCFConfig) (*OCFWriter, error) {
 // reads the block size, then skips ahead to the followig block. It does this
 // repeatedly until attempts to read the file return io.EOF.
 func (ocfw *OCFWriter) quickScanToTail(ior io.Reader) error {
-	sync := make([]byte, ocfSyncLength)
+	sync := make([]byte, OCFSyncLength)
 	for {
 		// Read and validate block count
 		blockCount, err := longBinaryReader(ior)
@@ -146,7 +146,7 @@ func (ocfw *OCFWriter) quickScanToTail(ior io.Reader) error {
 		// Read and validate sync marker
 		var n int
 		if n, err = io.ReadFull(ior, sync); err != nil {
-			return fmt.Errorf("cannot read sync marker: read %d out of %d bytes: %s", n, ocfSyncLength, err)
+			return fmt.Errorf("cannot read sync marker: read %d out of %d bytes: %s", n, OCFSyncLength, err)
 		}
 		if !bytes.Equal(sync, ocfw.header.syncMarker[:]) {
 			return fmt.Errorf("sync marker mismatch: %v != %v", sync, ocfw.header.syncMarker)
