@@ -68,13 +68,10 @@ type OCFHeader struct {
 
 	// CompressionName corresponds to the "avro.codec" metadata value, and is
 	// the name of the compression codec used to compress blocks, as a string.
-	// Implementations are required to support the following codecs: "null" and
-	// "deflate".  If codec is absent, it is assumed to be "null".  The codecs
-	// are described with more detail below.
 	CompressionName string
 
 	// Schema corresponds to the "avro.schema" metadata value, and contains the
-	// schema of objects stored in the file, as JSON data (required).
+	// schema of objects stored in the file, as JSON data.
 	Schema string
 }
 
@@ -115,7 +112,6 @@ func NewOCFHeaderFromReader(ior io.Reader) (*OCFHeader, error) {
 		Schema:          string(metadata["avro.schema"]),
 	}
 	copy(h.SyncMarker[:], syncMarker)
-	// fmt.Fprintf(os.Stderr, "sync marker: %#v\n", h.SyncMarker)
 
 	return h, nil
 }
