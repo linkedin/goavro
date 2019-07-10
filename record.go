@@ -61,10 +61,11 @@ func makeRecordCodec(st map[string]*Codec, enclosingNamespace string, schemaMap 
 		}
 
 		if defaultValue, ok := fieldSchemaMap["default"]; ok {
-			// if codec is union, then default value ought to encode using first schema in union
-			if fieldCodec.typeName.short() == "union" {
-				// NOTE: To support a null default value,
-				// the string literal "null" must be coerced to a `nil`
+			switch fieldCodec.typeName.short() {
+			case "union":
+				// When codec is union, then default value ought to encode using
+				// first schema in union.  NOTE: To support a null default
+				// value, the string literal "null" must be coerced to a `nil`
 				if defaultValue == "null" {
 					defaultValue = nil
 				}
@@ -72,17 +73,47 @@ func makeRecordCodec(st map[string]*Codec, enclosingNamespace string, schemaMap 
 				// set to the type name of first member
 				// TODO: change to schemaCanonical below
 				defaultValue = Union(fieldCodec.schemaOriginal, defaultValue)
+			case "long":
+				// When codec specifies a long, then ensure value is a JSON
+				// number (decodes as a float64), then cast into the correct
+				// type.
+				v, ok := defaultValue.(float64)
+				if !ok {
+					return nil, fmt.Errorf("Record %q field %q: default value ought to encode using field schema: %s", c.typeName, fieldName, err)
+				}
+				defaultValue = int64(v)
+			case "int":
+				// When codec specifies a long, then ensure value is a JSON
+				// number (decodes as a float64), then cast into the correct
+				// type.
+				v, ok := defaultValue.(float64)
+				if !ok {
+					return nil, fmt.Errorf("Record %q field %q: default value ought to encode using field schema: %s", c.typeName, fieldName, err)
+				}
+				defaultValue = int32(v)
+			case "double":
+				// When codec specifies a long, then ensure value is a JSON
+				// number (decodes as a float64), then cast into the correct
+				// type.
+				v, ok := defaultValue.(float64)
+				if !ok {
+					return nil, fmt.Errorf("Record %q field %q: default value ought to encode using field schema: %s", c.typeName, fieldName, err)
+				}
+				defaultValue = float64(v)
+			case "float":
+				// When codec specifies a long, then ensure value is a JSON
+				// number (decodes as a float64), then cast into the correct
+				// type.
+				v, ok := defaultValue.(float64)
+				if !ok {
+					return nil, fmt.Errorf("Record %q field %q: default value ought to encode using field schema: %s", c.typeName, fieldName, err)
+				}
+				defaultValue = float32(v)
 			}
 			// attempt to encode default value using codec
 			_, err = fieldCodec.binaryFromNative(nil, defaultValue)
 			if err != nil {
 				return nil, fmt.Errorf("Record %q field %q: default value ought to encode using field schema: %s", c.typeName, fieldName, err)
-			}
-			switch fieldCodec.typeName.short() {
-			case "long":
-				defaultValue = int64(defaultValue.(float64))
-			case "int":
-				defaultValue = int32(defaultValue.(float64))
 			}
 			defaultValueFromName[fieldName] = defaultValue
 		}

@@ -639,18 +639,33 @@ func TestRecordFieldFixedDefaultValue(t *testing.T) {
 }
 
 func TestRecordFieldLongDefaultValue(t *testing.T) {
-	codec, err := NewCodec(`{"type": "record", "name": "r1", "fields":[{"name": "f1", "type": "long", "default": 0}]}`)
+	codec, err := NewCodec(`{"type": "record", "name": "r1", "fields":[{"name": "someLong", "type": "long", "default": 0},{"name": "someInt", "type": "int", "default": 0},{"name": "someFloat", "type": "float", "default": 0},{"name": "someDouble", "type": "double", "default": 0}]}`)
 	if err != nil {
 		t.Fatal(err)
 	}
-	r1, _, err := codec.nativeFromTextual([]byte("{}"))
+	r1, _, err := codec.NativeFromTextual([]byte("{}"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	r1m := r1.(map[string]interface{})
 
-	v := r1m["f1"]
-	if _, ok := v.(int64); !ok {
-		t.Fatalf("f1 default value type is not long: %T", v)
+	someLong := r1m["someLong"]
+	if _, ok := someLong.(int64); !ok {
+		t.Errorf("GOT: %T; WANT: int64", someLong)
+	}
+
+	someInt := r1m["someInt"]
+	if _, ok := someInt.(int32); !ok {
+		t.Errorf("GOT: %T; WANT: int32", someInt)
+	}
+
+	someFloat := r1m["someFloat"]
+	if _, ok := someFloat.(float32); !ok {
+		t.Errorf("GOT: %T; WANT: float32", someFloat)
+	}
+
+	someDouble := r1m["someDouble"]
+	if _, ok := someDouble.(float64); !ok {
+		t.Errorf("GOT: %T; WANT: float64", someDouble)
 	}
 }
