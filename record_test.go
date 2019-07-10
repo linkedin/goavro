@@ -619,13 +619,11 @@ func TestRecordFieldFixedDefaultValue(t *testing.T) {
 func TestRecordFieldLongDefaultValue(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		codec, err := NewCodec(`{"type": "record", "name": "r1", "fields":[{"name": "someLong", "type": "long", "default": 0},{"name": "someInt", "type": "int", "default": 0},{"name": "someFloat", "type": "float", "default": 0},{"name": "someDouble", "type": "double", "default": 0}]}`)
-		if err != nil {
-			t.Fatal(err)
-		}
+		ensureError(t, err)
+
 		r1, _, err := codec.NativeFromTextual([]byte("{}"))
-		if err != nil {
-			t.Fatal(err)
-		}
+		ensureError(t, err)
+
 		r1m := r1.(map[string]interface{})
 
 		someLong := r1m["someLong"]
@@ -665,5 +663,40 @@ func TestRecordFieldLongDefaultValue(t *testing.T) {
 			_, err := NewCodec(`{"type": "record", "name": "r1", "fields":[{"name": "someLong", "type": "long", "default": 0},{"name": "someInt", "type": "int", "default": 0},{"name": "someFloat", "type": "float", "default": 0},{"name": "someDouble", "type": "double", "default": "0"}]}`)
 			ensureError(t, err, "field schema")
 		})
+	})
+	t.Run("union of int and long", func(t *testing.T) {
+		t.Skip("should encode default value as int64 rather than float64")
+
+		codec, err := NewCodec(`{"type":"record","name":"r1","fields":[{"name":"f1","type":["int","long"],"default":13}]}`)
+		ensureError(t, err)
+
+		r1, _, err := codec.NativeFromTextual([]byte("{}"))
+		ensureError(t, err)
+
+		r1m := r1.(map[string]interface{})
+
+		someUnion := r1m["f1"]
+		someMap, ok := someUnion.(map[string]interface{})
+		if !ok {
+			t.Fatalf("GOT: %T; WANT: map[string]interface{}", someUnion)
+		}
+		if got, want := len(someMap), 1; got != want {
+			t.Errorf("GOT: %v; WANT: %v", got, want)
+		}
+		t.Logf("someMap: %#v", someMap)
+		for k, v := range someMap {
+			// The "int" type is the first type option of the union.
+			if got, want := k, "int"; got != want {
+				t.Errorf("GOT: %v; WANT: %v", got, want)
+			}
+			switch tv := v.(type) {
+			case int64:
+				if got, want := tv, int64(13); got != want {
+					t.Errorf("GOT: %v; WANT: %v", got, want)
+				}
+			default:
+				t.Errorf("GOT: %T; WANT: int64", v)
+			}
+		}
 	})
 }
