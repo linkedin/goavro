@@ -78,6 +78,12 @@ func makeRecordCodec(st map[string]*Codec, enclosingNamespace string, schemaMap 
 			if err != nil {
 				return nil, fmt.Errorf("Record %q field %q: default value ought to encode using field schema: %s", c.typeName, fieldName, err)
 			}
+			switch fieldCodec.typeName.short() {
+			case "long":
+				defaultValue = int64(defaultValue.(float64))
+			case "int":
+				defaultValue = int32(defaultValue.(float64))
+			}
 			defaultValueFromName[fieldName] = defaultValue
 		}
 

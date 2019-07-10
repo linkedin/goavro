@@ -637,3 +637,20 @@ func ExampleTextualFromNative() {
 func TestRecordFieldFixedDefaultValue(t *testing.T) {
 	testSchemaValid(t, `{"type": "record", "name": "r1", "fields":[{"name": "f1", "type": {"type": "fixed", "name": "fix", "size": 1}, "default": "\u0000"}]}`)
 }
+
+func TestRecordFieldLongDefaultValue(t *testing.T) {
+	codec, err := NewCodec(`{"type": "record", "name": "r1", "fields":[{"name": "f1", "type": "long", "default": 0}]}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r1, _, err := codec.nativeFromTextual([]byte("{}"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	r1m := r1.(map[string]interface{})
+
+	v := r1m["f1"]
+	if _, ok := v.(int64); !ok {
+		t.Fatalf("f1 default value type is not long: %T", v)
+	}
+}
