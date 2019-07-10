@@ -108,9 +108,7 @@ func TestRecordFieldTypeHasPrimitiveName(t *testing.T) {
     }
   ]
 }`)
-	if err != nil {
-		t.Fatal(err)
-	}
+	ensureError(t, err)
 
 	datumIn := map[string]interface{}{
 		"f1": "thirteen",
@@ -118,9 +116,7 @@ func TestRecordFieldTypeHasPrimitiveName(t *testing.T) {
 	}
 
 	buf, err := codec.BinaryFromNative(nil, datumIn)
-	if err != nil {
-		t.Fatal(err)
-	}
+	ensureError(t, err)
 	if expected := []byte{
 		0x10, // field1 size = 8
 		't', 'h', 'i', 'r', 't', 'e', 'e', 'n',
@@ -131,9 +127,7 @@ func TestRecordFieldTypeHasPrimitiveName(t *testing.T) {
 
 	// round trip
 	datumOut, buf, err := codec.NativeFromBinary(buf)
-	if err != nil {
-		t.Fatal(err)
-	}
+	ensureError(t, err)
 	if actual, expected := len(buf), 0; actual != expected {
 		t.Errorf("GOT: %#v; WANT: %#v", actual, expected)
 	}
@@ -323,9 +317,7 @@ func TestRecordNamespace(t *testing.T) {
     }
   ]
 }`)
-	if err != nil {
-		t.Fatal(err)
-	}
+	ensureError(t, err)
 
 	datumIn := map[string]interface{}{
 		"X": []byte("abcd"),
@@ -333,18 +325,14 @@ func TestRecordNamespace(t *testing.T) {
 	}
 
 	buf, err := c.BinaryFromNative(nil, datumIn)
-	if err != nil {
-		t.Fatal(err)
-	}
+	ensureError(t, err)
 	if expected := []byte("abcdefgh"); !bytes.Equal(buf, expected) {
 		t.Errorf("GOT: %#v; WANT: %#v", buf, expected)
 	}
 
 	// round trip
 	datumOut, buf, err := c.NativeFromBinary(buf)
-	if err != nil {
-		t.Fatal(err)
-	}
+	ensureError(t, err)
 	if actual, expected := len(buf), 0; actual != expected {
 		t.Errorf("GOT: %#v; WANT: %#v", actual, expected)
 	}
@@ -428,9 +416,7 @@ func TestRecordRecursiveRoundTrip(t *testing.T) {
   ]
 }
 `)
-	if err != nil {
-		t.Fatal(err)
-	}
+	ensureError(t, err)
 
 	// NOTE: May omit fields when using default value
 	initial := `{"next":{"LongList":{}}}`
@@ -441,27 +427,19 @@ func TestRecordRecursiveRoundTrip(t *testing.T) {
 
 	// Convert textual Avro data (in Avro JSON format) to native Go form
 	datum, _, err := codec.NativeFromTextual([]byte(initial))
-	if err != nil {
-		t.Fatal(err)
-	}
+	ensureError(t, err)
 
 	// Convert native Go form to binary Avro data
 	buf, err := codec.BinaryFromNative(nil, datum)
-	if err != nil {
-		t.Fatal(err)
-	}
+	ensureError(t, err)
 
 	// Convert binary Avro data back to native Go form
 	datum, _, err = codec.NativeFromBinary(buf)
-	if err != nil {
-		t.Fatal(err)
-	}
+	ensureError(t, err)
 
 	// Convert native Go form to textual Avro data
 	buf, err = codec.TextualFromNative(nil, datum)
-	if err != nil {
-		t.Fatal(err)
-	}
+	ensureError(t, err)
 	if actual, expected := string(buf), final; actual != expected {
 		t.Fatalf("GOT: %v; WANT: %v", actual, expected)
 	}
