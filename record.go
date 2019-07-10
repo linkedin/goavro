@@ -83,7 +83,7 @@ func makeRecordCodec(st map[string]*Codec, enclosingNamespace string, schemaMap 
 				}
 				defaultValue = int64(v)
 			case "int":
-				// When codec specifies a long, then ensure value is a JSON
+				// When codec specifies an int, then ensure value is a JSON
 				// number (decodes as a float64), then cast into the correct
 				// type.
 				v, ok := defaultValue.(float64)
@@ -92,7 +92,7 @@ func makeRecordCodec(st map[string]*Codec, enclosingNamespace string, schemaMap 
 				}
 				defaultValue = int32(v)
 			case "double":
-				// When codec specifies a long, then ensure value is a JSON
+				// When codec specifies a double, then ensure value is a JSON
 				// number (decodes as a float64), then cast into the correct
 				// type.
 				v, ok := defaultValue.(float64)
@@ -101,7 +101,7 @@ func makeRecordCodec(st map[string]*Codec, enclosingNamespace string, schemaMap 
 				}
 				defaultValue = float64(v)
 			case "float":
-				// When codec specifies a long, then ensure value is a JSON
+				// When codec specifies a float, then ensure value is a JSON
 				// number (decodes as a float64), then cast into the correct
 				// type.
 				v, ok := defaultValue.(float64)
