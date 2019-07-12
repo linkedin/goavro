@@ -41,8 +41,9 @@ func TestPrimitiveDoubleText(t *testing.T) {
 	testTextCodecPass(t, `"double"`, math.Inf(-1), []byte("-1e999"))
 	testTextCodecPass(t, `"double"`, math.Inf(1), []byte("1e999"))
 	testTextCodecPass(t, `"double"`, math.NaN(), []byte("null"))
-	testTextDecodePass(t, `"double"`, -0, []byte("-0"))
-	testTextEncodePass(t, `"double"`, -0, []byte("0")) // NOTE: -0 encodes as "0"
+	testTextDecodePass(t, `"double"`, math.Copysign(0, -1), []byte("-0"))
+	//this test is broken: "0" cannot be decoded to 0 and -0 (see tests above)
+	//testTextEncodePass(t, `"double"`, -0, []byte("0")) // NOTE: -0 encodes as "0"
 }
 
 func TestSchemaPrimitiveCodecFloat(t *testing.T) {
@@ -72,6 +73,7 @@ func TestPrimitiveFloatText(t *testing.T) {
 	testTextCodecPass(t, `"float"`, math.Inf(-1), []byte("-1e999"))
 	testTextCodecPass(t, `"float"`, math.Inf(1), []byte("1e999"))
 	testTextCodecPass(t, `"float"`, math.NaN(), []byte("null"))
-	testTextDecodePass(t, `"float"`, -0, []byte("-0"))
-	testTextEncodePass(t, `"float"`, -0, []byte("0")) // NOTE: -0 encodes as "0"
+	testTextDecodePass(t, `"float"`, math.Copysign(0, -1), []byte("-0"))
+	//this test is broken: "0" cannot be decoded to 0 and -0 (see tests above)
+	//testTextEncodePass(t, `"float"`, -0, []byte("0")) // NOTE: -0 encodes as "0"
 }
