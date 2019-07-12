@@ -29,6 +29,7 @@ func TestReadOCFHeaderMagicBytes(t *testing.T) {
 //
 
 func testCannotReadOCFHeader(t *testing.T, input []byte, expected ...string) {
+	t.Helper()
 	_, err := NewOCFReader(bytes.NewBuffer(append([]byte("Obj\x01"), input...)))
 	ensureError(t, err, append([]string{"cannot read OCF header"}, expected...)...)
 }

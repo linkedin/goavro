@@ -18,6 +18,7 @@ import (
 
 // createTestFile is used to create a new test file fixture with provided data
 func createTestFile(t *testing.T, pathname string, data []byte) {
+	t.Helper()
 	nf, err := os.Create(pathname)
 	if err != nil {
 		t.Fatal(err)
@@ -90,6 +91,7 @@ func TestNewOCFWriterWhenFileNotEmptyWhenCannotReadOCFHeader(t *testing.T) {
 }
 
 func testNewOCFWriterWhenFile(t *testing.T, pathname string, expected ...string) {
+	t.Helper()
 	fh, err := os.Open(pathname)
 	if err != nil {
 		t.Fatal(err)

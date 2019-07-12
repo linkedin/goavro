@@ -46,6 +46,7 @@ func init() {
 }
 
 func testBinaryDecodeFail(t *testing.T, schema string, buf []byte, errorMessage string) {
+	t.Helper()
 	c, err := NewCodec(schema)
 	if err != nil {
 		t.Fatal(err)
@@ -61,6 +62,7 @@ func testBinaryDecodeFail(t *testing.T, schema string, buf []byte, errorMessage 
 }
 
 func testBinaryEncodeFail(t *testing.T, schema string, datum interface{}, errorMessage string) {
+	t.Helper()
 	c, err := NewCodec(schema)
 	if err != nil {
 		t.Fatal(err)
@@ -73,14 +75,17 @@ func testBinaryEncodeFail(t *testing.T, schema string, datum interface{}, errorM
 }
 
 func testBinaryEncodeFailBadDatumType(t *testing.T, schema string, datum interface{}) {
+	t.Helper()
 	testBinaryEncodeFail(t, schema, datum, "received: ")
 }
 
 func testBinaryDecodeFailShortBuffer(t *testing.T, schema string, buf []byte) {
+	t.Helper()
 	testBinaryDecodeFail(t, schema, buf, "short buffer")
 }
 
 func testBinaryDecodePass(t *testing.T, schema string, datum interface{}, encoded []byte) {
+	t.Helper()
 	codec, err := NewCodec(schema)
 	if err != nil {
 		t.Fatal(err)
@@ -105,6 +110,7 @@ func testBinaryDecodePass(t *testing.T, schema string, datum interface{}, encode
 }
 
 func testBinaryEncodePass(t *testing.T, schema string, datum interface{}, expected []byte) {
+	t.Helper()
 	codec, err := NewCodec(schema)
 	if err != nil {
 		t.Fatalf("Schma: %q %s", schema, err)
@@ -122,6 +128,7 @@ func testBinaryEncodePass(t *testing.T, schema string, datum interface{}, expect
 // testBinaryCodecPass does a bi-directional codec check, by encoding datum to
 // bytes, then decoding bytes back to datum.
 func testBinaryCodecPass(t *testing.T, schema string, datum interface{}, buf []byte) {
+	t.Helper()
 	testBinaryDecodePass(t, schema, datum, buf)
 	testBinaryEncodePass(t, schema, datum, buf)
 }

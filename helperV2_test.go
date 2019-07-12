@@ -15,6 +15,7 @@ import (
 )
 
 func newCodecUsingV2(tb testing.TB, schema string) *Codec {
+	tb.Helper()
 	codec, err := NewCodec(schema)
 	if err != nil {
 		tb.Fatal(err)
@@ -23,6 +24,7 @@ func newCodecUsingV2(tb testing.TB, schema string) *Codec {
 }
 
 func nativeFromAvroUsingV2(tb testing.TB, avroBlob []byte) ([]interface{}, *Codec) {
+	tb.Helper()
 	ocf, err := NewOCFReader(bytes.NewReader(avroBlob))
 	if err != nil {
 		tb.Fatal(err)
@@ -43,6 +45,7 @@ func nativeFromAvroUsingV2(tb testing.TB, avroBlob []byte) ([]interface{}, *Code
 }
 
 func binaryFromNativeUsingV2(tb testing.TB, codec *Codec, nativeData []interface{}) [][]byte {
+	tb.Helper()
 	binaryData := make([][]byte, len(nativeData))
 	for i, datum := range nativeData {
 		binaryDatum, err := codec.BinaryFromNative(nil, datum)
@@ -55,6 +58,7 @@ func binaryFromNativeUsingV2(tb testing.TB, codec *Codec, nativeData []interface
 }
 
 func textFromNativeUsingV2(tb testing.TB, codec *Codec, nativeData []interface{}) [][]byte {
+	tb.Helper()
 	textData := make([][]byte, len(nativeData))
 	for i, nativeDatum := range nativeData {
 		textDatum, err := codec.TextualFromNative(nil, nativeDatum)
@@ -67,6 +71,7 @@ func textFromNativeUsingV2(tb testing.TB, codec *Codec, nativeData []interface{}
 }
 
 func nativeFromBinaryUsingV2(tb testing.TB, codec *Codec, binaryData [][]byte) []interface{} {
+	tb.Helper()
 	nativeData := make([]interface{}, len(binaryData))
 	for i, binaryDatum := range binaryData {
 		nativeDatum, buf, err := codec.NativeFromBinary(binaryDatum)
@@ -82,6 +87,7 @@ func nativeFromBinaryUsingV2(tb testing.TB, codec *Codec, binaryData [][]byte) [
 }
 
 func nativeFromTextUsingV2(tb testing.TB, codec *Codec, textData [][]byte) []interface{} {
+	tb.Helper()
 	nativeData := make([]interface{}, len(textData))
 	for i, textDatum := range textData {
 		nativeDatum, buf, err := codec.NativeFromTextual(textDatum)

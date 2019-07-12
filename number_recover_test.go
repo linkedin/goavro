@@ -15,6 +15,7 @@ import (
 )
 
 func testPrimitiveRecoverNative(t *testing.T, schema string, value interface{}) {
+	t.Helper()
 	codec, err := NewCodec(schema)
 	if err != nil {
 		t.Fatalf("Schema: %s; %s", schema, err)

@@ -17,6 +17,7 @@ import (
 )
 
 func testTextDecodeFail(t *testing.T, schema string, buf []byte, errorMessage string) {
+	t.Helper()
 	c, err := NewCodec(schema)
 	if err != nil {
 		t.Fatal(err)
@@ -32,6 +33,7 @@ func testTextDecodeFail(t *testing.T, schema string, buf []byte, errorMessage st
 }
 
 func testTextEncodeFail(t *testing.T, schema string, datum interface{}, errorMessage string) {
+	t.Helper()
 	c, err := NewCodec(schema)
 	if err != nil {
 		t.Fatal(err)
@@ -44,14 +46,17 @@ func testTextEncodeFail(t *testing.T, schema string, datum interface{}, errorMes
 }
 
 func testTextEncodeFailBadDatumType(t *testing.T, schema string, datum interface{}) {
+	t.Helper()
 	testTextEncodeFail(t, schema, datum, "received: ")
 }
 
 func testTextDecodeFailShortBuffer(t *testing.T, schema string, buf []byte) {
+	t.Helper()
 	testTextDecodeFail(t, schema, buf, "short buffer")
 }
 
 func testTextDecodePass(t *testing.T, schema string, datum interface{}, encoded []byte) {
+	t.Helper()
 	codec, err := NewCodec(schema)
 	if err != nil {
 		t.Fatalf("schema: %s; %s", schema, err)
@@ -213,6 +218,7 @@ func testTextDecodePass(t *testing.T, schema string, datum interface{}, encoded 
 }
 
 func testTextEncodePass(t *testing.T, schema string, datum interface{}, expected []byte) {
+	t.Helper()
 	codec, err := NewCodec(schema)
 	if err != nil {
 		t.Fatalf("Schma: %q %s", schema, err)
@@ -230,6 +236,7 @@ func testTextEncodePass(t *testing.T, schema string, datum interface{}, expected
 // testTextCodecPass does a bi-directional codec check, by encoding datum to
 // bytes, then decoding bytes back to datum.
 func testTextCodecPass(t *testing.T, schema string, datum interface{}, buf []byte) {
+	t.Helper()
 	testTextDecodePass(t, schema, datum, buf)
 	testTextEncodePass(t, schema, datum, buf)
 }
