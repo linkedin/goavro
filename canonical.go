@@ -23,17 +23,17 @@ type pcfProcessor func(s interface{}) (string, error)
 // parsingCanonialForm returns the "Parsing Canonical Form" (pcf) for a parsed
 // JSON structure of a valid Avro schema, or an error describing the schema
 // error.
-func parsingCanonicalForm(schema interface{}) (string, error) {
+func parsingCanonicalForm(schema interface{}, parentNamespace string, typeLookup map[string]string) (string, error) {
 	switch val := schema.(type) {
 	case map[string]interface{}:
 		// JSON objects are decoded as a map of strings to empty interfaces
-		return pcfObject(val)
+		return pcfObject(val, parentNamespace, typeLookup)
 	case []interface{}:
 		// JSON arrays are decoded as a slice of empty interfaces
-		return pcfArray(val)
+		return pcfArray(val, parentNamespace, typeLookup)
 	case string:
 		// JSON string values are decoded as a Go string
-		return pcfString(val)
+		return pcfString(val, typeLookup)
 	case float64:
 		// JSON numerical values are decoded as Go float64
 		return pcfNumber(val)
@@ -48,15 +48,19 @@ func pcfNumber(val float64) (string, error) {
 }
 
 // pcfString returns the parsing canonical form for a string value.
-func pcfString(val string) (string, error) {
-	return `"` + val + `"`, nil
+func pcfString(val string, typeLookup map[string]string) (string, error) {
+	if canonicalName, ok := typeLookup[val]; ok {
+		return `"` + canonicalName + `"`, nil
+	} else {
+		return `"` + val + `"`, nil
+	}
 }
 
 // pcfArray returns the parsing canonical form for a JSON array.
-func pcfArray(val []interface{}) (string, error) {
+func pcfArray(val []interface{}, parentNamespace string, typeLookup map[string]string) (string, error) {
 	items := make([]string, len(val))
 	for i, el := range val {
-		p, err := parsingCanonicalForm(el)
+		p, err := parsingCanonicalForm(el, parentNamespace, typeLookup)
 		if err != nil {
 			return "", err
 		}
@@ -66,7 +70,7 @@ func pcfArray(val []interface{}) (string, error) {
 }
 
 // pcfObject returns the parsing canonical form for a JSON object.
-func pcfObject(jsonMap map[string]interface{}) (string, error) {
+func pcfObject(jsonMap map[string]interface{}, parentNamespace string, typeLookup map[string]string) (string, error) {
 	pairs := make(stringPairs, 0, len(jsonMap))
 
 	// Remember the namespace to fully qualify names later
@@ -74,7 +78,22 @@ func pcfObject(jsonMap map[string]interface{}) (string, error) {
 	if namespaceJSON, ok := jsonMap["namespace"]; ok {
 		if namespaceStr, ok := namespaceJSON.(string); ok {
 			// and it's value is string (otherwise invalid schema)
-			namespace = namespaceStr
+			if parentNamespace == "" {
+				namespace = namespaceStr
+			} else {
+
+				namespace = parentNamespace + "." + namespaceStr
+			}
+			parentNamespace = namespace
+		}
+	} else {
+		if objectType, ok := jsonMap["type"]; ok {
+			//if typeStr, ok := objectType.(string); ok && typeStr  == "record" {
+			//	namespace = parentNamespace
+			//}
+			if objectType == "record" {
+				namespace = parentNamespace
+			}
 		}
 	}
 
@@ -97,6 +116,7 @@ func pcfObject(jsonMap map[string]interface{}) (string, error) {
 			// Check if the name isn't already qualified.
 			if t, ok := v.(string); ok && !strings.ContainsRune(t, '.') {
 				v = namespace + "." + t
+				typeLookup[t] = v.(string)
 			}
 		}
 
@@ -113,11 +133,11 @@ func pcfObject(jsonMap map[string]interface{}) (string, error) {
 			}
 		}
 
-		pk, err := parsingCanonicalForm(k)
+		pk, err := parsingCanonicalForm(k, parentNamespace, typeLookup)
 		if err != nil {
 			return "", err
 		}
-		pv, err := parsingCanonicalForm(v)
+		pv, err := parsingCanonicalForm(v, parentNamespace, typeLookup)
 		if err != nil {
 			return "", err
 		}
