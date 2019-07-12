@@ -20,16 +20,16 @@ func ensureBuffer(tb testing.TB, buf []byte, n int, want string) {
 
 func ensureError(tb testing.TB, err error, contains ...string) {
 	tb.Helper()
-	if len(contains) == 0 {
+	if len(contains) == 0 || (len(contains) == 1 && contains[0] == "") {
 		if err != nil {
-			tb.Errorf("GOT: %v; WANT: %v", err, contains)
+			tb.Fatalf("GOT: %v; WANT: %v", err, contains)
 		}
 	} else if err == nil {
 		tb.Errorf("GOT: %v; WANT: %v", err, contains)
 	} else {
 		for _, stub := range contains {
-			if !strings.Contains(err.Error(), stub) {
-				tb.Errorf("GOT: %v; WANT: %v", err, stub)
+			if stub != "" && !strings.Contains(err.Error(), stub) {
+				tb.Errorf("GOT: %v; WANT: %q", err, stub)
 			}
 		}
 	}
