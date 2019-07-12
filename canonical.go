@@ -51,9 +51,8 @@ func pcfNumber(val float64) (string, error) {
 func pcfString(val string, typeLookup map[string]string) (string, error) {
 	if canonicalName, ok := typeLookup[val]; ok {
 		return `"` + canonicalName + `"`, nil
-	} else {
-		return `"` + val + `"`, nil
 	}
+	return `"` + val + `"`, nil
 }
 
 // pcfArray returns the parsing canonical form for a JSON array.
@@ -81,20 +80,12 @@ func pcfObject(jsonMap map[string]interface{}, parentNamespace string, typeLooku
 			if parentNamespace == "" {
 				namespace = namespaceStr
 			} else {
-
 				namespace = parentNamespace + "." + namespaceStr
 			}
 			parentNamespace = namespace
 		}
-	} else {
-		if objectType, ok := jsonMap["type"]; ok {
-			//if typeStr, ok := objectType.(string); ok && typeStr  == "record" {
-			//	namespace = parentNamespace
-			//}
-			if objectType == "record" {
-				namespace = parentNamespace
-			}
-		}
+	} else if objectType, ok := jsonMap["type"]; ok && objectType == "record" {
+		namespace = parentNamespace
 	}
 
 	for k, v := range jsonMap {

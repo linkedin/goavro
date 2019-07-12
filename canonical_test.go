@@ -242,12 +242,14 @@ func TestCanonicalSchema(t *testing.T) {
 			Schema:    `["\u006e\u0075\u006c\u006c","\u0069\u006e\u0074"]`,
 			Canonical: `["null","int"]`,
 		},
-		{   // propagate namespace "bar" to subtype "baz", i.e., "bar.baz"
-			Schema: `{"type":"record","name":"foo","namespace":"bar","fields":[{"type":"record","name":"baz","fields":[{"name":"hi","type":"int"}]}]}`,
+		{
+			// propagate namespace "bar" to subtype "baz", i.e., "bar.baz"
+			Schema:    `{"type":"record","name":"foo","namespace":"bar","fields":[{"type":"record","name":"baz","fields":[{"name":"hi","type":"int"}]}]}`,
 			Canonical: `{"name":"bar.foo","type":"record","fields":[{"name":"bar.baz","type":"record","fields":[{"name":"hi","type":"int"}]}]}`,
 		},
-		{   // replace the second reference to type "baz" in bye to "bar.baz
-			Schema: `{"type":"record","name":"foo","namespace":"bar","fields":[{"type":"record","name":"baz","fields":[{"name":"hi","type":"int"}]},{"name":"bye", "type":["null","baz"]}]}`,
+		{
+			// replace the second reference to type "baz" in bye to "bar.baz"
+			Schema:    `{"type":"record","name":"foo","namespace":"bar","fields":[{"type":"record","name":"baz","fields":[{"name":"hi","type":"int"}]},{"name":"bye", "type":["null","baz"]}]}`,
 			Canonical: `{"name":"bar.foo","type":"record","fields":[{"name":"bar.baz","type":"record","fields":[{"name":"hi","type":"int"}]},{"name":"bye","type":["null","bar.baz"]}]}`,
 		},
 	}
