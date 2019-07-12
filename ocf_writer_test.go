@@ -163,8 +163,7 @@ func TestOCFWriterAppendWhenCannotWrite(t *testing.T) {
 	}
 
 	err = ocfw.Append([]interface{}{13, 42})
-	// this test fails on windows
-	ensureError(t, err, "bad file descriptor")
+	ensureError(t, err, testPathname)
 }
 
 func TestOCFWriterAppendSomeItemsToNothing(t *testing.T) {
