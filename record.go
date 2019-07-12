@@ -116,8 +116,8 @@ func makeRecordCodec(st map[string]*Codec, enclosingNamespace string, schemaMap 
 				// set to the type name of first member
 				// TODO: change to schemaCanonical below
 				defaultValue = Union(fieldCodec.schemaOriginal, defaultValue)
-				// default:
-				// 	debug("fieldName: %q; type: %q; defaultValue: %T(%#v)\n", fieldName, c.typeName, defaultValue, defaultValue)
+			default:
+				debug("fieldName: %q; type: %q; defaultValue: %T(%#v)\n", fieldName, c.typeName, defaultValue, defaultValue)
 			}
 
 			// attempt to encode default value using codec
