@@ -110,6 +110,8 @@ func TestPrimitiveStringText(t *testing.T) {
 	testTextDecodeFail(t, `"string"`, []byte("\"\\ugggg\""), "invalid byte") // > 'f'
 
 	testTextCodecPass(t, `"string"`, "⌘ ", []byte("\"\\u0001\\u2318 \""))
+	testTextCodecPass(t, `"string"`, "™ ", []byte("\"\\u0001\\u2122 \""))
+	testTextCodecPass(t, `"string"`, "ℯ ", []byte("\"\\u0001\\u212F \""))
 	testTextCodecPass(t, `"string"`, "😂 ", []byte("\"\\u0001\\uD83D\\uDE02 \""))
 
 	testTextDecodeFail(t, `"string"`, []byte("\"\\"), "short buffer")

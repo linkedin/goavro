@@ -15,6 +15,7 @@ import (
 )
 
 func testSchemaPrimativeCodec(t *testing.T, primitiveTypeName string) {
+	t.Helper()
 	if _, err := NewCodec(primitiveTypeName); err != nil {
 		t.Errorf("Bare primitive type: Schema: %q; Actual: %#v; Expected: %#v", primitiveTypeName, err, nil)
 	}
@@ -29,11 +30,13 @@ func testSchemaPrimativeCodec(t *testing.T, primitiveTypeName string) {
 }
 
 func testSchemaInvalid(t *testing.T, schema, errorMessage string) {
+	t.Helper()
 	_, err := NewCodec(schema)
 	ensureError(t, err, errorMessage)
 }
 
 func testSchemaValid(t *testing.T, schema string) {
+	t.Helper()
 	_, err := NewCodec(schema)
 	if err != nil {
 		t.Errorf("GOT: %v; WANT: %v", err, nil)

@@ -384,13 +384,15 @@ func stringTextualFromNative(buf []byte, datum interface{}) ([]byte, error) {
 	}
 	buf = append(buf, '"') // prefix buffer with double quote
 	for _, r := range someString {
-		if escaped, ok := escapeSpecialJSON(byte(r)); ok {
-			buf = append(buf, escaped...)
-			continue
-		}
-		if r < utf8.RuneSelf && unicode.IsPrint(r) {
-			buf = append(buf, byte(r))
-			continue
+		if r < utf8.RuneSelf {
+			if escaped, ok := escapeSpecialJSON(byte(r)); ok {
+				buf = append(buf, escaped...)
+				continue
+			}
+			if unicode.IsPrint(r) {
+				buf = append(buf, byte(r))
+				continue
+			}
 		}
 		// NOTE: Attempt to encode code point as UTF-16 surrogate pair
 		r1, r2 := utf16.EncodeRune(r)

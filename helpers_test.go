@@ -12,12 +12,12 @@ package goavro
 import (
 	"io"
 	"runtime"
-	"strings"
 	"sync"
 	"testing"
 )
 
 func benchmarkLowAndHigh(b *testing.B, callback func()) {
+	b.Helper()
 	// Run test case in parallel at relative low concurrency
 	b.Run("Low", func(b *testing.B) {
 		b.ResetTimer()
@@ -47,33 +47,6 @@ func benchmarkLowAndHigh(b *testing.B, callback func()) {
 
 		wg.Wait()
 	})
-}
-
-func ensureEqual(t *testing.T, actual, expected interface{}) {
-	if actual != expected {
-		_, file, line, ok := runtime.Caller(1)
-		if !ok {
-			t.Errorf("Actual: %#v; Expected: %#v", actual, expected)
-		} else {
-			if index := strings.LastIndex(file, "/"); index != -1 {
-				file = file[index+1:]
-			}
-			t.Errorf("Actual: %#v; Expected: %#v; %s:%d", actual, expected, file, line)
-		}
-	}
-}
-
-// ensure code under test returns error containing specified string
-func ensureError(tb testing.TB, err error, contains ...string) {
-	if err == nil {
-		tb.Errorf("GOT: %v; WANT: %#v", err, contains)
-		return
-	}
-	for _, stub := range contains {
-		if !strings.Contains(err.Error(), stub) {
-			tb.Errorf("GOT: %v; WANT: %#v", err, contains)
-		}
-	}
 }
 
 // ShortWriter returns a structure that wraps an io.Writer, but returns

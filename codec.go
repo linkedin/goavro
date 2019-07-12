@@ -10,9 +10,12 @@
 package goavro
 
 import (
+	"bytes"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"math"
+	"strconv"
 )
 
 var (
@@ -44,14 +47,17 @@ var (
 // Codec is created as a stateless structure that can be safely used in multiple
 // go routines simultaneously.
 type Codec struct {
-	typeName        *name
+	soeHeader       []byte // single-object-encoding header
 	schemaOriginal  string
 	schemaCanonical string
+	typeName        *name
 
 	nativeFromTextual func([]byte) (interface{}, []byte, error)
 	binaryFromNative  func([]byte, interface{}) ([]byte, error)
 	nativeFromBinary  func([]byte) (interface{}, []byte, error)
 	textualFromNative func([]byte, interface{}) ([]byte, error)
+
+	Rabin uint64
 }
 
 // NewCodec returns a Codec used to translate between a byte slice of either
@@ -91,16 +97,20 @@ func NewCodec(schemaSpecification string) (*Codec, error) {
 	st := newSymbolTable()
 
 	c, err := buildCodec(st, nullNamespace, schema)
-	if err == nil {
-		c.schemaOriginal = schemaSpecification
-		c.schemaCanonical, err = parsingCanonicalForm(schema, "", make(map[string]string))
-		if err != nil {
-			// Should not get here because schema is already validated above.
-			return nil, err
-		}
+	if err != nil {
+		return nil, err
+	}
+	c.schemaCanonical, err = parsingCanonicalForm(schema, "", make(map[string]string))
+	if err != nil {
+		return nil, err // should not get here because schema was validated above
 	}
 
-	return c, err
+	c.Rabin = rabin([]byte(c.schemaCanonical))
+	c.soeHeader = []byte{0xC3, 0x01, 0, 0, 0, 0, 0, 0, 0, 0}
+	binary.LittleEndian.PutUint64(c.soeHeader[2:], c.Rabin)
+
+	c.schemaOriginal = schemaSpecification
+	return c, nil
 }
 
 func newSymbolTable() map[string]*Codec {
@@ -228,12 +238,12 @@ func newSymbolTable() map[string]*Codec {
 }
 
 // BinaryFromNative appends the binary encoded byte slice representation of the
-// provided native datum value to the provided byte slice
-// in accordance with the Avro schema supplied when
-// creating the Codec. It is supplied a byte slice to which to append the binary
-// encoded data along with the actual data to encode. On success, it returns a
-// new byte slice with the encoded bytes appended, and a nil error value. On
-// error, it returns the original byte slice, and the error message.
+// provided native datum value to the provided byte slice in accordance with the
+// Avro schema supplied when creating the Codec.  It is supplied a byte slice to
+// which to append the binary encoded data along with the actual data to encode.
+// On success, it returns a new byte slice with the encoded bytes appended, and
+// a nil error value.  On error, it returns the original byte slice, and the
+// error message.
 //
 //     func ExampleBinaryFromNative() {
 //         codec, err := goavro.NewCodec(`
@@ -277,8 +287,8 @@ func (c *Codec) BinaryFromNative(buf []byte, datum interface{}) ([]byte, error) 
 
 // NativeFromBinary returns a native datum value from the binary encoded byte
 // slice in accordance with the Avro schema supplied when creating the Codec. On
-// success, it returns the decoded datum, along with a new byte slice with the
-// decoded bytes consumed, and a nil error value. On error, it returns nil for
+// success, it returns the decoded datum, a byte slice containing the remaining
+// undecoded bytes, and a nil error value. On error, it returns nil for
 // the datum value, the original byte slice, and the error message.
 //
 //     func ExampleNativeFromBinary() {
@@ -307,6 +317,36 @@ func (c *Codec) BinaryFromNative(buf []byte, datum interface{}) ([]byte, error) 
 //     }
 func (c *Codec) NativeFromBinary(buf []byte) (interface{}, []byte, error) {
 	value, newBuf, err := c.nativeFromBinary(buf)
+	if err != nil {
+		return nil, buf, err // if error, return original byte slice
+	}
+	return value, newBuf, nil
+}
+
+// NativeFromSingle converts Avro data from Single-Object-Encoded format from
+// the provided byte slice to Go native data types in accordance with the Avro
+// schema supplied when creating the Codec.  On success, it returns the decoded
+// datum, along with a new byte slice with the decoded bytes consumed, and a nil
+// error value.  On error, it returns nil for the datum value, the original byte
+// slice, and the error message.
+//
+//     func decode(codec *goavro.Codec, buf []byte) error {
+//         datum, _, err := codec.NativeFromSingle(buf)
+//         if err != nil {
+//             return err
+//         }
+//         _, err = fmt.Println(datum)
+//         return err
+//     }
+func (c *Codec) NativeFromSingle(buf []byte) (interface{}, []byte, error) {
+	fingerprint, newBuf, err := FingerprintFromSOE(buf)
+	if err != nil {
+		return nil, buf, err
+	}
+	if !bytes.Equal(buf[:len(c.soeHeader)], c.soeHeader) {
+		return nil, buf, ErrWrongCodec(fingerprint)
+	}
+	value, newBuf, err := c.nativeFromBinary(newBuf)
 	if err != nil {
 		return nil, buf, err // if error, return original byte slice
 	}
@@ -350,6 +390,38 @@ func (c *Codec) NativeFromTextual(buf []byte) (interface{}, []byte, error) {
 		return nil, buf, err // if error, return original byte slice
 	}
 	return value, newBuf, nil
+}
+
+// SingleFromNative appends the single-object-encoding byte slice representation
+// of the provided native datum value to the provided byte slice in accordance
+// with the Avro schema supplied when creating the Codec.  It is supplied a byte
+// slice to which to append the header and binary encoded data, along with the
+// actual data to encode.  On success, it returns a new byte slice with the
+// encoded bytes appended, and a nil error value.  On error, it returns the
+// original byte slice, and the error message.
+//
+//     func ExampleSingleItemEncoding() {
+//         codec, err := goavro.NewCodec(`"int"`)
+//         if err != nil {
+//             fmt.Fprintf(os.Stderr, "%s\n", err)
+//             return
+//         }
+//
+//         buf, err := codec.SingleFromNative(nil, 3)
+//         if err != nil {
+//             fmt.Fprintf(os.Stderr, "%s\n", err)
+//             return
+//         }
+//
+//         fmt.Println(buf)
+//         // Output: [195 1 143 92 57 63 26 213 117 114 6]
+//     }
+func (c *Codec) SingleFromNative(buf []byte, datum interface{}) ([]byte, error) {
+	newBuf, err := c.binaryFromNative(append(buf, c.soeHeader...), datum)
+	if err != nil {
+		return buf, err
+	}
+	return newBuf, nil
 }
 
 // TextualFromNative converts Go native data types to Avro data in JSON text format in
@@ -410,35 +482,14 @@ func (c *Codec) CanonicalSchema() string {
 	return c.schemaCanonical
 }
 
-const crc64Empty = uint64(0xc15d213aa4d7a795)
-
-func initCRC64AvroTable() [256]uint64 {
-	var crc64Table [256]uint64
-	for i := uint64(0); i < 256; i++ {
-		fp := i
-		for j := 0; j < 8; j++ {
-			fp = (fp >> 1) ^ (crc64Empty & -(fp & 1)) // unsigned right shift >>>
-		}
-		crc64Table[i] = fp
-	}
-	return crc64Table
-}
-
-func calculateCRC64Avro(b []byte) uint64 {
-	crc64Table := initCRC64AvroTable()
-	fp := crc64Empty
-	for i := 0; i < len(b); i++ {
-		fp = (fp >> 8) ^ crc64Table[(byte(fp)^b[i])&0xff] // unsigned right shift >>>
-	}
-	return fp
-}
-
 // SchemaCRC64Avro returns a signed 64-bit integer Rabin fingerprint for the
-// canonical schema.
+// canonical schema.  This method returns the signed 64-bit cast of the unsigned
+// 64-bit schema Rabin fingerprint.
+//
+// DEPRECATED: This method has been replaced by the Rabin structure Codec field
+// and is provided for backward compatibility only.
 func (c *Codec) SchemaCRC64Avro() int64 {
-	// Must perform the bitwise calculations using unsigned 64-bit integer math,
-	// but the Avro code and test files return a signed 64-bit integer.
-	return int64(calculateCRC64Avro([]byte(c.schemaCanonical)))
+	return int64(c.Rabin)
 }
 
 // convert a schema data structure to a codec, prefixing with specified
@@ -538,4 +589,19 @@ func registerNewCodec(st map[string]*Codec, schemaMap map[string]interface{}, en
 	c := &Codec{typeName: n}
 	st[n.fullName] = c
 	return c, nil
+}
+
+// ErrWrongCodec is returned when an attempt is made to decode a single-object
+// encoded value using the wrong codec.
+type ErrWrongCodec uint64
+
+func (e ErrWrongCodec) Error() string { return "wrong codec: " + strconv.FormatUint(uint64(e), 10) }
+
+// ErrNotSingleObjectEncoded is returned when an attempt is made to decode a
+// single-object encoded value from a buffer that does not have the correct
+// magic prefix.
+type ErrNotSingleObjectEncoded string
+
+func (e ErrNotSingleObjectEncoded) Error() string {
+	return "cannot decode buffer as single-object encoding: " + string(e)
 }

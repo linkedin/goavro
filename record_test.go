@@ -108,9 +108,7 @@ func TestRecordFieldTypeHasPrimitiveName(t *testing.T) {
     }
   ]
 }`)
-	if err != nil {
-		t.Fatal(err)
-	}
+	ensureError(t, err)
 
 	datumIn := map[string]interface{}{
 		"f1": "thirteen",
@@ -118,9 +116,7 @@ func TestRecordFieldTypeHasPrimitiveName(t *testing.T) {
 	}
 
 	buf, err := codec.BinaryFromNative(nil, datumIn)
-	if err != nil {
-		t.Fatal(err)
-	}
+	ensureError(t, err)
 	if expected := []byte{
 		0x10, // field1 size = 8
 		't', 'h', 'i', 'r', 't', 'e', 'e', 'n',
@@ -131,9 +127,7 @@ func TestRecordFieldTypeHasPrimitiveName(t *testing.T) {
 
 	// round trip
 	datumOut, buf, err := codec.NativeFromBinary(buf)
-	if err != nil {
-		t.Fatal(err)
-	}
+	ensureError(t, err)
 	if actual, expected := len(buf), 0; actual != expected {
 		t.Errorf("GOT: %#v; WANT: %#v", actual, expected)
 	}
@@ -323,9 +317,7 @@ func TestRecordNamespace(t *testing.T) {
     }
   ]
 }`)
-	if err != nil {
-		t.Fatal(err)
-	}
+	ensureError(t, err)
 
 	datumIn := map[string]interface{}{
 		"X": []byte("abcd"),
@@ -333,18 +325,14 @@ func TestRecordNamespace(t *testing.T) {
 	}
 
 	buf, err := c.BinaryFromNative(nil, datumIn)
-	if err != nil {
-		t.Fatal(err)
-	}
+	ensureError(t, err)
 	if expected := []byte("abcdefgh"); !bytes.Equal(buf, expected) {
 		t.Errorf("GOT: %#v; WANT: %#v", buf, expected)
 	}
 
 	// round trip
 	datumOut, buf, err := c.NativeFromBinary(buf)
-	if err != nil {
-		t.Fatal(err)
-	}
+	ensureError(t, err)
 	if actual, expected := len(buf), 0; actual != expected {
 		t.Errorf("GOT: %#v; WANT: %#v", actual, expected)
 	}
@@ -428,9 +416,7 @@ func TestRecordRecursiveRoundTrip(t *testing.T) {
   ]
 }
 `)
-	if err != nil {
-		t.Fatal(err)
-	}
+	ensureError(t, err)
 
 	// NOTE: May omit fields when using default value
 	initial := `{"next":{"LongList":{}}}`
@@ -441,27 +427,19 @@ func TestRecordRecursiveRoundTrip(t *testing.T) {
 
 	// Convert textual Avro data (in Avro JSON format) to native Go form
 	datum, _, err := codec.NativeFromTextual([]byte(initial))
-	if err != nil {
-		t.Fatal(err)
-	}
+	ensureError(t, err)
 
 	// Convert native Go form to binary Avro data
 	buf, err := codec.BinaryFromNative(nil, datum)
-	if err != nil {
-		t.Fatal(err)
-	}
+	ensureError(t, err)
 
 	// Convert binary Avro data back to native Go form
 	datum, _, err = codec.NativeFromBinary(buf)
-	if err != nil {
-		t.Fatal(err)
-	}
+	ensureError(t, err)
 
 	// Convert native Go form to textual Avro data
 	buf, err = codec.TextualFromNative(nil, datum)
-	if err != nil {
-		t.Fatal(err)
-	}
+	ensureError(t, err)
 	if actual, expected := string(buf), final; actual != expected {
 		t.Fatalf("GOT: %v; WANT: %v", actual, expected)
 	}
@@ -635,5 +613,107 @@ func ExampleTextualFromNative() {
 }
 
 func TestRecordFieldFixedDefaultValue(t *testing.T) {
-	testSchemaValid(t, `{"type": "record", "name": "r1", "fields":[{"name": "f1", "type": {"type": "fixed", "name": "fix", "size": 1}, "default": "\u0000"}]}`)
+	testSchemaValid(t, `{"type": "record", "name": "r1", "fields":[{"name": "f1", "type": {"type": "fixed", "name": "someFixed", "size": 1}, "default": "\u0000"}]}`)
+}
+
+func TestRecordFieldDefaultValueTypes(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		codec, err := NewCodec(`{"type": "record", "name": "r1", "fields":[{"name": "someBoolean", "type": "boolean", "default": true},{"name": "someBytes", "type": "bytes", "default": "0"},{"name": "someDouble", "type": "double", "default": 0},{"name": "someFloat", "type": "float", "default": 0},{"name": "someInt", "type": "int", "default": 0},{"name": "someLong", "type": "long", "default": 0},{"name": "someString", "type": "string", "default": "0"}]}`)
+		ensureError(t, err)
+
+		r1, _, err := codec.NativeFromTextual([]byte("{}"))
+		ensureError(t, err)
+
+		r1m := r1.(map[string]interface{})
+
+		someBoolean := r1m["someBoolean"]
+		if _, ok := someBoolean.(bool); !ok {
+			t.Errorf("GOT: %T; WANT: []byte", someBoolean)
+		}
+
+		someBytes := r1m["someBytes"]
+		if _, ok := someBytes.([]byte); !ok {
+			t.Errorf("GOT: %T; WANT: []byte", someBytes)
+		}
+
+		someDouble := r1m["someDouble"]
+		if _, ok := someDouble.(float64); !ok {
+			t.Errorf("GOT: %T; WANT: float64", someDouble)
+		}
+
+		someFloat := r1m["someFloat"]
+		if _, ok := someFloat.(float32); !ok {
+			t.Errorf("GOT: %T; WANT: float32", someFloat)
+		}
+
+		someInt := r1m["someInt"]
+		if _, ok := someInt.(int32); !ok {
+			t.Errorf("GOT: %T; WANT: int32", someInt)
+		}
+
+		someLong := r1m["someLong"]
+		if _, ok := someLong.(int64); !ok {
+			t.Errorf("GOT: %T; WANT: int64", someLong)
+		}
+
+		someString := r1m["someString"]
+		if _, ok := someString.(string); !ok {
+			t.Errorf("GOT: %T; WANT: string", someString)
+		}
+	})
+
+	t.Run("provided default is wrong type", func(t *testing.T) {
+		t.Run("long", func(t *testing.T) {
+			_, err := NewCodec(`{"type": "record", "name": "r1", "fields":[{"name": "someLong", "type": "long", "default": "0"},{"name": "someInt", "type": "int", "default": 0},{"name": "someFloat", "type": "float", "default": 0},{"name": "someDouble", "type": "double", "default": 0}]}`)
+			ensureError(t, err, "field schema")
+		})
+		t.Run("int", func(t *testing.T) {
+			_, err := NewCodec(`{"type": "record", "name": "r1", "fields":[{"name": "someLong", "type": "long", "default": 0},{"name": "someInt", "type": "int", "default": "0"},{"name": "someFloat", "type": "float", "default": 0},{"name": "someDouble", "type": "double", "default": 0}]}`)
+			ensureError(t, err, "field schema")
+		})
+		t.Run("float", func(t *testing.T) {
+			_, err := NewCodec(`{"type": "record", "name": "r1", "fields":[{"name": "someLong", "type": "long", "default": 0},{"name": "someInt", "type": "int", "default": 0},{"name": "someFloat", "type": "float", "default": "0"},{"name": "someDouble", "type": "double", "default": 0}]}`)
+			ensureError(t, err, "field schema")
+		})
+		t.Run("double", func(t *testing.T) {
+			_, err := NewCodec(`{"type": "record", "name": "r1", "fields":[{"name": "someLong", "type": "long", "default": 0},{"name": "someInt", "type": "int", "default": 0},{"name": "someFloat", "type": "float", "default": 0},{"name": "someDouble", "type": "double", "default": "0"}]}`)
+			ensureError(t, err, "field schema")
+		})
+	})
+
+	t.Run("union of int and long", func(t *testing.T) {
+		t.Skip("FIXME: should encode default value as int64 rather than float64")
+
+		codec, err := NewCodec(`{"type":"record","name":"r1","fields":[{"name":"f1","type":["int","long"],"default":13}]}`)
+		ensureError(t, err)
+
+		r1, _, err := codec.NativeFromTextual([]byte("{}"))
+		ensureError(t, err)
+
+		r1m := r1.(map[string]interface{})
+
+		someUnion := r1m["f1"]
+		someMap, ok := someUnion.(map[string]interface{})
+		if !ok {
+			t.Fatalf("GOT: %T; WANT: map[string]interface{}", someUnion)
+		}
+		if got, want := len(someMap), 1; got != want {
+			t.Errorf("GOT: %v; WANT: %v", got, want)
+		}
+		t.Logf("someMap: %#v", someMap)
+		for k, v := range someMap {
+			// The "int" type is the first type option of the union.
+			if got, want := k, "int"; got != want {
+				t.Errorf("GOT: %v; WANT: %v", got, want)
+			}
+			switch tv := v.(type) {
+			case int64:
+				if got, want := tv, int64(13); got != want {
+					t.Errorf("GOT: %v; WANT: %v", got, want)
+				}
+			default:
+				t.Errorf("GOT: %T; WANT: int64", v)
+			}
+		}
+	})
 }
