@@ -11,6 +11,9 @@ package goavro
 
 import (
 	"bytes"
+	"os"
+	"path/filepath"
+	"strconv"
 	"testing"
 )
 
@@ -100,3 +103,31 @@ func TestReadOCFHeaderMetadataSyncMarker(t *testing.T) {
 // func TestOCFReaderRead(t *testing.T) {
 // 	testOCFReader(t,
 // }
+
+func TestOCFReaderBlock(t *testing.T) {
+	fh, err := os.Open(filepath.Join("fixtures", "temp3.avro"))
+	ensureError(t, err)
+	defer fh.Close()
+
+	ocfr, err := NewOCFReader(fh)
+	ensureError(t, err)
+
+	codec := ocfr.Codec()
+
+	var data []string
+
+	for ocfr.Scan() {
+		block, err := ocfr.Block()
+		ensureError(t, err)
+
+		var datum interface{}
+		for i := 0; i < block.Count; i++ {
+			datum, block.Blob, err = codec.NativeFromBinary(block.Blob)
+			ensureError(t, err)
+			data = append(data, strconv.FormatInt(datum.(int64), 10))
+		}
+	}
+	ensureError(t, ocfr.Err())
+
+	ensureStringSlicesMatch(t, data, []string{"13", "42"})
+}

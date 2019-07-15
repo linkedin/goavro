@@ -261,3 +261,38 @@ func (ocfr *OCFReader) SkipThisBlockAndReset() {
 	ocfr.block = ocfr.block[:0]
 	ocfr.rerr = nil
 }
+
+// OCFBlock represents a single decompressed block from an OCF file.  The block
+// has Count items in it, each of which is binary encoded and concatenated
+// against one another without demarcation in the Blob byte slice.
+type OCFBlock struct {
+	// Blob holds the decompressed bytes of concatenated binary Avro blobs.
+	Blob []byte
+
+	// Count is the number of data values in this block.
+	Count int
+}
+
+// Block returns a OCFBlock representing the decompressed binary Avro bytes for
+// the current block in the OCF file.  Most applications would not use this
+// method, but invoke the Read() method instead.
+func (ocfr *OCFReader) Block() (*OCFBlock, error) {
+	// NOTE: Test previous error before testing readReady to prevent overwriting
+	// previous error.
+	if ocfr.rerr != nil {
+		return nil, ocfr.rerr
+	}
+	if !ocfr.readReady {
+		ocfr.rerr = errors.New("Read called without successful Scan")
+		return nil, ocfr.rerr
+	}
+	ocfr.readReady = false
+
+	block := &OCFBlock{Blob: ocfr.block, Count: int(ocfr.remainingBlockItems)}
+
+	// Clear fields out so next Scan will populate a new block.
+	ocfr.block = ocfr.block[:0]
+	ocfr.remainingBlockItems = 0
+
+	return block, nil
+}
