@@ -184,6 +184,20 @@ func TestCanonicalSchema(t *testing.T) {
 			Canonical: `{"name":"foo","type":"fixed","size":15}`,
 		},
 
+		// [LOGICAL TYPES] Simplify logical types that annotate primitive types
+		{
+			Schema:    `{"type":"long","logicalType":"timestamp-millis"}`,
+			Canonical: `"long"`,
+		},
+		{
+			Schema:    `{"type":"fixed", "logicalType":"custom-md5", "size":16, "name":"md5"}`,
+			Canonical: `{"name":"md5","type":"fixed","size":16}`,
+		},
+		{
+			Schema:    `{"name":"logicalRecord", "type":"record", "logicalType":"logicalRecord", "fields":[{"name":"value", "type":"long"}]}`,
+			Canonical: `{"name":"logicalRecord","type":"record","fields":[{"name":"value","type":"long"}]}`,
+		},
+
 		// [STRINGS] For all JSON string literals in the schema text, replace
 		// any escaped characters (e.g., \uXXXX escapes) with their UTF-8
 		// equivalents.

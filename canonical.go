@@ -90,10 +90,24 @@ func pcfObject(jsonMap map[string]interface{}, parentNamespace string, typeLooku
 
 	for k, v := range jsonMap {
 
-		// Reduce primitive schemas to their simple form.
-		if len(jsonMap) == 1 && k == "type" {
-			if t, ok := v.(string); ok {
-				return "\"" + t + "\"", nil
+		for k, v := range jsonMap {
+
+			if k == "type" {
+				// Reduce primitive schemas to their simple form.
+				if len(jsonMap) == 1 {
+					if t, ok := v.(string); ok {
+						return "\"" + t + "\"", nil
+					}
+				} else {
+					// Reduce logical types that annotate Avro primitive types
+					if k == "type" {
+						if _, ok := jsonMap["logicalType"]; ok {
+							if annotatedType, ok := jsonMap["type"]; ok {
+								return "\"" + annotatedType.(string) + "\"", nil
+							}
+						}
+					}
+				}
 			}
 		}
 
