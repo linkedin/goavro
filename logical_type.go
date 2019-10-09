@@ -250,11 +250,8 @@ func nativeFromDecimalBytes(fn toNativeFn, precision, scale int) toNativeFn {
 		}
 		i := big.NewInt(0)
 		fromSignedBytes(i, bs)
-		if i.BitLen() > 64 {
-			// Avro spec specifies we return underlying type if the logicalType is invalid
-			return d, b, err
-		}
-		r := big.NewRat(i.Int64(), int64(math.Pow10(scale)))
+		r := new(big.Rat)
+		r.SetFrac(i, big.NewInt(int64(math.Pow10(scale))))
 		return r, b, nil
 	}
 }
