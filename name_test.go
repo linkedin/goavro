@@ -82,3 +82,19 @@ func TestNameWithoutDotsButWithEmptyNamespaceAndEnclosingName(t *testing.T) {
 		t.Errorf("GOT: %#v; WANT: %#v", actual, expected)
 	}
 }
+
+func TestNewNameFromSchemaMap(t *testing.T) {
+	n, err := newNameFromSchemaMap(nullNamespace, map[string]interface{}{
+		"name":      "foo",
+		"namespace": "",
+		"type":      map[string]interface{}{},
+	})
+	ensureError(t, err)
+
+	if got, want := n.fullName, "foo"; got != want {
+		t.Errorf("GOT: %q; WANT: %q", got, want)
+	}
+	if got, want := n.namespace, ""; got != want {
+		t.Errorf("GOT: %q; WANT: %q", got, want)
+	}
+}

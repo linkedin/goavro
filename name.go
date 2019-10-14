@@ -121,8 +121,8 @@ func newNameFromSchemaMap(enclosingNamespace string, schemaMap map[string]interf
 	}
 	if namespace, ok := schemaMap["namespace"]; ok {
 		namespaceString, ok = namespace.(string)
-		if !ok || namespaceString == nullNamespace {
-			return nil, fmt.Errorf("schema namespace, if provided, ought to be non-empty string; received: %T: %v", namespace, namespace)
+		if !ok {
+			return nil, fmt.Errorf("schema namespace, if provided, ought to be a string; received: %T: %v", namespace, namespace)
 		}
 	}
 
