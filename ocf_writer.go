@@ -106,6 +106,27 @@ func NewOCFWriter(config OCFConfig) (*OCFWriter, error) {
 	return ocf, nil // another happy case for creation of new OCF
 }
 
+// NewOCFWriterAppender returns a new OCFWriter instance that may be used only for appending
+// binary Avro data to an existing OCF file. 'existingFile' is using for reading header from
+// the existing OCF file. 'output' is a io.Writer that appending data to the end of the existing file
+func NewOCFWriterAppender(existingFile io.Reader, output io.Writer) (*OCFWriter, error) {
+	if existingFile == nil {
+		return nil, fmt.Errorf("cannot create OCFWriter: 'existingFile' can't be <nil>")
+	}
+	if output == nil {
+		return nil, fmt.Errorf("cannot create OCFWriter: 'output' can't be <nil>")
+	}
+
+	var err error
+
+	ocf := &OCFWriter{iow: output}
+	if ocf.header, err = readOCFHeader(existingFile); err != nil {
+		return nil, fmt.Errorf("cannot create OCFWriter: %s", err)
+	}
+
+	return ocf, nil
+}
+
 // quickScanToTail advances the stream reader to the tail end of the
 // file. Rather than reading each encoded block, optionally decompressing it,
 // and then decoding it, this method reads the block count, ignoring it, then
