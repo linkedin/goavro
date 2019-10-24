@@ -132,11 +132,19 @@ func nativeFromTimeStampMillis(fn toNativeFn) toNativeFn {
 
 func timeStampMillisFromNative(fn fromNativeFn) fromNativeFn {
 	return func(b []byte, d interface{}) ([]byte, error) {
+		var millisecs int64
 		t, ok := d.(time.Time)
 		if !ok {
-			return nil, fmt.Errorf("cannot transform binary timestamp-millis, expected time.Time, received %T", d)
+			td, ok := d.(float64)
+			if !ok {
+				return nil, fmt.Errorf("cannot transform binary timestamp-millis, expected time.Time or float64, received %T", d)
+			}
+
+			millisecs = int64(td)
+		} else {
+			millisecs = t.UnixNano() / int64(time.Millisecond)
 		}
-		millisecs := t.UnixNano() / int64(time.Millisecond)
+
 		return fn(b, millisecs)
 	}
 }
