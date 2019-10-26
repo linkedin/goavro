@@ -10,12 +10,17 @@
 package goavro
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"math"
 	"reflect"
+	"strings"
 )
+
+var	baseCodecsByDecodingOrder = []string{"null", "union", "map", "array", "boolean", "bytes", "string", "double", "float", "long", "int"}
+
 
 func makeMapCodec(st map[string]*Codec, namespace string, schemaMap map[string]interface{}) (*Codec, error) {
 	// map type must have values
@@ -149,6 +154,68 @@ func makeMapCodec(st map[string]*Codec, namespace string, schemaMap map[string]i
 	}, nil
 }
 
+func StringSliceContains(s []string, v string) bool {
+	for _, ss := range s {
+		if strings.EqualFold(ss, v) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func advanceWithoutConsume(buf []byte) (string, error) {
+
+	fmt.Println(string(buf))
+
+	buflen := len(buf)
+
+	//for _, additionalCodec := range additionalCodecs {
+	//	if buflen > len(additionalCodec)+1 && bytes.Equal(buf[:len(additionalCodec)+2], []byte("{\""+additionalCodec)) {
+	//		return additionalCodec, nil
+	//	}
+	//}
+
+	// detect null
+	if len(buf) > 3 && bytes.Equal(buf[:4], nullBytes) {
+		return "null", nil
+	}
+
+	// detect map
+	if buflen > 0 && bytes.Equal(buf[:1], []byte("{")) {
+		return "map", nil
+	}
+
+	// detect array
+	if buflen > 0 && bytes.Equal(buf[:1], []byte("[")) {
+		return "array", nil
+	}
+
+	// detect boolean
+	if buflen > 3 && bytes.Equal(buf[:4], []byte("true")) || buflen > 4 && bytes.Equal(buf[:5], []byte("false")) {
+			return "boolean", nil
+	}
+
+	// detect bytes / string (all good values)
+	// TODO what's the difference
+	if buflen > 1 && buf[0] == '"'  {
+		return "bytes", nil
+	}
+
+	// detect double
+
+	// detect float
+
+	// detect int
+
+	// detect long
+
+
+
+	// TODO all other types is non-supportive now
+	return "", errors.New("non supportive type")
+}
+
 // genericMapTextDecoder decodes a JSON text blob to a native Go map, using the
 // codecs from codecFromKey, and if a key is not found in that map, from
 // defaultCodec if provided. If defaultCodec is nil, this function returns an
@@ -227,6 +294,104 @@ func genericMapTextDecoder(buf []byte, defaultCodec *Codec, codecFromKey map[str
 	}
 	return nil, nil, io.ErrShortBuffer
 }
+
+func unionMapTextDecoder(buf []byte, defaultCodec *Codec, codecFromKey map[string]*Codec) (interface{}, []byte, error) {
+	//var value interface{}
+	//var err error
+
+	if buf, _ = advanceToNonWhitespace(buf); len(buf) == 0 {
+		return nil, nil, io.ErrShortBuffer
+	}
+
+	// XXX must decode by order
+	// if record, then decode record value first
+OUTER:
+	for key, c := range codecFromKey {
+				if StringSliceContains(baseCodecsByDecodingOrder, key) {
+					continue OUTER
+				}
+
+			value, decodedBuf, err := c.nativeFromTextual(buf)
+			if err == nil {
+				return value, decodedBuf, nil
+			}
+	}
+
+	// then decode value by baseCodecsByDecodingOrder
+	for _, orderedCodecName := range baseCodecsByDecodingOrder {
+		if orderedCodec, ok := codecFromKey[orderedCodecName]; ok {
+			value, decodedBuf, err := orderedCodec.nativeFromTextual(buf)
+			if err == nil {
+				return value, decodedBuf, nil
+			}
+		}
+	}
+
+	// finally try the default codec if non works
+	if defaultCodec != nil {
+		value, decodedBuf, err := defaultCodec.nativeFromTextual(buf)
+		if err == nil {
+			return value, decodedBuf, nil
+		}
+	}
+
+	return nil, nil, fmt.Errorf("cannot decode textual union: cannot determine codec, non codec found from schema %v", codecFromKey)
+//
+//OUTER:
+//	for key, c := range codecFromKey {
+//		if StringSliceContains(baseCodecs, key) {
+//			continue OUTER
+//		}
+//
+//		// decode directly, if no error, then this is the record codec
+//		value, decodedBuf, err := c.nativeFromTextual(buf)
+//		if err == nil {
+//			return value, decodedBuf, nil
+//		}
+//	}
+//
+//	codecType, err := advanceWithoutConsume(buf)
+//	if err != nil {
+//		return nil, nil, err
+//	}
+//
+//	// Find a codec for the key
+//	fieldCodec := codecFromKey[codecType]
+//	if fieldCodec == nil {
+//		fieldCodec = defaultCodec
+//	}
+//	if fieldCodec == nil {
+//		return nil, nil, fmt.Errorf("cannot decode textual union: cannot determine codec: %q", codecType)
+//	}
+//
+//	// if it's non-naive type, fast-forward
+//	//var isRecord bool
+//	//if !StringSliceContains(handledCodecs, codecType) {
+//	//	buf = buf[len(codecType)+4:]
+//	//	if buf, _ = advanceToNonWhitespace(buf); len(buf) == 0 {
+//	//		return nil, nil, io.ErrShortBuffer
+//	//	}
+//	//
+//	//	isRecord = true
+//	//}
+//
+//	// decode value
+//	value, buf, err = fieldCodec.nativeFromTextual(buf)
+//	if err != nil {
+//		return nil, nil, err
+//	}
+//
+//	//if isRecord {
+//	//	if len(buf) > 0 {
+//	//		return value, buf[1:], nil
+//	//	} else {
+//	//		return nil, nil, io.ErrShortBuffer
+//	//	}
+//	//}
+//
+//	return value, buf, nil
+}
+
 
 // genericMapTextEncoder encodes a native Go map to a JSON text blob, using the
 // codecs from codecFromKey, and if a key is not found in that map, from

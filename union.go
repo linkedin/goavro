@@ -133,7 +133,7 @@ func buildCodecForTypeDescribedBySlice(st map[string]*Codec, enclosingNamespace 
 
 			var datum interface{}
 			var err error
-			datum, buf, err = genericMapTextDecoder(buf, nil, codecFromName)
+			datum, buf, err = unionMapTextDecoder(buf, nil, codecFromName)
 			if err != nil {
 				return nil, nil, fmt.Errorf("cannot decode textual union: %s", err)
 			}
