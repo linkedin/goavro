@@ -18,7 +18,7 @@ import (
 	"strings"
 )
 
-var	baseCodecsByDecodingOrder = []string{"null", "union", "map", "array", "boolean", "bytes", "string", "double", "float", "long", "int"}
+var baseCodecsByDecodingOrder = []string{"null", "union", "map", "array", "boolean", "bytes", "string", "double", "float", "long", "int"}
 
 func makeMapCodec(st map[string]*Codec, namespace string, schemaMap map[string]interface{}) (*Codec, error) {
 	// map type must have values
@@ -241,14 +241,14 @@ func unionMapTextDecoder(buf []byte, defaultCodec *Codec, codecFromKey map[strin
 	// if record, then decode record value first
 OUTER:
 	for key, c := range codecFromKey {
-				if stringSliceContains(baseCodecsByDecodingOrder, key) {
-					continue OUTER
-				}
+		if stringSliceContains(baseCodecsByDecodingOrder, key) {
+			continue OUTER
+		}
 
-			value, decodedBuf, err := c.nativeFromTextual(buf)
-			if err == nil {
-				return value, decodedBuf, nil
-			}
+		value, decodedBuf, err := c.nativeFromTextual(buf)
+		if err == nil {
+			return value, decodedBuf, nil
+		}
 	}
 
 	// then decode value by baseCodecsByDecodingOrder
@@ -271,7 +271,6 @@ OUTER:
 
 	return nil, nil, fmt.Errorf("cannot decode textual union: cannot determine codec, non codec found from schema %v", codecFromKey)
 }
-
 
 // genericMapTextEncoder encodes a native Go map to a JSON text blob, using the
 // codecs from codecFromKey, and if a key is not found in that map, from
