@@ -158,7 +158,7 @@ func (ocfw *OCFWriter) quickScanToTail(ior io.Reader) error {
 // more data items in the slice than MaxBlockCount allows, the data slice will
 // be chunked into multiple blocks, each not having more than MaxBlockCount
 // items.
-func (ocfw *OCFWriter) Append(data interface{}) error {
+func (ocfw *OCFWriter) Append(data interface{}) (int, error) {
 	arrayValues, err := convertArray(data)
 	if err != nil {
 		return err
@@ -174,7 +174,7 @@ func (ocfw *OCFWriter) Append(data interface{}) error {
 	return ocfw.appendDataIntoBlock(arrayValues)
 }
 
-func (ocfw *OCFWriter) appendDataIntoBlock(data []interface{}) error {
+func (ocfw *OCFWriter) appendDataIntoBlock(data []interface{}) (int, error) {
 	var block []byte // working buffer for encoding data values
 	var err error
 
@@ -224,8 +224,8 @@ func (ocfw *OCFWriter) appendDataIntoBlock(data []interface{}) error {
 	buf = append(buf, block...)                      // serialized objects
 	buf = append(buf, ocfw.header.syncMarker[:]...)  // sync marker
 
-	_, err = ocfw.iow.Write(buf)
-	return err
+	n, err = ocfw.iow.Write(buf)
+	return n, err
 }
 
 // Codec returns the codec used by OCFWriter. This function provided because
