@@ -166,7 +166,7 @@ func (ocfw *OCFWriter) Append(data interface{}) (int, error) {
 
 	// Chunk data so no block has more than MaxBlockCount items.
 	for int64(len(arrayValues)) > MaxBlockCount {
-		if n, err := ocfw.appendDataIntoBlock(arrayValues[:MaxBlockCount]); err != nil {
+		if _, err := ocfw.appendDataIntoBlock(arrayValues[:MaxBlockCount]); err != nil {
 			return 0, err
 		}
 		arrayValues = arrayValues[MaxBlockCount:]
