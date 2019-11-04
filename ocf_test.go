@@ -39,7 +39,7 @@ func testOCFRoundTripWithHeaders(t *testing.T, compressionName string, headers m
 
 	valuesToWrite := []int64{13, 42, -12, -1234}
 
-	if err = ocfw.Append(valuesToWrite); err != nil {
+	if _, err = ocfw.Append(valuesToWrite); err != nil {
 		t.Fatal(err)
 	}
 
