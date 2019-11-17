@@ -155,6 +155,10 @@ func StringMapToUser(data map[string]interface{}) *User {
 							if value, ok := v.(string); ok {
 								add.City = value
 							}
+						case "State":
+							if value, ok := v.(string); ok {
+								add.State = value
+							}
 						case "Zip":
 							if value, ok := v.(int); ok {
 								add.Zip = value
