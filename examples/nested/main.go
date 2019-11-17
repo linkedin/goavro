@@ -160,8 +160,8 @@ func StringMapToUser(data map[string]interface{}) *User {
 								add.State = value
 							}
 						case "Zip":
-							if value, ok := v.(int); ok {
-								add.Zip = value
+							if value, ok := v.(int32); ok {
+								add.Zip = int(value)
 							}
 						}
 					}
