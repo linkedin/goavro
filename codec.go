@@ -540,11 +540,26 @@ func buildCodecForTypeDescribedByString(st map[string]*Codec, enclosingNamespace
 		isLogicalType = true
 		searchType = fmt.Sprintf("%s.%s", typeName, lt)
 	}
+
 	// NOTE: When codec already exists, return it. This includes both primitive and
 	// logicalType codecs added in NewCodec, and user-defined types, added while
 	// building the codec.
 	if cd, ok := st[searchType]; ok {
-		return cd, nil
+
+		// For "bytes.decimal" types verify that the scale and precision in this schema map match a cached codec before
+		// using the cached codec in favor of creating a new codec.
+		if searchType == "bytes.decimal" {
+
+			// Search the cached codecs for a "bytes.decimal" codec  with a "precision" and "scale" specified in the key,
+			// only if that matches return the cached codec. Otherwise, create a new codec for this "bytes.decimal".
+			decimalSearchType := fmt.Sprintf("bytes.decimal.%d.%d", int(schemaMap["precision"].(float64)), int(schemaMap["scale"].(float64)))
+			if cd2, ok := st[decimalSearchType]; ok {
+				return cd2, nil
+			}
+
+		} else {
+			return cd, nil
+		}
 	}
 
 	// Avro specification allows abbreviation of type name inside a namespace.
