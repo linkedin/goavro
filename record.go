@@ -10,6 +10,7 @@
 package goavro
 
 import (
+	"encoding/json"
 	"fmt"
 )
 
@@ -229,5 +230,93 @@ func makeRecordCodec(st map[string]*Codec, enclosingNamespace string, schemaMap 
 		return genericMapTextEncoder(buf, datum, nil, codecFromFieldName)
 	}
 
+	c.simpleTextualFromNative = func(buf []byte, datum interface{}) ([]byte, error) {
+		// NOTE: Ensure only schema defined field names are encoded; and if
+		// missing in datum, either use the provided field default value or
+		// return an error.
+		sourceMap, ok := datum.(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("cannot encode textual record %q: expected map[string]interface{}; received: %T", c.typeName, datum)
+		}
+		destMap := make(map[string]interface{}, len(codecFromIndex))
+		for fieldName := range codecFromFieldName {
+			fieldValue, ok := sourceMap[fieldName]
+			if !ok {
+				defaultValue, ok := defaultValueFromName[fieldName]
+				if !ok {
+					return nil, fmt.Errorf("cannot encode textual record %q field %q: schema does not specify default value and no value provided", c.typeName, fieldName)
+				}
+				fieldValue = defaultValue
+			}
+			destMap[fieldName] = fieldValue
+		}
+		datum = destMap
+		// NOTE: Setting `defaultCodec == nil` instructs genericMapTextEncoder
+		// to return an error when a field name is not found in the
+		// codecFromFieldName map.
+		return simpleRecordEncoder(buf, datum, codecFromFieldName)
+	}
+
 	return c, nil
+}
+
+func simpleRecordEncoder(buf []byte, datum interface{}, codecFromKey map[string]*Codec) ([]byte, error) {
+	mapValues, err := convertMap(datum)
+	if err != nil {
+		return nil, fmt.Errorf("cannot encode textual map: %s", err)
+	}
+
+	var atLeastOne bool
+
+	buf = append(buf, '{')
+
+	for key, value := range mapValues {
+		atLeastOne = true
+
+		// Find a codec for the key
+		fieldCodec := codecFromKey[key]
+		if fieldCodec == nil {
+			return nil, fmt.Errorf("cannot encode textual map: cannot determine codec: %q", key)
+		}
+		// Encode key string
+		buf, err = stringTextualFromNative(buf, key)
+		if err != nil {
+			return nil, err
+		}
+		buf = append(buf, ':')
+
+		b, err := fieldCodec.textualFromNative(nil, value)
+		if err != nil {
+			return nil, fmt.Errorf("cannot encode textual map: value for %q does not match its schema: %s", key, err)
+		}
+
+		var v interface{}
+		if err := json.Unmarshal(b, &v); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal")
+		}
+
+		if vm, ok := v.(map[string]interface{}); ok {
+			v = getFirstElem(vm)
+		}
+		// f := getFirstElem(v)
+		elem, err := json.Marshal(v)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal")
+		}
+		buf = append(buf, elem...)
+
+		buf = append(buf, ',')
+	}
+
+	if atLeastOne {
+		return append(buf[:len(buf)-1], '}'), nil
+	}
+	return append(buf, '}'), nil
+}
+
+func getFirstElem(m map[string]interface{}) interface{} {
+	for _, v := range m {
+		return v
+	}
+	return nil
 }
