@@ -298,7 +298,6 @@ func simpleRecordEncoder(buf []byte, datum interface{}, codecFromKey map[string]
 		if vm, ok := v.(map[string]interface{}); ok {
 			v = getFirstElem(vm)
 		}
-		// f := getFirstElem(v)
 		elem, err := json.Marshal(v)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal")
