@@ -92,6 +92,10 @@ func TestOCFWriterCompressionSnappy(t *testing.T) {
 	testOCFRoundTrip(t, CompressionSnappyLabel)
 }
 
+func TestOCFWriterCompressionBzip2(t *testing.T) {
+	testOCFRoundTrip(t, CompressionBzip2Label)
+}
+
 func TestOCFWriterWithApplicationMetaData(t *testing.T) {
 	testOCFRoundTripWithHeaders(t, CompressionNullLabel, map[string][]byte{"foo": []byte("BOING"), "goo": []byte("zoo")})
 }

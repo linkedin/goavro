@@ -20,6 +20,7 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/dsnet/compress/bzip2"
 	"github.com/golang/snappy"
 )
 
@@ -211,6 +212,17 @@ func (ocfw *OCFWriter) appendDataIntoBlock(data []interface{}) error {
 		binary.BigEndian.PutUint32(compressed[len(compressed)-4:], crc32.ChecksumIEEE(block)) // checksum of decompressed block
 
 		block = compressed
+
+	case compressionBzip2:
+		bb := bytes.NewBuffer(make([]byte, 0, len(block)))
+		cw, _ := bzip2.NewWriter(bb, &bzip2.WriterConfig{Level: 9})
+		if _, err := cw.Write(block); err != nil {
+			return err
+		}
+		if err := cw.Close(); err != nil {
+			return err
+		}
+		block = bb.Bytes()
 
 	default:
 		return fmt.Errorf("should not get here: cannot compress block using unrecognized compression: %d", ocfw.header.compressionID)

@@ -28,6 +28,10 @@ const (
 	// CompressionSnappyLabel is used when OCF blocks are compressed using the
 	// snappy algorithm.
 	CompressionSnappyLabel = "snappy"
+
+	// CompressionBzip2Label is used when OCF blocks are compressed using the
+	// bzip2 algorithm.
+	CompressionBzip2Label = "bzip2"
 )
 
 // compressionID are values used to specify compression algorithm used to compress
@@ -38,6 +42,7 @@ const (
 	compressionNull compressionID = iota
 	compressionDeflate
 	compressionSnappy
+	compressionBzip2
 )
 
 const (
@@ -81,6 +86,8 @@ func newOCFHeader(config OCFConfig) (*ocfHeader, error) {
 		header.compressionID = compressionDeflate
 	case CompressionSnappyLabel:
 		header.compressionID = compressionSnappy
+	case CompressionBzip2Label:
+		header.compressionID = compressionBzip2
 	default:
 		return nil, fmt.Errorf("cannot create OCF header using unrecognized compression algorithm: %q", config.CompressionName)
 	}
@@ -153,6 +160,8 @@ func readOCFHeader(ior io.Reader) (*ocfHeader, error) {
 			cID = compressionDeflate
 		case CompressionSnappyLabel:
 			cID = compressionSnappy
+		case CompressionBzip2Label:
+			cID = compressionBzip2
 		default:
 			return nil, fmt.Errorf("cannot read OCF header using unrecognized compression algorithm from avro.codec: %q", avroCodec)
 		}
@@ -197,6 +206,8 @@ func writeOCFHeader(header *ocfHeader, iow io.Writer) (err error) {
 		avroCodec = CompressionDeflateLabel
 	case compressionSnappy:
 		avroCodec = CompressionSnappyLabel
+	case compressionBzip2:
+		avroCodec = CompressionBzip2Label
 	default:
 		return fmt.Errorf("should not get here: cannot write OCF header using unrecognized compression algorithm: %d", header.compressionID)
 	}
