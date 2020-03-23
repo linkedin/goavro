@@ -32,6 +32,10 @@ const (
 	// CompressionBzip2Label is used when OCF blocks are compressed using the
 	// bzip2 algorithm.
 	CompressionBzip2Label = "bzip2"
+
+	// CompressionZstdLabel is used when OCF blocks are compressed using the
+	// ZStandart algorithm.
+	CompressionZstdLabel = "zstandard"
 )
 
 // compressionID are values used to specify compression algorithm used to compress
@@ -43,6 +47,7 @@ const (
 	compressionDeflate
 	compressionSnappy
 	compressionBzip2
+	compressionZstd
 )
 
 const (
@@ -88,6 +93,8 @@ func newOCFHeader(config OCFConfig) (*ocfHeader, error) {
 		header.compressionID = compressionSnappy
 	case CompressionBzip2Label:
 		header.compressionID = compressionBzip2
+	case CompressionZstdLabel:
+		header.compressionID = compressionZstd
 	default:
 		return nil, fmt.Errorf("cannot create OCF header using unrecognized compression algorithm: %q", config.CompressionName)
 	}
@@ -162,6 +169,8 @@ func readOCFHeader(ior io.Reader) (*ocfHeader, error) {
 			cID = compressionSnappy
 		case CompressionBzip2Label:
 			cID = compressionBzip2
+		case CompressionZstdLabel:
+			cID = compressionZstd
 		default:
 			return nil, fmt.Errorf("cannot read OCF header using unrecognized compression algorithm from avro.codec: %q", avroCodec)
 		}
@@ -208,6 +217,8 @@ func writeOCFHeader(header *ocfHeader, iow io.Writer) (err error) {
 		avroCodec = CompressionSnappyLabel
 	case compressionBzip2:
 		avroCodec = CompressionBzip2Label
+	case compressionZstd:
+		avroCodec = CompressionZstdLabel
 	default:
 		return fmt.Errorf("should not get here: cannot write OCF header using unrecognized compression algorithm: %d", header.compressionID)
 	}
