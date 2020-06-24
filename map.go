@@ -204,7 +204,7 @@ func genericMapTextDecoder(buf []byte, defaultCodec *Codec, codecFromKey map[str
 		}
 		value, buf, err = fieldCodec.nativeFromTextual(buf)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, fmt.Errorf("%s for key: %q", err.Error(), key)
 		}
 		// set map value for key
 		mapValues[key] = value
