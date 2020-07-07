@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"regexp"
 	"time"
 )
 
@@ -302,6 +303,43 @@ func makeDecimalFixedCodec(st map[string]*Codec, enclosingNamespace string, sche
 	c.nativeFromBinary = nativeFromDecimalBytes(c.nativeFromBinary, precision, scale)
 	c.nativeFromTextual = nativeFromDecimalBytes(c.nativeFromTextual, precision, scale)
 	return c, nil
+}
+
+func makeValidatedStringCodec(st map[string]*Codec, enclosingNamespace string, schemaMap map[string]interface{}) (*Codec, error) {
+	pattern, ok := schemaMap["pattern"]
+	if !ok {
+		return nil, errors.New("cannot create validated-string logical type without pattern")
+	}
+	if _, ok := schemaMap["name"]; !ok {
+		schemaMap["name"] = "string.validated-string"
+	}
+	c, err := registerNewCodec(st, schemaMap, enclosingNamespace)
+	if err != nil {
+		return nil, err
+	}
+
+	c.nativeFromBinary = nativeFromValidatedString(c.nativeFromBinary, pattern.(string))
+	c.nativeFromTextual = nativeFromValidatedString(c.nativeFromTextual, pattern.(string))
+	return c, nil
+}
+
+func nativeFromValidatedString(fn toNativeFn, pattern string) toNativeFn {
+	return func(bytes []byte) (interface{}, []byte, error) {
+		d, b, err := fn(bytes)
+		if err != nil {
+			return d, b, err
+		}
+		bs, ok := d.(string)
+		if !ok {
+			return nil, bytes, fmt.Errorf("cannot transform to native validated-string, expected string, received %T", d)
+		}
+
+		if ok, err = regexp.MatchString(pattern, bs); !ok {
+			return nil, bytes, fmt.Errorf("invalid string: %T, doesn't meet the pattern: %T", bs, pattern)
+		}
+
+		return b, b, nil
+	}
 }
 
 func padBytes(bytes []byte, fixedSize uint) []byte {

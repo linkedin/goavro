@@ -113,8 +113,29 @@ func TestDecimalFixedLogicalTypeEncode(t *testing.T) {
 
 func TestDecimalBytesLogicalTypeInRecordEncode(t *testing.T) {
 	schema := `{"type": "record", "name": "myrecord", "fields" : [
-	       {"name": "mydecimal", "type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2}]}`
+		   {"name": "mydecimal", "type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2}]}`
+	testSchemaValid(t, schema)
 	testBinaryCodecPass(t, schema, map[string]interface{}{"mydecimal": big.NewRat(617, 50)}, []byte("\x04\x04\xd2"))
+}
+
+func TestValidatedStringLogicalTypeInRecordEncode(t *testing.T) {
+	schema := `{
+		"type": "record",
+		"name": "myrecord",
+		"fields": [
+			{
+				"name": "number",
+				"doc": "Phone number inside the national network. Length between 4-14",
+				"type":  [{
+					  "type": "string",
+					  "logicalType": "validated-string",
+					  "pattern": "^[\\d]{4,14}$"
+				}]
+			}
+		]
+	  }`
+	testSchemaValid(t, schema)
+	//testBinaryCodecPass(t, schema, map[string]interface{}{"number": "626781918"}, []byte("\x04\x04\xd2"))
 }
 
 func ExampleUnion_logicalType() {
