@@ -37,7 +37,7 @@ package main
 import (
 	"os"
 
-	"github.com/linkedin/goavro"
+	"github.com/dbr65/goavro"
 )
 
 const loginEventAvroSchema = `{"type": "record", "name": "LoginEvent", "fields": [{"name": "Username", "type": "string"}]}`
