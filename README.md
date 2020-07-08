@@ -14,19 +14,19 @@ be fully compliant with the most recent version of the
 ## Dependency Notice
 
 All usage of `gopkg.in` has been removed in favor of Go modules.
-Please update your import paths to `github.com/dbr65/goavro/v2`.  v1
+Please update your import paths to `github.com/linkedin/goavro/v2`.  v1
 users can still use old versions of goavro by adding a constraint to
 your `go.mod` or `Gopkg.toml` file.
 
 ```
 require (
-    github.com/dbr65/goavro v1.0.5
+    github.com/linkedin/goavro v1.0.5
 )
 ```
 
 ```toml
 [[constraint]]
-name = "github.com/dbr65/goavro"
+name = "github.com/linkedin/goavro"
 version = "=1.0.5"
 ```
 
@@ -134,7 +134,7 @@ goavro `Codec` instances to encode or decode data.
 ## Usage
 
 Documentation is available via
-[![GoDoc](https://godoc.org/github.com/dbr65/goavro?status.svg)](https://godoc.org/github.com/dbr65/goavro).
+[![GoDoc](https://godoc.org/github.com/linkedin/goavro?status.svg)](https://godoc.org/github.com/linkedin/goavro).
 
 ```Go
 package main
@@ -142,7 +142,7 @@ package main
 import (
     "fmt"
 
-    "github.com/dbr65/goavro"
+    "github.com/linkedin/goavro"
 )
 
 func main() {
