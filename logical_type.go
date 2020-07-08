@@ -318,27 +318,48 @@ func makeValidatedStringCodec(st map[string]*Codec, enclosingNamespace string, s
 		return nil, err
 	}
 
-	c.nativeFromBinary = nativeFromValidatedString(c.nativeFromBinary, pattern.(string))
-	c.nativeFromTextual = nativeFromValidatedString(c.nativeFromTextual, pattern.(string))
+	c.binaryFromNative = validatedStringBinaryFromNative(c.binaryFromNative, pattern.(string))
+	c.textualFromNative = validatedStringTextualFromNative(c.textualFromNative, pattern.(string))
+	c.nativeFromBinary = validatedStringNativeFromBinary(c.nativeFromBinary, pattern.(string))
+	c.nativeFromTextual = validatedStringNativeFromTextual(c.nativeFromTextual, pattern.(string))
 	return c, nil
 }
 
-func nativeFromValidatedString(fn toNativeFn, pattern string) toNativeFn {
+func validatedStringBinaryFromNative(fromNativeFn fromNativeFn, pattern string) fromNativeFn {
+	return func(b []byte, d interface{}) ([]byte, error) {
+		return stringBinaryFromNative(b, d)
+	}
+}
+
+func validatedStringTextualFromNative(fromNativeFn fromNativeFn, pattern string) fromNativeFn {
+	return func(b []byte, d interface{}) ([]byte, error) {
+		return stringTextualFromNative(b, d)
+	}
+}
+
+func validatedStringNativeFromBinary(fn toNativeFn, pattern string) toNativeFn {
 	return func(bytes []byte) (interface{}, []byte, error) {
-		d, b, err := fn(bytes)
-		if err != nil {
-			return d, b, err
-		}
-		bs, ok := d.(string)
-		if !ok {
-			return nil, bytes, fmt.Errorf("cannot transform to native validated-string, expected string, received %T", d)
+		fn, newBytes, _ := stringNativeFromBinary(bytes)
+
+		result := fn.(string)
+		if ok, _ := regexp.MatchString(pattern, result); !ok {
+			return nil, bytes, fmt.Errorf("invalid string: %s, doesn't meet the pattern: %s", result, pattern)
 		}
 
-		if ok, err = regexp.MatchString(pattern, bs); !ok {
-			return nil, bytes, fmt.Errorf("invalid string: %T, doesn't meet the pattern: %T", bs, pattern)
+		return fn, newBytes, nil
+	}
+}
+
+func validatedStringNativeFromTextual(fn toNativeFn, pattern string) toNativeFn {
+	return func(bytes []byte) (interface{}, []byte, error) {
+		fn, newBytes, _ := stringNativeFromTextual(bytes)
+
+		result := fn.(string)
+		if ok, _ := regexp.MatchString(pattern, result); !ok {
+			return nil, bytes, fmt.Errorf("invalid string: %s, doesn't meet the pattern: %s", result, pattern)
 		}
 
-		return b, b, nil
+		return fn, newBytes, nil
 	}
 }
 
