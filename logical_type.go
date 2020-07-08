@@ -15,11 +15,14 @@ import (
 	"math"
 	"math/big"
 	"regexp"
+	"strings"
 	"time"
 )
 
 type toNativeFn func([]byte) (interface{}, []byte, error)
 type fromNativeFn func([]byte, interface{}) ([]byte, error)
+
+var m = make(map[string]*regexp.Regexp)
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 // date logical type - to/from time.Time, time.UTC location
@@ -306,7 +309,7 @@ func makeDecimalFixedCodec(st map[string]*Codec, enclosingNamespace string, sche
 }
 
 func makeValidatedStringCodec(st map[string]*Codec, enclosingNamespace string, schemaMap map[string]interface{}) (*Codec, error) {
-	pattern, ok := schemaMap["pattern"]
+	patternFn, ok := schemaMap["pattern"]
 	if !ok {
 		return nil, errors.New("cannot create validated-string logical type without pattern")
 	}
@@ -318,10 +321,15 @@ func makeValidatedStringCodec(st map[string]*Codec, enclosingNamespace string, s
 		return nil, err
 	}
 
-	c.binaryFromNative = validatedStringBinaryFromNative(c.binaryFromNative, pattern.(string))
-	c.textualFromNative = validatedStringTextualFromNative(c.textualFromNative, pattern.(string))
-	c.nativeFromBinary = validatedStringNativeFromBinary(c.nativeFromBinary, pattern.(string))
-	c.nativeFromTextual = validatedStringNativeFromTextual(c.nativeFromTextual, pattern.(string))
+	pattern := strings.TrimSpace(patternFn.(string))
+	if m[pattern] == nil {
+		m[pattern] = regexp.MustCompile(pattern)
+	}
+
+	c.binaryFromNative = validatedStringBinaryFromNative(c.binaryFromNative, pattern)
+	c.textualFromNative = validatedStringTextualFromNative(c.textualFromNative, pattern)
+	c.nativeFromBinary = validatedStringNativeFromBinary(c.nativeFromBinary, pattern)
+	c.nativeFromTextual = validatedStringNativeFromTextual(c.nativeFromTextual, pattern)
 	return c, nil
 }
 
@@ -342,7 +350,7 @@ func validatedStringNativeFromBinary(fn toNativeFn, pattern string) toNativeFn {
 		fn, newBytes, _ := stringNativeFromBinary(bytes)
 
 		result := fn.(string)
-		if ok, _ := regexp.MatchString(pattern, result); !ok {
+		if ok := m[pattern].MatchString(result); !ok {
 			return nil, bytes, fmt.Errorf("invalid string: %s, doesn't meet the pattern: %s", result, pattern)
 		}
 
@@ -355,7 +363,7 @@ func validatedStringNativeFromTextual(fn toNativeFn, pattern string) toNativeFn 
 		fn, newBytes, _ := stringNativeFromTextual(bytes)
 
 		result := fn.(string)
-		if ok, _ := regexp.MatchString(pattern, result); !ok {
+		if ok := m[pattern].MatchString(result); !ok {
 			return nil, bytes, fmt.Errorf("invalid string: %s, doesn't meet the pattern: %s", result, pattern)
 		}
 
