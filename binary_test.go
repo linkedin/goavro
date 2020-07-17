@@ -39,7 +39,7 @@ func init() {
 		panic(err)
 	}
 
-	mostNegativeBlockCount, err = c.BinaryFromNative(nil, math.MinInt64)
+	mostNegativeBlockCount, err = c.BinaryFromNative(nil, int64(math.MinInt64))
 	if err != nil {
 		panic(err)
 	}
