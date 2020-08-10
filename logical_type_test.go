@@ -92,6 +92,48 @@ func TestDateLogicalTypeEncode(t *testing.T) {
 	testBinaryCodecPass(t, schema, time.Date(2006, 1, 2, 0, 0, 0, 0, time.UTC), []byte("\xbc\xcd\x01"))
 }
 
+func testGoZeroTime(t *testing.T, schema string, expected []byte) {
+	t.Helper()
+	testBinaryEncodePass(t, schema, time.Time{}, expected)
+
+	codec, err := NewCodec(schema)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	value, remaining, err := codec.NativeFromBinary(expected)
+	if err != nil {
+		t.Fatalf("schema: %s; %s", schema, err)
+	}
+
+	// remaining ought to be empty because there is nothing remaining to be
+	// decoded
+	if actual, expected := len(remaining), 0; actual != expected {
+		t.Errorf("schema: %s; Remaining; Actual: %#v; Expected: %#v", schema, actual, expected)
+	}
+
+	zeroTime, ok := value.(time.Time)
+	if !ok {
+		t.Fatalf("schema: %s, NativeFromBinary: expected time.Time, got %T", schema, value)
+	}
+
+	if !zeroTime.IsZero() {
+		t.Fatalf("schema: %s, Check: time.Time{}.IsZero(), Actual: %t, Expected: true", schema, zeroTime.IsZero())
+	}
+}
+
+func TestDateGoZero(t *testing.T) {
+	testGoZeroTime(t, `{"type": "int", "logicalType": "date"}`, []byte{0xf3, 0xe4, 0x57})
+}
+
+func TestTimeStampMillisGoZero(t *testing.T) {
+	testGoZeroTime(t, `{"type": "long", "logicalType": "timestamp-millis"}`, []byte{0xff, 0xdf, 0xe6, 0xa2, 0xe2, 0xa0, 0x1c})
+}
+
+func TestTimeStampMicrosGoZero(t *testing.T) {
+	testGoZeroTime(t, `{"type": "long", "logicalType": "timestamp-micros"}`, []byte{0xff, 0xff, 0xdd, 0xf2, 0xdf, 0xff, 0xdf, 0xdc, 0x1})
+}
+
 func TestDecimalBytesLogicalTypeEncode(t *testing.T) {
 	schema := `{"type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2}`
 	testBinaryCodecPass(t, schema, big.NewRat(617, 50), []byte("\x04\x04\xd2"))
