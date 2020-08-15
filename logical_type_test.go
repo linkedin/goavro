@@ -11,97 +11,20 @@ package goavro
 
 import (
 	"fmt"
-	"math/big"
 	"testing"
 	"time"
 )
 
-func TestSchemaLogicalType(t *testing.T) {
-	testSchemaValid(t, `{"type": "long", "logicalType": "timestamp-millis"}`)
-	testSchemaInvalid(t, `{"type": "bytes", "logicalType": "decimal"}`, "precision")
-	testSchemaInvalid(t, `{"type": "fixed", "size": 16, "logicalType": "decimal"}`, "precision")
-}
-
-func TestStringLogicalTypeFallback(t *testing.T) {
-	schema := `{"type": "string", "logicalType": "this_logical_type_does_not_exist"}`
-	testSchemaValid(t, schema)
-	testBinaryCodecPass(t, schema, "test string", []byte("\x16\x74\x65\x73\x74\x20\x73\x74\x72\x69\x6e\x67"))
-}
-
-func TestLongLogicalTypeFallback(t *testing.T) {
-	schema := `{"type": "long", "logicalType": "this_logical_type_does_not_exist"}`
-	testSchemaValid(t, schema)
-	testBinaryCodecPass(t, schema, 12345, []byte("\xf2\xc0\x01"))
-}
-
-func TestTimeStampMillisLogicalTypeEncode(t *testing.T) {
-	schema := `{"type": "long", "logicalType": "timestamp-millis"}`
-	testBinaryDecodeFail(t, schema, []byte(""), "short buffer")
-	testBinaryEncodeFail(t, schema, "test", "cannot transform binary timestamp-millis, expected time.Time")
-	testBinaryCodecPass(t, schema, time.Date(2006, 1, 2, 15, 04, 05, 565000000, time.UTC), []byte("\xfa\x82\xac\xba\x91\x42"))
-}
-
-func TestTimeStampMillisLogicalTypeUnionEncode(t *testing.T) {
-	schema := `{"type": ["null", {"type": "long", "logicalType": "timestamp-millis"}]}`
-	testBinaryEncodeFail(t, schema, Union("string", "test"), "cannot encode binary union: no member schema types support datum: allowed types: [null long.timestamp-millis]")
-	testBinaryCodecPass(t, schema, Union("long.timestamp-millis", time.Date(2006, 1, 2, 15, 04, 05, 565000000, time.UTC)), []byte("\x02\xfa\x82\xac\xba\x91\x42"))
-}
-
-func TestTimeStampMicrosLogicalTypeEncode(t *testing.T) {
-	schema := `{"type": "long", "logicalType": "timestamp-micros"}`
-	testBinaryDecodeFail(t, schema, []byte(""), "short buffer")
-	testBinaryEncodeFail(t, schema, "test", "cannot transform binary timestamp-micros, expected time.Time")
-	testBinaryCodecPass(t, schema, time.Date(2006, 1, 2, 15, 04, 05, 565283000, time.UTC), []byte("\xc6\x8d\xf7\xe7\xaf\xd8\x84\x04"))
-}
-
-func TestTimeStampMicrosLogicalTypeUnionEncode(t *testing.T) {
-	schema := `{"type": ["null", {"type": "long", "logicalType": "timestamp-micros"}]}`
-	testBinaryEncodeFail(t, schema, Union("string", "test"), "cannot encode binary union: no member schema types support datum: allowed types: [null long.timestamp-micros]")
-	testBinaryCodecPass(t, schema, Union("long.timestamp-micros", time.Date(2006, 1, 2, 15, 04, 05, 565283000, time.UTC)), []byte("\x02\xc6\x8d\xf7\xe7\xaf\xd8\x84\x04"))
-}
-
-func TestTimeMillisLogicalTypeEncode(t *testing.T) {
-	schema := `{"type": "int", "logicalType": "time-millis"}`
-	testBinaryDecodeFail(t, schema, []byte(""), "short buffer")
-	testBinaryEncodeFail(t, schema, "test", "cannot transform to binary time-millis, expected time.Duration")
-	testBinaryCodecPass(t, schema, 66904022*time.Millisecond, []byte("\xac\xff\xe6\x3f"))
-}
-
-func TestTimeMillisLogicalTypeUnionEncode(t *testing.T) {
-	schema := `{"type": ["null", {"type": "int", "logicalType": "time-millis"}]}`
-	testBinaryEncodeFail(t, schema, Union("string", "test"), "cannot encode binary union: no member schema types support datum: allowed types: [null int.time-millis]")
-	testBinaryCodecPass(t, schema, Union("int.time-millis", 66904022*time.Millisecond), []byte("\x02\xac\xff\xe6\x3f"))
-}
-
-func TestTimeMicrosLogicalTypeEncode(t *testing.T) {
-	schema := `{"type": "long", "logicalType": "time-micros"}`
-	testBinaryDecodeFail(t, schema, []byte(""), "short buffer")
-	testBinaryEncodeFail(t, schema, "test", "cannot transform to binary time-micros, expected time.Duration")
-	testBinaryCodecPass(t, schema, 66904022566*time.Microsecond, []byte("\xcc\xf8\xd2\xbc\xf2\x03"))
-}
-
-func TestTimeMicrosLogicalTypeUnionEncode(t *testing.T) {
-	schema := `{"type": ["null", {"type": "long", "logicalType": "time-micros"}]}`
-	testBinaryEncodeFail(t, schema, Union("string", "test"), "cannot encode binary union: no member schema types support datum: allowed types: [null long.time-micros]")
-	testBinaryCodecPass(t, schema, Union("long.time-micros", 66904022566*time.Microsecond), []byte("\x02\xcc\xf8\xd2\xbc\xf2\x03"))
-}
-func TestDateLogicalTypeEncode(t *testing.T) {
-	schema := `{"type": "int", "logicalType": "date"}`
-	testBinaryDecodeFail(t, schema, []byte(""), "short buffer")
-	testBinaryEncodeFail(t, schema, "test", "cannot transform to binary date, expected time.Time, received string")
-	testBinaryCodecPass(t, schema, time.Date(2006, 1, 2, 0, 0, 0, 0, time.UTC), []byte("\xbc\xcd\x01"))
-}
-
-func testGoZeroTime(t *testing.T, schema string, expected []byte) {
+func testGoZeroTime(t *testing.T, schema string, someBinary []byte) {
 	t.Helper()
-	testBinaryEncodePass(t, schema, time.Time{}, expected)
+	testBinaryEncodePass(t, schema, time.Time{}, someBinary)
 
 	codec, err := NewCodec(schema)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	value, remaining, err := codec.NativeFromBinary(expected)
+	value, remaining, err := codec.NativeFromBinary(someBinary)
 	if err != nil {
 		t.Fatalf("schema: %s; %s", schema, err)
 	}
@@ -122,41 +45,102 @@ func testGoZeroTime(t *testing.T, schema string, expected []byte) {
 	}
 }
 
-func TestDateGoZero(t *testing.T) {
-	testGoZeroTime(t, `{"type": "int", "logicalType": "date"}`, []byte{0xf3, 0xe4, 0x57})
+func TestLogicalType(t *testing.T) {
+	t.Run("schema", func(t *testing.T) {
+		testSchemaValid(t, `{"type": "long", "logicalType": "timestamp-millis"}`)
+	})
+	t.Run("date", func(t *testing.T) {
+		t.Run("decode", func(t *testing.T) {
+			testGoZeroTime(t, `{"type": "int", "logicalType": "date"}`, []byte{0xf3, 0xe4, 0x57})
+		})
+	})
+	t.Run("long", func(t *testing.T) {
+		t.Run("fallback", func(t *testing.T) {
+			schema := `{"type": "long", "logicalType": "this_logical_type_does_not_exist"}`
+			testSchemaValid(t, schema)
+			testBinaryCodecPass(t, schema, 12345, []byte("\xf2\xc0\x01"))
+		})
+	})
+	t.Run("string", func(t *testing.T) {
+		t.Run("fallback", func(t *testing.T) {
+			schema := `{"type": "string", "logicalType": "this_logical_type_does_not_exist"}`
+			testSchemaValid(t, schema)
+			testBinaryCodecPass(t, schema, "test string", []byte("\x16\x74\x65\x73\x74\x20\x73\x74\x72\x69\x6e\x67"))
+		})
+	})
+	t.Run("time", func(t *testing.T) {
+		// Avro time == Go time.Duration
+
+	})
+	t.Run("timestamp", func(t *testing.T) {
+		// Avro timestamp == Go time.Time
+
+		t.Run("millis", func(t *testing.T) {
+			t.Run("encode", func(t *testing.T) {
+				t.Run("int", func(t *testing.T) {
+					schema := `{"type": "int", "logicalType": "time-millis"}`
+					testBinaryDecodeFail(t, schema, []byte(""), "short buffer")
+					testBinaryEncodeFail(t, schema, "test", "cannot transform to binary time-millis, expected time.Duration")
+					testBinaryCodecPass(t, schema, 66904022*time.Millisecond, []byte("\xac\xff\xe6\x3f"))
+					t.Run("union", func(t *testing.T) {
+						schema := `{"type": ["null", {"type": "int", "logicalType": "time-millis"}]}`
+						testBinaryEncodeFail(t, schema, Union("string", "test"), "cannot encode binary union: no member schema types support datum: allowed types: [null int.time-millis]")
+						testBinaryCodecPass(t, schema, Union("int.time-millis", 66904022*time.Millisecond), []byte("\x02\xac\xff\xe6\x3f"))
+					})
+				})
+				t.Run("long", func(t *testing.T) {
+					schema := `{"type": "long", "logicalType": "timestamp-millis"}`
+					testBinaryDecodeFail(t, schema, []byte(""), "short buffer")
+					testBinaryEncodeFail(t, schema, "test", "cannot transform binary timestamp-millis, expected time.Time")
+					testBinaryCodecPass(t, schema, time.Date(2006, 1, 2, 15, 04, 05, 565000000, time.UTC), []byte("\xfa\x82\xac\xba\x91\x42"))
+					t.Run("union", func(t *testing.T) {
+						schema := `{"type": ["null", {"type": "long", "logicalType": "timestamp-millis"}]}`
+						testBinaryEncodeFail(t, schema, Union("string", "test"), "cannot encode binary union: no member schema types support datum: allowed types: [null long.timestamp-millis]")
+						testBinaryCodecPass(t, schema, Union("long.timestamp-millis", time.Date(2006, 1, 2, 15, 04, 05, 565000000, time.UTC)), []byte("\x02\xfa\x82\xac\xba\x91\x42"))
+					})
+					t.Run("go-zero", func(t *testing.T) {
+						testGoZeroTime(t, `{"type": "long", "logicalType": "timestamp-millis"}`, []byte{0xff, 0xdf, 0xe6, 0xa2, 0xe2, 0xa0, 0x1c})
+					})
+				})
+			})
+		})
+		t.Run("micros", func(t *testing.T) {
+			t.Run("encode", func(t *testing.T) {
+				schema := `{"type": "long", "logicalType": "timestamp-micros"}`
+				testBinaryDecodeFail(t, schema, []byte(""), "short buffer")
+				testBinaryEncodeFail(t, schema, "test", "cannot transform binary timestamp-micros, expected time.Time")
+				testBinaryCodecPass(t, schema, time.Date(2006, 1, 2, 15, 04, 05, 565283000, time.UTC), []byte("\xc6\x8d\xf7\xe7\xaf\xd8\x84\x04"))
+			})
+			t.Run("union", func(t *testing.T) {
+				schema := `{"type": ["null", {"type": "long", "logicalType": "timestamp-micros"}]}`
+				testBinaryEncodeFail(t, schema, Union("string", "test"), "cannot encode binary union: no member schema types support datum: allowed types: [null long.timestamp-micros]")
+				testBinaryCodecPass(t, schema, Union("long.timestamp-micros", time.Date(2006, 1, 2, 15, 04, 05, 565283000, time.UTC)), []byte("\x02\xc6\x8d\xf7\xe7\xaf\xd8\x84\x04"))
+			})
+			t.Run("decode", func(t *testing.T) {
+				testGoZeroTime(t, `{"type": "long", "logicalType": "timestamp-micros"}`, []byte{0xff, 0xff, 0xdd, 0xf2, 0xdf, 0xff, 0xdf, 0xdc, 0x1})
+			})
+		})
+
+	})
 }
 
-func TestTimeStampMillisGoZero(t *testing.T) {
-	testGoZeroTime(t, `{"type": "long", "logicalType": "timestamp-millis"}`, []byte{0xff, 0xdf, 0xe6, 0xa2, 0xe2, 0xa0, 0x1c})
+func TestTimeMicrosLogicalTypeEncode(t *testing.T) {
+	schema := `{"type": "long", "logicalType": "time-micros"}`
+	testBinaryDecodeFail(t, schema, []byte(""), "short buffer")
+	testBinaryEncodeFail(t, schema, "test", "cannot transform to binary time-micros, expected time.Duration")
+	testBinaryCodecPass(t, schema, 66904022566*time.Microsecond, []byte("\xcc\xf8\xd2\xbc\xf2\x03"))
 }
 
-func TestTimeStampMicrosGoZero(t *testing.T) {
-	testGoZeroTime(t, `{"type": "long", "logicalType": "timestamp-micros"}`, []byte{0xff, 0xff, 0xdd, 0xf2, 0xdf, 0xff, 0xdf, 0xdc, 0x1})
+func TestTimeMicrosLogicalTypeUnionEncode(t *testing.T) {
+	schema := `{"type": ["null", {"type": "long", "logicalType": "time-micros"}]}`
+	testBinaryEncodeFail(t, schema, Union("string", "test"), "cannot encode binary union: no member schema types support datum: allowed types: [null long.time-micros]")
+	testBinaryCodecPass(t, schema, Union("long.time-micros", 66904022566*time.Microsecond), []byte("\x02\xcc\xf8\xd2\xbc\xf2\x03"))
 }
-
-func TestDecimalBytesLogicalTypeEncode(t *testing.T) {
-	schema := `{"type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2}`
-	testBinaryCodecPass(t, schema, big.NewRat(617, 50), []byte("\x04\x04\xd2"))
-	testBinaryCodecPass(t, schema, big.NewRat(-617, 50), []byte("\x04\xfb\x2e"))
-	testBinaryCodecPass(t, schema, big.NewRat(0, 1), []byte("\x02\x00"))
-}
-
-func TestDecimalFixedLogicalTypeEncode(t *testing.T) {
-	schema := `{"type": "fixed", "size": 12, "logicalType": "decimal", "precision": 4, "scale": 2}`
-	testBinaryCodecPass(t, schema, big.NewRat(617, 50), []byte("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x04\xd2"))
-	testBinaryCodecPass(t, schema, big.NewRat(-617, 50), []byte("\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xfb\x2e"))
-	testBinaryCodecPass(t, schema, big.NewRat(25, 4), []byte("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x71"))
-	testBinaryCodecPass(t, schema, big.NewRat(33, 100), []byte("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x21"))
-	schema0scale := `{"type": "fixed", "size": 12, "logicalType": "decimal", "precision": 4, "scale": 0}`
-	// Encodes to 12 due to scale: 0
-	testBinaryEncodePass(t, schema0scale, big.NewRat(617, 50), []byte("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x0c"))
-	testBinaryDecodePass(t, schema0scale, big.NewRat(12, 1), []byte("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x0c"))
-}
-
-func TestDecimalBytesLogicalTypeInRecordEncode(t *testing.T) {
-	schema := `{"type": "record", "name": "myrecord", "fields" : [
-	       {"name": "mydecimal", "type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2}]}`
-	testBinaryCodecPass(t, schema, map[string]interface{}{"mydecimal": big.NewRat(617, 50)}, []byte("\x04\x04\xd2"))
+func TestDateLogicalTypeEncode(t *testing.T) {
+	schema := `{"type": "int", "logicalType": "date"}`
+	testBinaryDecodeFail(t, schema, []byte(""), "short buffer")
+	testBinaryEncodeFail(t, schema, "test", "cannot transform to binary date, expected time.Time, received string")
+	testBinaryCodecPass(t, schema, time.Date(2006, 1, 2, 0, 0, 0, 0, time.UTC), []byte("\xbc\xcd\x01"))
 }
 
 func ExampleUnion_logicalType() {
