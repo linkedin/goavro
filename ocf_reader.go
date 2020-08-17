@@ -248,7 +248,9 @@ func (ocfr *OCFReader) Scan() bool {
 				return false
 			}
 			ocfr.block, ocfr.rerr = ioutil.ReadAll(rc)
-			rc.Close()
+			if cerr := rc.Close(); ocfr.rerr == nil {
+			    ocfr.rerr = cerr
+			}
 			if ocfr.rerr != nil {
 				return false
 			}
