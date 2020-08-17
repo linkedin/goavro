@@ -229,10 +229,10 @@ func newSymbolTable() map[string]*Codec {
 			typeName:          &name{"int.date", nullNamespace},
 			schemaOriginal:    "int",
 			schemaCanonical:   "int",
-			nativeFromTextual: nativeFromDate(intNativeFromTextual),
-			binaryFromNative:  dateFromNative(intBinaryFromNative),
-			nativeFromBinary:  nativeFromDate(intNativeFromBinary),
-			textualFromNative: dateFromNative(intTextualFromNative),
+			nativeFromTextual: timeDateNativeFromLogicalTypeDate(intNativeFromTextual),
+			binaryFromNative:  logicalTypeDateFromTimeDateNative(intBinaryFromNative),
+			nativeFromBinary:  timeDateNativeFromLogicalTypeDate(intNativeFromBinary),
+			textualFromNative: logicalTypeDateFromTimeDateNative(intTextualFromNative),
 		},
 	}
 }

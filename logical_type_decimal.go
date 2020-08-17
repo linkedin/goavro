@@ -83,6 +83,10 @@ func precisionAndScaleFromSchemaMap(schemaMap map[string]interface{}) (int, int,
 			return 0, 0, fmt.Errorf("cannot create decimal logical type when scale is less than zero: %d", s3)
 		}
 		if s3 > p3 {
+			// FIXME This violates: "If a logical type is invalid, for example a
+			// decimal with scale greater than its precision, then
+			// implementations should ignore the logical type and use the
+			// underlying Avro type."
 			return 0, 0, fmt.Errorf("cannot create decimal logical type when scale is larger than precision: %d > %d", s3, p3)
 		}
 	}

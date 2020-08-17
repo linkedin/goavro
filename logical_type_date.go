@@ -24,12 +24,12 @@ import (
 //
 // The following schema represents a date:
 //
-// {
-//   "type": "int",
-//   "logicalType": "date"
-// }
+//     {
+//       "type": "int",
+//       "logicalType": "date"
+//     }
 
-func nativeFromDate(fn toNativeFn) toNativeFn {
+func timeDateNativeFromLogicalTypeDate(fn toNativeFn) toNativeFn {
 	return func(bytes []byte) (interface{}, []byte, error) {
 		l, b, err := fn(bytes)
 		if err != nil {
@@ -37,14 +37,14 @@ func nativeFromDate(fn toNativeFn) toNativeFn {
 		}
 		i, ok := l.(int32)
 		if !ok {
-			return l, b, fmt.Errorf("cannot transform to native date, expected int, received %T", l)
+			return l, b, fmt.Errorf("cannot decode int.date; expected int, received %T", l)
 		}
 		t := time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC).AddDate(0, 0, int(i)).UTC()
 		return t, b, nil
 	}
 }
 
-func dateFromNative(fn fromNativeFn) fromNativeFn {
+func logicalTypeDateFromTimeDateNative(fn fromNativeFn) fromNativeFn {
 	return func(b []byte, d interface{}) ([]byte, error) {
 		switch val := d.(type) {
 		case int, int32, int64, float32, float64:
@@ -53,16 +53,11 @@ func dateFromNative(fn fromNativeFn) fromNativeFn {
 			return fn(b, val)
 
 		case time.Time:
-			// rephrasing the avro 1.9.2 spec a date is actually stored as the duration since unix epoch in days
-			// time.Unix() returns this duration in seconds and time.UnixNano() in nanoseconds
-			// reviewing the source code, both functions are based on the internal function unixSec()
-			// unixSec() returns the seconds since unix epoch as int64, whereby Unix() provides the greater range and UnixNano() the higher precision
-			// As a date requires a precision of days Unix() provides more then enough precision and a greater range, including the go zero time
-			numDays := val.Unix() / 86400
-			return fn(b, numDays)
+			numberOfDays := val.Unix() / 86400 // ignore fractions of a day, which would represent time of that day.
+			return fn(b, numberOfDays)
 
 		default:
-			return nil, fmt.Errorf("cannot transform to binary date, expected time.Time or Go numeric, received %T", d)
+			return nil, fmt.Errorf("cannot encode int.date: expected time.Time or Go numeric; received %T", d)
 		}
 	}
 }
