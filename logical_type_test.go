@@ -136,7 +136,7 @@ func TestValidatedStringLogicalTypeInRecordEncode(t *testing.T) {
 
 	codec, err := NewCodec(schema)
 	if err != nil {
-		fmt.Println(err)
+		t.Fatal(err)
 	}
 
 	// NOTE: May omit fields when using default value
@@ -145,13 +145,13 @@ func TestValidatedStringLogicalTypeInRecordEncode(t *testing.T) {
 	// Convert textual Avro data (in Avro JSON format) to native Go form
 	native, _, err := codec.NativeFromTextual(textual)
 	if err != nil {
-		fmt.Println(err)
+		t.Fatal(err)
 	}
 
 	// Convert native Go form to binary Avro data
 	binary, err := codec.BinaryFromNative(nil, native)
 	if err != nil {
-		fmt.Println(err)
+		t.Fatal(err)
 	}
 
 	testSchemaValid(t, schema)
@@ -160,18 +160,20 @@ func TestValidatedStringLogicalTypeInRecordEncode(t *testing.T) {
 	// Convert binary Avro data back to native Go form
 	native, _, err = codec.NativeFromBinary(binary)
 	if err != nil {
-		fmt.Println(err)
+		t.Fatal(err)
 	}
 
 	// Convert native Go form to textual Avro data
 	textual, err = codec.TextualFromNative(nil, native)
 	if err != nil {
-		fmt.Println(err)
+		t.Fatal(err)
 	}
 
 	// NOTE: Textual encoding will show all fields, even those with values that
 	// match their default values
-	fmt.Println(string(textual))
+	if got, want := string(textual), "{\"number\":\"667777777\"}"; got != want {
+		t.Errorf("GOT: %v; WANT: %v", got, want)
+	}
 }
 
 func ExampleUnion_logicalType() {

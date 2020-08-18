@@ -22,7 +22,7 @@ import (
 type toNativeFn func([]byte) (interface{}, []byte, error)
 type fromNativeFn func([]byte, interface{}) ([]byte, error)
 
-var m = make(map[string]*regexp.Regexp)
+var reFromPattern = make(map[string]*regexp.Regexp)
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 // date logical type - to/from time.Time, time.UTC location
@@ -309,37 +309,47 @@ func makeDecimalFixedCodec(st map[string]*Codec, enclosingNamespace string, sche
 }
 
 func makeValidatedStringCodec(st map[string]*Codec, enclosingNamespace string, schemaMap map[string]interface{}) (*Codec, error) {
-	patternFn, ok := schemaMap["pattern"]
+	pattern, ok := schemaMap["pattern"]
 	if !ok {
 		return nil, errors.New("cannot create validated-string logical type without pattern")
 	}
+
+	patternStr := strings.TrimSpace(pattern.(string))
+	if reFromPattern[patternStr] == nil {
+		var (
+			regexpr *regexp.Regexp
+			err     error
+		)
+		if regexpr, err = regexp.Compile(patternStr); err != nil {
+			return nil, err
+		}
+
+		reFromPattern[patternStr] = regexpr
+	}
+
 	if _, ok := schemaMap["name"]; !ok {
 		schemaMap["name"] = "string.validated-string"
 	}
+
 	c, err := registerNewCodec(st, schemaMap, enclosingNamespace)
 	if err != nil {
 		return nil, err
 	}
 
-	pattern := strings.TrimSpace(patternFn.(string))
-	if m[pattern] == nil {
-		m[pattern] = regexp.MustCompile(pattern)
-	}
-
-	c.binaryFromNative = validatedStringBinaryFromNative(c.binaryFromNative, pattern)
-	c.textualFromNative = validatedStringTextualFromNative(c.textualFromNative, pattern)
-	c.nativeFromBinary = validatedStringNativeFromBinary(c.nativeFromBinary, pattern)
-	c.nativeFromTextual = validatedStringNativeFromTextual(c.nativeFromTextual, pattern)
+	c.binaryFromNative = validatedStringBinaryFromNative(c.binaryFromNative)
+	c.textualFromNative = validatedStringTextualFromNative(c.textualFromNative)
+	c.nativeFromBinary = validatedStringNativeFromBinary(c.nativeFromBinary, patternStr)
+	c.nativeFromTextual = validatedStringNativeFromTextual(c.nativeFromTextual, patternStr)
 	return c, nil
 }
 
-func validatedStringBinaryFromNative(fromNativeFn fromNativeFn, pattern string) fromNativeFn {
+func validatedStringBinaryFromNative(fromNativeFn fromNativeFn) fromNativeFn {
 	return func(b []byte, d interface{}) ([]byte, error) {
 		return stringBinaryFromNative(b, d)
 	}
 }
 
-func validatedStringTextualFromNative(fromNativeFn fromNativeFn, pattern string) fromNativeFn {
+func validatedStringTextualFromNative(fromNativeFn fromNativeFn) fromNativeFn {
 	return func(b []byte, d interface{}) ([]byte, error) {
 		return stringTextualFromNative(b, d)
 	}
@@ -347,11 +357,14 @@ func validatedStringTextualFromNative(fromNativeFn fromNativeFn, pattern string)
 
 func validatedStringNativeFromBinary(fn toNativeFn, pattern string) toNativeFn {
 	return func(bytes []byte) (interface{}, []byte, error) {
-		fn, newBytes, _ := stringNativeFromBinary(bytes)
+		fn, newBytes, err := stringNativeFromBinary(bytes)
+		if err != nil {
+			return nil, nil, err
+		}
 
 		result := fn.(string)
-		if ok := m[pattern].MatchString(result); !ok {
-			return nil, bytes, fmt.Errorf("invalid string: %s, doesn't meet the pattern: %s", result, pattern)
+		if ok := reFromPattern[pattern].MatchString(result); !ok {
+			return nil, bytes, fmt.Errorf("cannot match input string against validation pattern: %q does not match %q", result, pattern)
 		}
 
 		return fn, newBytes, nil
@@ -360,11 +373,14 @@ func validatedStringNativeFromBinary(fn toNativeFn, pattern string) toNativeFn {
 
 func validatedStringNativeFromTextual(fn toNativeFn, pattern string) toNativeFn {
 	return func(bytes []byte) (interface{}, []byte, error) {
-		fn, newBytes, _ := stringNativeFromTextual(bytes)
+		fn, newBytes, err := stringNativeFromTextual(bytes)
+		if err != nil {
+			return nil, nil, err
+		}
 
 		result := fn.(string)
-		if ok := m[pattern].MatchString(result); !ok {
-			return nil, bytes, fmt.Errorf("invalid string: %s, doesn't meet the pattern: %s", result, pattern)
+		if ok := reFromPattern[pattern].MatchString(result); !ok {
+			return nil, bytes, fmt.Errorf("cannot match input string against validation pattern: %q does not match %q", result, pattern)
 		}
 
 		return fn, newBytes, nil
