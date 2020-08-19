@@ -144,6 +144,13 @@ func TestDecimalBytesLogicalTypeEncode(t *testing.T) {
 	testBinaryCodecPass(t, schema, big.NewRat(617, 50), []byte("\x04\x04\xd2"))
 	testBinaryCodecPass(t, schema, big.NewRat(-617, 50), []byte("\x04\xfb\x2e"))
 	testBinaryCodecPass(t, schema, big.NewRat(0, 1), []byte("\x02\x00"))
+	schema0scale := `{"type": "bytes", "logicalType": "decimal", "precision": 100, "scale": 0}`
+	r1, _ := new(big.Rat).SetString("9223372036854775808") // 2^63
+	testBinaryCodecPass(t, schema0scale, r1, []byte("\x12\x00\x80\x00\x00\x00\x00\x00\x00\x00"))
+	r2, _ := new(big.Rat).SetString("18446744073709551615") // 2^64 - 1
+	testBinaryCodecPass(t, schema0scale, r2, []byte("\x12\x00\xff\xff\xff\xff\xff\xff\xff\xff"))
+	r3, _ := new(big.Rat).SetString("170141183460469231731687303715884105728")
+	testBinaryCodecPass(t, schema0scale, r3, []byte("\x22\x00\x80\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"))
 }
 
 func TestDecimalFixedLogicalTypeEncode(t *testing.T) {
