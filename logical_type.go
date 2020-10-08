@@ -40,16 +40,24 @@ func nativeFromDate(fn toNativeFn) toNativeFn {
 
 func dateFromNative(fn fromNativeFn) fromNativeFn {
 	return func(b []byte, d interface{}) ([]byte, error) {
-		t, ok := d.(time.Time)
-		if !ok {
-			return nil, fmt.Errorf("cannot transform to binary date, expected time.Time, received %T", d)
+		switch val := d.(type) {
+		case int, int32, int64, float32, float64:
+			// "Language implementations may choose to represent logical types with an appropriate native type, although this is not required."
+			// especially permitted default values depend on the field's schema type and goavro encodes default values using the field schema
+			return fn(b, val)
+
+		case time.Time:
+			// rephrasing the avro 1.9.2 spec a date is actually stored as the duration since unix epoch in days
+			// time.Unix() returns this duration in seconds and time.UnixNano() in nanoseconds
+			// reviewing the source code, both functions are based on the internal function unixSec()
+			// unixSec() returns the seconds since unix epoch as int64, whereby Unix() provides the greater range and UnixNano() the higher precision
+			// As a date requires a precision of days Unix() provides more then enough precision and a greater range, including the go zero time
+			numDays := val.Unix() / 86400
+			return fn(b, numDays)
+
+		default:
+			return nil, fmt.Errorf("cannot transform to binary date, expected time.Time or Go numeric, received %T", d)
 		}
-		// The number of days calculation is incredibly naive we take the time.Duration
-		// between the given time and unix epoch and divide that by (24 * time.Hour)
-		// This accuracy seems acceptable given the relation to unix epoch for now
-		// TODO: replace with a better method
-		numDays := t.UnixNano() / int64(24*time.Hour)
-		return fn(b, numDays)
 	}
 }
 
@@ -73,12 +81,19 @@ func nativeFromTimeMillis(fn toNativeFn) toNativeFn {
 
 func timeMillisFromNative(fn fromNativeFn) fromNativeFn {
 	return func(b []byte, d interface{}) ([]byte, error) {
-		t, ok := d.(time.Duration)
-		if !ok {
-			return nil, fmt.Errorf("cannot transform to binary time-millis, expected time.Duration, received %T", d)
+		switch val := d.(type) {
+		case int, int32, int64, float32, float64:
+			// "Language implementations may choose to represent logical types with an appropriate native type, although this is not required."
+			// especially permitted default values depend on the field's schema type and goavro encodes default values using the field schema
+			return fn(b, val)
+
+		case time.Duration:
+			duration := int32(val.Nanoseconds() / int64(time.Millisecond))
+			return fn(b, duration)
+
+		default:
+			return nil, fmt.Errorf("cannot transform to binary time-millis, expected time.Duration or Go numeric, received %T", d)
 		}
-		duration := int32(t.Nanoseconds() / int64(time.Millisecond))
-		return fn(b, duration)
 	}
 }
 
@@ -102,12 +117,19 @@ func nativeFromTimeMicros(fn toNativeFn) toNativeFn {
 
 func timeMicrosFromNative(fn fromNativeFn) fromNativeFn {
 	return func(b []byte, d interface{}) ([]byte, error) {
-		t, ok := d.(time.Duration)
-		if !ok {
-			return nil, fmt.Errorf("cannot transform to binary time-micros, expected time.Duration, received %T", d)
+		switch val := d.(type) {
+		case int, int32, int64, float32, float64:
+			// "Language implementations may choose to represent logical types with an appropriate native type, although this is not required."
+			// especially permitted default values depend on the field's schema type and goavro encodes default values using the field schema
+			return fn(b, val)
+
+		case time.Duration:
+			duration := int32(val.Nanoseconds() / int64(time.Microsecond))
+			return fn(b, duration)
+
+		default:
+			return nil, fmt.Errorf("cannot transform to binary time-micros, expected time.Duration or Go numeric, received %T", d)
 		}
-		duration := t.Nanoseconds() / int64(time.Microsecond)
-		return fn(b, duration)
 	}
 }
 
@@ -120,24 +142,32 @@ func nativeFromTimeStampMillis(fn toNativeFn) toNativeFn {
 		if err != nil {
 			return l, b, err
 		}
-		i, ok := l.(int64)
+		milliseconds, ok := l.(int64)
 		if !ok {
 			return l, b, fmt.Errorf("cannot transform native timestamp-millis, expected int64, received %T", l)
 		}
-		secs := i / int64(time.Microsecond)
-		nanosecs := (i - secs*int64(time.Microsecond)) * int64(time.Millisecond)
-		return time.Unix(secs, nanosecs).UTC(), b, nil
+		seconds := milliseconds / 1e3
+		nanoseconds := (milliseconds - (seconds * 1e3)) * 1e6
+		return time.Unix(seconds, nanoseconds).UTC(), b, nil
 	}
 }
 
 func timeStampMillisFromNative(fn fromNativeFn) fromNativeFn {
 	return func(b []byte, d interface{}) ([]byte, error) {
-		t, ok := d.(time.Time)
-		if !ok {
-			return nil, fmt.Errorf("cannot transform binary timestamp-millis, expected time.Time, received %T", d)
+		switch val := d.(type) {
+		case int, int32, int64, float32, float64:
+			// "Language implementations may choose to represent logical types with an appropriate native type, although this is not required."
+			// especially permitted default values depend on the field's schema type and goavro encodes default values using the field schema
+			return fn(b, val)
+
+		case time.Time:
+			// While this code performs a few more steps than seem required, it is
+			// written this way to allow the best time resolution without overflowing the int64 value.
+			return fn(b, val.Unix()*1e3+int64(val.Nanosecond()/1e6))
+
+		default:
+			return nil, fmt.Errorf("cannot transform to binary timestamp-millis, expected time.Time or Go numeric, received %T", d)
 		}
-		millisecs := t.UnixNano() / int64(time.Millisecond)
-		return fn(b, millisecs)
 	}
 }
 
@@ -167,16 +197,23 @@ func nativeFromTimeStampMicros(fn toNativeFn) toNativeFn {
 
 func timeStampMicrosFromNative(fn fromNativeFn) fromNativeFn {
 	return func(b []byte, d interface{}) ([]byte, error) {
-		t, ok := d.(time.Time)
-		if !ok {
-			return nil, fmt.Errorf("cannot transform binary timestamp-micros, expected time.Time, received %T", d)
+		switch val := d.(type) {
+		case int, int32, int64, float32, float64:
+			// "Language implementations may choose to represent logical types with an appropriate native type, although this is not required."
+			// especially permitted default values depend on the field's schema type and goavro encodes default values using the field schema
+			return fn(b, val)
+
+		case time.Time:
+			// While this code performs a few more steps than seem required, it is
+			// written this way to allow the best time resolution on UNIX and
+			// Windows without overflowing the int64 value.  Windows has a zero-time
+			// value of 1601-01-01 UTC, and the number of nanoseconds since that
+			// zero-time overflows 64-bit integers.
+			return fn(b, val.Unix()*1e6+int64(val.Nanosecond()/1e3))
+
+		default:
+			return nil, fmt.Errorf("cannot transform to binary timestamp-micros, expected time.Time or Go numeric, received %T", d)
 		}
-		// While this code performs a few more steps than seem required, it is
-		// written this way to allow the best time resolution on UNIX and
-		// Windows without overflowing the int64 value.  Windows has a zero-time
-		// value of 1601-01-01 UTC, and the number of nanoseconds since that
-		// zero-time overflows 64-bit integers.
-		return fn(b, t.Unix()*1e6+int64(t.Nanosecond()/1e3))
 	}
 }
 

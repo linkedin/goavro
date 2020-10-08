@@ -53,24 +53,24 @@ func TestSchemaPrimitiveCodecLong(t *testing.T) {
 func TestPrimitiveLongBinary(t *testing.T) {
 	testBinaryEncodeFailBadDatumType(t, `"long"`, "some string")
 	testBinaryDecodeFailShortBuffer(t, `"long"`, []byte("\xff\xff\xff\xff"))
-	testBinaryCodecPass(t, `"long"`, (1<<63)-1, []byte{0xfe, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x1})
-	testBinaryCodecPass(t, `"long"`, -(1 << 63), []byte{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x1})
+	testBinaryCodecPass(t, `"long"`, int64((1<<63)-1), []byte{0xfe, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x1})
+	testBinaryCodecPass(t, `"long"`, int64(-(1 << 63)), []byte{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x1})
 	testBinaryCodecPass(t, `"long"`, -2147483648, []byte("\xff\xff\xff\xff\x0f"))
 	testBinaryCodecPass(t, `"long"`, -3, []byte("\x05"))
 	testBinaryCodecPass(t, `"long"`, -65, []byte("\x81\x01"))
 	testBinaryCodecPass(t, `"long"`, 0, []byte("\x00"))
 	testBinaryCodecPass(t, `"long"`, 1082196484, []byte("\x88\x88\x88\x88\x08"))
-	testBinaryCodecPass(t, `"long"`, 1359702038045356208, []byte{0xe0, 0xc2, 0x8b, 0xa1, 0x96, 0xf3, 0xd0, 0xde, 0x25})
-	testBinaryCodecPass(t, `"long"`, 138521149956, []byte("\x88\x88\x88\x88\x88\x08"))
-	testBinaryCodecPass(t, `"long"`, 17730707194372, []byte("\x88\x88\x88\x88\x88\x88\x08"))
+	testBinaryCodecPass(t, `"long"`, int64(1359702038045356208), []byte{0xe0, 0xc2, 0x8b, 0xa1, 0x96, 0xf3, 0xd0, 0xde, 0x25})
+	testBinaryCodecPass(t, `"long"`, int64(138521149956), []byte("\x88\x88\x88\x88\x88\x08"))
+	testBinaryCodecPass(t, `"long"`, int64(17730707194372), []byte("\x88\x88\x88\x88\x88\x88\x08"))
 	testBinaryCodecPass(t, `"long"`, 2147483647, []byte("\xfe\xff\xff\xff\x0f"))
-	testBinaryCodecPass(t, `"long"`, 2269530520879620, []byte("\x88\x88\x88\x88\x88\x88\x88\x08"))
+	testBinaryCodecPass(t, `"long"`, int64(2269530520879620), []byte("\x88\x88\x88\x88\x88\x88\x88\x08"))
 	testBinaryCodecPass(t, `"long"`, 3, []byte("\x06"))
-	testBinaryCodecPass(t, `"long"`, 5959107741628848600, []byte{0xb0, 0xe7, 0x8a, 0xe1, 0xe2, 0xba, 0x80, 0xb3, 0xa5, 0x1})
+	testBinaryCodecPass(t, `"long"`, int64(5959107741628848600), []byte{0xb0, 0xe7, 0x8a, 0xe1, 0xe2, 0xba, 0x80, 0xb3, 0xa5, 0x1})
 	testBinaryCodecPass(t, `"long"`, 64, []byte("\x80\x01"))
 
 	// https://github.com/linkedin/goavro/issues/49
-	testBinaryCodecPass(t, `"long"`, -5513458701470791632, []byte("\x9f\xdf\x9f\x8f\xc7\xde\xde\x83\x99\x01"))
+	testBinaryCodecPass(t, `"long"`, int64(-5513458701470791632), []byte("\x9f\xdf\x9f\x8f\xc7\xde\xde\x83\x99\x01"))
 }
 
 func TestPrimitiveLongText(t *testing.T) {
