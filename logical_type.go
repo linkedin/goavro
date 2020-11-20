@@ -12,7 +12,6 @@ package goavro
 import (
 	"errors"
 	"fmt"
-	"math"
 	"math/big"
 	"time"
 )
@@ -285,13 +284,10 @@ func nativeFromDecimalBytes(fn toNativeFn, precision, scale int) toNativeFn {
 		if !ok {
 			return nil, bytes, fmt.Errorf("cannot transform to native decimal, expected []byte, received %T", d)
 		}
-		i := big.NewInt(0)
-		fromSignedBytes(i, bs)
-		if i.BitLen() > 64 {
-			// Avro spec specifies we return underlying type if the logicalType is invalid
-			return d, b, err
-		}
-		r := big.NewRat(i.Int64(), int64(math.Pow10(scale)))
+		num := big.NewInt(0)
+		fromSignedBytes(num, bs)
+		denom := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(scale)), nil)
+		r := new(big.Rat).SetFrac(num, denom)
 		return r, b, nil
 	}
 }
@@ -302,12 +298,10 @@ func decimalBytesFromNative(fromNativeFn fromNativeFn, toBytesFn toBytesFn, prec
 		if !ok {
 			return nil, fmt.Errorf("cannot transform to bytes, expected *big.Rat, received %T", d)
 		}
-		// we reduce accuracy to precision by dividing and multiplying by digit length
+		// Reduce accuracy to precision by dividing and multiplying by digit length
 		num := big.NewInt(0).Set(r.Num())
 		denom := big.NewInt(0).Set(r.Denom())
-
-		// we get the scaled decimal representation
-		i := new(big.Int).Mul(num, big.NewInt(int64(math.Pow10(scale))))
+		i := new(big.Int).Mul(num, new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(scale)), nil))
 		// divide that by the denominator
 		precnum := new(big.Int).Div(i, denom)
 		bout, err := toBytesFn(precnum)
