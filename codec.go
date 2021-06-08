@@ -113,6 +113,46 @@ func NewCodec(schemaSpecification string) (*Codec, error) {
 	return c, nil
 }
 
+func NewCustomCodec(schemaSpecification string, customCodec map[string]*Codec) (*Codec, error) {
+	var schema interface{}
+
+	if err := json.Unmarshal([]byte(schemaSpecification), &schema); err != nil {
+		return nil, fmt.Errorf("cannot unmarshal schema JSON: %s", err)
+	}
+
+	// bootstrap a symbol table with primitive type codecs for the new codec
+	st := newSymbolTable()
+	codecs := mergeCodec(st, customCodec)
+
+	c, err := buildCodec(codecs, nullNamespace, schema)
+	if err != nil {
+		return nil, err
+	}
+	c.schemaCanonical, err = parsingCanonicalForm(schema, "", make(map[string]string))
+	if err != nil {
+		return nil, err // should not get here because schema was validated above
+	}
+
+	c.Rabin = rabin([]byte(c.schemaCanonical))
+	c.soeHeader = []byte{0xC3, 0x01, 0, 0, 0, 0, 0, 0, 0, 0}
+	binary.LittleEndian.PutUint64(c.soeHeader[2:], c.Rabin)
+
+	c.schemaOriginal = schemaSpecification
+	return c, nil
+}
+
+func mergeCodec(origin, custom map[string]*Codec) map[string]*Codec {
+	codecs := map[string]*Codec{}
+	for k, v := range origin {
+		codecs[k] = v
+	}
+
+	for k, v := range custom {
+		codecs[k] = v
+	}
+	return codecs
+}
+
 func newSymbolTable() map[string]*Codec {
 	return map[string]*Codec{
 		"boolean": {
