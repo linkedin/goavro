@@ -445,6 +445,82 @@ func TestRecordRecursiveRoundTrip(t *testing.T) {
 	}
 }
 
+func TestUnknownTypeCodecError(t *testing.T) {
+	_, err := NewCodec(`
+{
+  "type": "record",
+  "name": "Parent",                  
+  "fields" : [
+    {"name": "child", "type": "Child"}
+  ]
+}
+`)
+	ensureError(t, err, "Record \"Parent\" field 1 ought to be valid Avro named type: unknown type name: \"Child\"")
+}
+
+func TestCodecModifier(t *testing.T) {
+	childCodec, err := NewCodec(`
+{
+  "type": "record",
+  "name": "Child",                  
+  "fields" : [
+    {"name": "age", "type": "int"}
+  ]
+}
+`)
+	ensureError(t, err)
+
+	modifier := func(st map[string]*Codec) {
+		st["Child"] = childCodec
+	}
+
+	codec, err := NewCodec(`
+{
+  "type": "record",
+  "name": "Parent",                  
+  "fields" : [
+    {"name": "child", "type": "Child"}
+  ]
+}
+`, modifier)
+	ensureError(t, err)
+
+	child := map[string]interface{} {
+		"age": 7,
+	}
+	parent := map[string]interface{} {
+		"child": child,
+	}
+
+	// Convert native Go form to binary Avro data
+	buf, err := codec.BinaryFromNative(nil, parent)
+	ensureError(t, err)
+
+	// Convert binary Avro data back to native Go form
+	datum, _, err := codec.NativeFromBinary(buf)
+	ensureError(t, err)
+
+	actual, ok := datum.(map[string]interface{})
+	if !ok {
+		t.Fatalf("origin data contaminated")
+	}
+
+	child, ok = actual["child"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("child type contaminated")
+	}
+
+	age, ok := child["age"].(int32)
+	if !ok {
+		t.Fatalf("child age field contaminated")
+	}
+
+	if age != 7 {
+		t.Fatalf("child age data contaminated")
+	}
+}
+
+
 func ExampleRecordRecursiveRoundTrip() {
 	codec, err := NewCodec(`
 {

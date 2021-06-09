@@ -42,6 +42,8 @@ var (
 	MaxBlockSize = int64(math.MaxInt32)
 )
 
+type CodecModifier func(map[string]*Codec)
+
 // Codec supports decoding binary and text Avro data to Go native data types,
 // and conversely encoding Go native data types to binary or text Avro data. A
 // Codec is created as a stateless structure that can be safely used in multiple
@@ -86,7 +88,7 @@ type Codec struct {
 //     if err != nil {
 //             fmt.Println(err)
 //     }
-func NewCodec(schemaSpecification string) (*Codec, error) {
+func NewCodec(schemaSpecification string, modifiers ...CodecModifier) (*Codec, error) {
 	var schema interface{}
 
 	if err := json.Unmarshal([]byte(schemaSpecification), &schema); err != nil {
@@ -95,6 +97,10 @@ func NewCodec(schemaSpecification string) (*Codec, error) {
 
 	// bootstrap a symbol table with primitive type codecs for the new codec
 	st := newSymbolTable()
+
+	for _, modifier := range modifiers {
+		modifier(st)
+	}
 
 	c, err := buildCodec(st, nullNamespace, schema)
 	if err != nil {
