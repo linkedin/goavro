@@ -195,6 +195,76 @@ func main() {
 Also please see the example programs in the `examples` directory for
 reference.
 
+## OCF file reading and writing
+
+This library supports reading and writing data in [Object Container File (OCF)](https://avro.apache.org/docs/current/spec.html#Object+Container+Files) format
+
+```go
+package main
+
+import (
+	"bytes"
+	"fmt"
+	"strings"
+
+	"github.com/linkedin/goavro/v2"
+)
+
+func main() {
+	avroSchema := `
+	{
+	  "type": "record",
+	  "name": "test_schema",
+	  "fields": [
+		{
+		  "name": "time",
+		  "type": "long"
+		},
+		{
+		  "name": "customer",
+		  "type": "string"
+		}
+	  ]
+	}`
+
+	// Writing OCF data
+	var ocfFileContents bytes.Buffer
+	writer, err := goavro.NewOCFWriter(goavro.OCFConfig{
+		W:      &ocfFileContents,
+		Schema: avroSchema,
+	})
+	if err != nil {
+		fmt.Println(err)
+	}
+	err = writer.Append([]map[string]interface{}{
+		{
+			"time":     1617104831727,
+			"customer": "customer1",
+		},
+		{
+			"time":     1717104831727,
+			"customer": "customer2",
+		},
+	})
+	fmt.Println("ocfFileContents", ocfFileContents.String())
+
+	// Reading OCF data
+	ocfReader, err := goavro.NewOCFReader(strings.NewReader(ocfFileContents.String()))
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println("Records in OCF File");
+	for ocfReader.Scan() {
+		record, err := ocfReader.Read()
+		if err != nil {
+			fmt.Println(err)
+		}
+		fmt.Println("record", record)
+	}
+}
+```    
+The above code in [go playground](https://play.golang.org/p/RuHQONqBXeg)
+
 ### ab2t
 
 The `ab2t` program is similar to the reference standard
