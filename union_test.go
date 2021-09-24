@@ -220,3 +220,118 @@ func ExampleUnion3() {
 	fmt.Println(value)
 	// Output: decoded string: NaN
 }
+
+func ExampleJSONUnion() {
+	codec, err := NewCodec(`["null","string","int"]`)
+	if err != nil {
+		fmt.Println(err)
+	}
+	buf, err := codec.TextualFromNative(nil, Union("string", "some string"))
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(string(buf))
+	// Output: {"string":"some string"}
+}
+
+//
+// The following examples show the way to put a new codec into use
+// Currently the only new codec is ont that supports standard json
+// which does not indicate unions in any way
+// so standard json data needs to be guided into avro unions
+
+// show how to use the default codec via the NewCodecFrom mechanism
+func ExampleCustomCodec() {
+	codec, err := NewCodecFrom(`"string"`, &codecBuilder{
+		buildCodecForTypeDescribedByMap,
+		buildCodecForTypeDescribedByString,
+		buildCodecForTypeDescribedBySlice,
+	})
+	if err != nil {
+		fmt.Println(err)
+	}
+	buf, err := codec.TextualFromNative(nil, "some string 22")
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(string(buf))
+	// Output: "some string 22"
+}
+
+// Use the standard JSON codec instead
+func ExampleJSONStringToTextual() {
+	codec, err := NewCodecFrom(`["null","string","int"]`, &codecBuilder{
+		buildCodecForTypeDescribedByMap,
+		buildCodecForTypeDescribedByString,
+		buildCodecForTypeDescribedBySliceJSON,
+	})
+	if err != nil {
+		fmt.Println(err)
+	}
+	buf, err := codec.TextualFromNative(nil, Union("string", "some string"))
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(string(buf))
+	// Output: {"string":"some string"}
+}
+
+func ExampleJSONStringToNative() {
+	codec, err := NewCodecFrom(`["null","string","int"]`, &codecBuilder{
+		buildCodecForTypeDescribedByMap,
+		buildCodecForTypeDescribedByString,
+		buildCodecForTypeDescribedBySliceJSON,
+	})
+	if err != nil {
+		fmt.Println(err)
+	}
+	// send in a legit json string
+	t, _, err := codec.NativeFromTextual([]byte("\"some string one\""))
+	if err != nil {
+		fmt.Println(err)
+	}
+	// see it parse into a map like the avro encoder does
+	o, ok := t.(map[string]interface{})
+	if !ok {
+		fmt.Printf("its a %T not a map[string]interface{}", t)
+	}
+
+	// pull out the string to show its all good
+	_v := o["string"]
+	v, ok := _v.(string)
+	fmt.Println(v)
+	// Output: some string one
+}
+
+func TestUnionJSON(t *testing.T) {
+	testJSONDecodePass(t, `["null","int"]`, nil, []byte("null"))
+	testJSONDecodePass(t, `["null","int","long"]`, Union("int", 3), []byte(`3`))
+	testJSONDecodePass(t, `["null","long","int"]`, Union("int", 3), []byte(`3`))
+	testJSONDecodePass(t, `["null","int","long"]`, Union("long", 333333333333333), []byte(`333333333333333`))
+	testJSONDecodePass(t, `["null","long","int"]`, Union("long", 333333333333333), []byte(`333333333333333`))
+	testJSONDecodePass(t, `["null","float","int","long"]`, Union("float", 6.77), []byte(`6.77`))
+	testJSONDecodePass(t, `["null","int","float","long"]`, Union("float", 6.77), []byte(`6.77`))
+	testJSONDecodePass(t, `["null","double","int","long"]`, Union("double", 6.77), []byte(`6.77`))
+	testJSONDecodePass(t, `["null","int","float","double","long"]`, Union("double", 6.77), []byte(`6.77`))
+	testJSONDecodePass(t, `["null",{"type":"array","items":"int"}]`, Union("array", []interface{}{1, 2}), []byte(`[1,2]`))
+	testJSONDecodePass(t, `["null",{"type":"map","values":"int"}]`, Union("map", map[string]interface{}{"k1": 13}), []byte(`{"k1":13}`))
+	testJSONDecodePass(t, `["null",{"name":"r1","type":"record","fields":[{"name":"field1","type":"string"},{"name":"field2","type":"string"}]}]`, Union("r1", map[string]interface{}{"field1": "value1", "field2": "value2"}), []byte(`{"field1": "value1", "field2": "value2"}`))
+	testJSONDecodePass(t, `["null","boolean"]`, Union("boolean", true), []byte(`true`))
+	testJSONDecodePass(t, `["null","boolean"]`, Union("boolean", false), []byte(`false`))
+	testJSONDecodePass(t, `["null",{"type":"enum","name":"e1","symbols":["alpha","bravo"]}]`, Union("e1", "bravo"), []byte(`"bravo"`))
+	testJSONDecodePass(t, `["null", "bytes"]`, Union("bytes", []byte("")), []byte("\"\""))
+	testJSONDecodePass(t, `["null", "bytes", "string"]`, Union("bytes", []byte("")), []byte("\"\""))
+	testJSONDecodePass(t, `["null", "string", "bytes"]`, Union("string", "value1"), []byte(`"value1"`))
+	testJSONDecodePass(t, `["null", {"type":"enum","name":"e1","symbols":["alpha","bravo"]}, "string"]`, Union("e1", "bravo"), []byte(`"bravo"`))
+	testJSONDecodePass(t, `["null", {"type":"fixed","name":"f1","size":4}]`, Union("f1", []byte(`abcd`)), []byte(`"abcd"`))
+	testJSONDecodePass(t, `"string"`, "abcd", []byte(`"abcd"`))
+	testJSONDecodePass(t, `{"type":"record","name":"kubeEvents","fields":[{"name":"field1","type":"string","default":""}]}`, map[string]interface{}{"field1": "value1"}, []byte(`{"field1":"value1"}`))
+	testJSONDecodePass(t, `{"type":"record","name":"kubeEvents","fields":[{"name":"field1","type":"string","default":""},{"name":"field2","type":"string"}]}`, map[string]interface{}{"field1": "", "field2": "deef"}, []byte(`{"field2": "deef"}`))
+	testJSONDecodePass(t, `{"type":"record","name":"kubeEvents","fields":[{"name":"field1","type":["string","null"],"default":""}]}`, map[string]interface{}{"field1": Union("string", "value1")}, []byte(`{"field1":"value1"}`))
+	testJSONDecodePass(t, `{"type":"record","name":"kubeEvents","fields":[{"name":"field1","type":["string","null"],"default":""}]}`, map[string]interface{}{"field1": nil}, []byte(`{"field1":null}`))
+	// union of null which has minimal syntax
+	testJSONDecodePass(t, `{"type":"record","name":"LongList","fields":[{"name":"next","type":["null","LongList"],"default":null}]}`, map[string]interface{}{"next": nil}, []byte(`{"next": null}`))
+	// record containing union of record (recursive record)
+	testJSONDecodePass(t, `{"type":"record","name":"LongList","fields":[{"name":"next","type":["null","LongList"],"default":null}]}`, map[string]interface{}{"next": Union("LongList", map[string]interface{}{"next": nil})}, []byte(`{"next":{"next":null}}`))
+	testJSONDecodePass(t, `{"type":"record","name":"LongList","fields":[{"name":"next","type":["null","LongList"],"default":null}]}`, map[string]interface{}{"next": Union("LongList", map[string]interface{}{"next": Union("LongList", map[string]interface{}{"next": nil})})}, []byte(`{"next":{"next":{"next":null}}}`))
+}

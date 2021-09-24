@@ -10,6 +10,8 @@
 package goavro
 
 import (
+	"encoding/json"
+	"fmt"
 	"testing"
 )
 
@@ -58,4 +60,77 @@ func TestEnumTextCodec(t *testing.T) {
 	testTextCodecPass(t, `{"type":"enum","name":"e1","symbols":["alpha","bravo"]}`, "bravo", []byte(`"bravo"`))
 	testTextEncodeFail(t, `{"type":"enum","name":"e1","symbols":["alpha","bravo"]}`, "charlie", `cannot encode textual enum "e1": value ought to be member of symbols`)
 	testTextDecodeFail(t, `{"type":"enum","name":"e1","symbols":["alpha","bravo"]}`, []byte(`"charlie"`), `cannot decode textual enum "e1": value ought to be member of symbols`)
+}
+
+func TestGH233(t *testing.T) {
+	// here's the fail case
+	// testTextCodecPass(t, `{"type":"record","name":"FooBar","namespace":"com.foo.bar","fields":[{"name":"event","type":["null",{"type":"enum","name":"FooBarEvent","symbols":["CREATED","UPDATED"]}]}]}`, map[string]interface{}{"event": Union("FooBarEvent", "CREATED")}, []byte(`{"event":{"FooBarEvent":"CREATED"}}`))
+	// remove the namespace and it passes
+	testTextCodecPass(t, `{"type":"record","name":"FooBar","fields":[{"name":"event","type":["null",{"type":"enum","name":"FooBarEvent","symbols":["CREATED","UPDATED"]}]}]}`, map[string]interface{}{"event": Union("FooBarEvent", "CREATED")}, []byte(`{"event":{"FooBarEvent":"CREATED"}}`))
+	// experiments
+	// the basic enum
+	testTextCodecPass(t, `{"type":"enum","name":"FooBarEvent","symbols":["CREATED","UPDATED"]}`, "CREATED", []byte(`"CREATED"`))
+	// the basic enum with namespace
+	testTextCodecPass(t, `{"type":"enum","name":"FooBarEvent","namespace":"com.foo.bar","symbols":["CREATED","UPDATED"]}`, "CREATED", []byte(`"CREATED"`))
+	// union with enum
+	testTextCodecPass(t, `["null",{"type":"enum","name":"FooBarEvent","symbols":["CREATED","UPDATED"]}]`, Union("FooBarEvent", "CREATED"), []byte(`{"FooBarEvent":"CREATED"}`))
+	// FAIL: union with enum with namespace: cannot determine codec: "FooBarEvent"
+	// testTextCodecPass(t, `["null",{"type":"enum","name":"FooBarEvent","namespace":"com.foo.bar","symbols":["CREATED","UPDATED"]}]`, Union("FooBarEvent", "CREATED"), []byte(`{"FooBarEvent":"CREATED"}`))
+	// conclusion, union is not handling namespaces correctly
+	// try union with record instead of enum (records and enums both have namespaces)
+	// get a basic record going
+	testTextCodecPass(t, `{"type":"record","name":"LongList","fields":[{"name":"next","type":["null","LongList"],"default":null}]}`, map[string]interface{}{"next": Union("LongList", map[string]interface{}{"next": nil})}, []byte(`{"next":{"LongList":{"next":null}}}`))
+	// add a namespace to the record
+	// fails in the same way cannot determine codec: "LongList" for key: "next"
+	// testTextCodecPass(t, `{"type":"record","name":"LongList","namespace":"com.foo.bar","fields":[{"name":"next","type":["null","LongList"],"default":null}]}`, map[string]interface{}{"next": Union("LongList", map[string]interface{}{"next": nil})}, []byte(`{"next":{"LongList":{"next":null}}}`))
+	//
+	// experiments on syntax solutions
+	// testTextCodecPass(t, `["null",{"type":"enum","name":"com.foo.bar.FooBarEvent","symbols":["CREATED","UPDATED"]}]`, Union("com.foo.bar.FooBarEvent", "CREATED"), []byte(`{"FooBarEvent":"CREATED"}`))
+	// thie TestUnionMapRecordFitsInRecord tests binary from Native, but not native from textual
+	// that's where the error is happening
+	// if the namespace is specified in the incoming name it works
+	testTextCodecPass(t, `{"type":"record","name":"ns1.LongList","fields":[{"name":"next","type":["null","LongList"],"default":null}]}`, map[string]interface{}{"next": Union("ns1.LongList", map[string]interface{}{"next": nil})}, []byte(`{"next":{"ns1.LongList":{"next":null}}}`))
+
+	// try the failcase with the namespace specified on the input
+	testTextCodecPass(t, `{"type":"record","name":"FooBar","namespace":"com.foo.bar","fields":[{"name":"event","type":["null",{"type":"enum","name":"FooBarEvent","symbols":["CREATED","UPDATED"]}]}]}`, map[string]interface{}{"event": Union("com.foo.bar.FooBarEvent", "CREATED")}, []byte(`{"event":{"com.foo.bar.FooBarEvent":"CREATED"}}`))
+
+}
+
+func ExampleCheckSolutionGH233() {
+	const avroSchema = `
+	{
+		"type": "record",
+		"name": "FooBar",
+		"namespace": "com.foo.bar",
+		"fields": [
+		  {
+				"name": "event",
+				"type": [
+					"null",
+					{
+						"type": "enum",
+						"name": "FooBarEvent",
+						"symbols": ["CREATED", "UPDATED"]
+					}
+				]
+			}
+		]
+	}
+	`
+	codec, _ := NewCodec(avroSchema)
+
+	const avroJson = `{"event":{"com.foo.bar.FooBarEvent":"CREATED"}}`
+
+	native, _, err := codec.NativeFromTextual([]byte(avroJson))
+	if err != nil {
+		panic(err)
+	}
+
+	blob, err := json.Marshal(native)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(blob))
+	// Output: {"event":{"com.foo.bar.FooBarEvent":"CREATED"}}
+
 }
