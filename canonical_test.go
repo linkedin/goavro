@@ -175,6 +175,14 @@ func TestCanonicalSchema(t *testing.T) {
 			Canonical: `{"name":"x.y.z.foo","type":"fixed","size":32}`,
 		},
 		{
+			Schema:    `{"type":"record", "name":"foo", "namespace":"x.y", "fields":[{"name":"bar","type":"fixed", "doc":"foo bar", "size":32}]}`,
+			Canonical: `{"name":"x.y.foo","type":"record","fields":[{"name":"x.y.bar","type":"fixed","size":32}]}`,
+		},
+		{
+			Schema:    `{"type":"record", "name":"foo", "namespace":"x.y", "fields":[{"name":"a.b.bar","type":"fixed", "doc":"foo bar", "size":32}]}`,
+			Canonical: `{"name":"x.y.foo","type":"record","fields":[{"name":"a.b.bar","type":"fixed","size":32}]}`,
+		},
+		{
 			Schema:    `{ "items":{"type":"null"}, "type":"array"}`,
 			Canonical: `{"type":"array","items":"null"}`,
 		},
