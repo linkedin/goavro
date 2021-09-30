@@ -84,7 +84,7 @@ func pcfObject(jsonMap map[string]interface{}, parentNamespace string, typeLooku
 			}
 			parentNamespace = namespace
 		}
-	} else if objectType, ok := jsonMap["type"]; ok && objectType == "record" {
+	} else if objectType, ok := jsonMap["type"]; ok && (objectType == "record" || objectType == "enum" || objectType == "fixed") {
 		namespace = parentNamespace
 	}
 

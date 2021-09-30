@@ -155,12 +155,32 @@ func TestCanonicalSchema(t *testing.T) {
 			Canonical: `{"name":"x.y.z.foo","type":"enum","symbols":["A1","A2"]}`,
 		},
 		{
+			Schema:    `{"type":"record", "name":"a.b.foo", "namespace":"x.y", "fields":[{"name":"bar","type":"enum","symbols":["A1","A2"]}]}`,
+			Canonical: `{"name":"a.b.foo","type":"record","fields":[{"name":"x.y.bar","type":"enum","symbols":["A1","A2"]}]}`,
+		},
+		{
+			Schema:    `{"type":"record", "name":"foo", "namespace":"x.y", "fields":[{"name":"bar","type":"enum","symbols":["A1","A2"]}]}`,
+			Canonical: `{"name":"x.y.foo","type":"record","fields":[{"name":"x.y.bar","type":"enum","symbols":["A1","A2"]}]}`,
+		},
+		{
+			Schema:    `{"type":"record", "name":"foo", "namespace":"x.y", "fields":[{"name":"a.b.bar","type":"enum","symbols":["A1","A2"]}]}`,
+			Canonical: `{"name":"x.y.foo","type":"record","fields":[{"name":"a.b.bar","type":"enum","symbols":["A1","A2"]}]}`,
+		},
+		{
 			Schema:    `{"name":"foo","type":"fixed","size":15}`,
 			Canonical: `{"name":"foo","type":"fixed","size":15}`,
 		},
 		{
 			Schema:    `{"namespace":"x.y.z", "type":"fixed", "name":"foo", "doc":"foo bar", "size":32}`,
 			Canonical: `{"name":"x.y.z.foo","type":"fixed","size":32}`,
+		},
+		{
+			Schema:    `{"type":"record", "name":"foo", "namespace":"x.y", "fields":[{"name":"bar","type":"fixed", "doc":"foo bar", "size":32}]}`,
+			Canonical: `{"name":"x.y.foo","type":"record","fields":[{"name":"x.y.bar","type":"fixed","size":32}]}`,
+		},
+		{
+			Schema:    `{"type":"record", "name":"foo", "namespace":"x.y", "fields":[{"name":"a.b.bar","type":"fixed", "doc":"foo bar", "size":32}]}`,
+			Canonical: `{"name":"x.y.foo","type":"record","fields":[{"name":"a.b.bar","type":"fixed","size":32}]}`,
 		},
 		{
 			Schema:    `{ "items":{"type":"null"}, "type":"array"}`,
