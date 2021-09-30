@@ -171,6 +171,65 @@ func TestDecimalBytesLogicalTypeInRecordEncode(t *testing.T) {
 	testBinaryCodecPass(t, schema, map[string]interface{}{"mydecimal": big.NewRat(617, 50)}, []byte("\x04\x04\xd2"))
 }
 
+func TestValidatedStringLogicalTypeInRecordEncode(t *testing.T) {
+	schema := `{
+		"type": "record",
+		"name": "myrecord",
+		"fields": [
+			{
+				"name": "number",
+				"doc": "Phone number inside the national network. Length between 4-14",
+				"type": {
+					  "type": "string",
+					  "logicalType": "validated-string",
+					  "pattern": "^[\\d]{4,14}$"
+				}
+			}
+		]
+	  }`
+
+	codec, err := NewCodec(schema)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// NOTE: May omit fields when using default value
+	textual := []byte(`{"number": "667777777"}`)
+
+	// Convert textual Avro data (in Avro JSON format) to native Go form
+	native, _, err := codec.NativeFromTextual(textual)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Convert native Go form to binary Avro data
+	binary, err := codec.BinaryFromNative(nil, native)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testSchemaValid(t, schema)
+	testBinaryCodecPass(t, schema, map[string]interface{}{"number": "667777777"}, binary)
+
+	// Convert binary Avro data back to native Go form
+	native, _, err = codec.NativeFromBinary(binary)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Convert native Go form to textual Avro data
+	textual, err = codec.TextualFromNative(nil, native)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// NOTE: Textual encoding will show all fields, even those with values that
+	// match their default values
+	if got, want := string(textual), "{\"number\":\"667777777\"}"; got != want {
+		t.Errorf("GOT: %v; WANT: %v", got, want)
+	}
+}
+
 func ExampleUnion_logicalType() {
 	// Supported logical types and their native go types:
 	// * timestamp-millis - time.Time

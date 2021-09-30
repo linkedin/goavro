@@ -596,6 +596,8 @@ func buildCodecForTypeDescribedByString(st map[string]*Codec, enclosingNamespace
 		return makeDecimalBytesCodec(st, enclosingNamespace, schemaMap)
 	case "fixed.decimal":
 		return makeDecimalFixedCodec(st, enclosingNamespace, schemaMap)
+	case "string.validated-string":
+		return makeValidatedStringCodec(st, enclosingNamespace, schemaMap)
 	default:
 		if isLogicalType {
 			delete(schemaMap, "logicalType")
