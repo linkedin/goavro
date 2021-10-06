@@ -181,7 +181,7 @@ func TestValidatedStringLogicalTypeInRecordEncode(t *testing.T) {
 				"doc": "Phone number inside the national network. Length between 4-14",
 				"type": {
 					  "type": "string",
-					  "logicalType": "validated-string",
+					  "logicalType": "validatedString",
 					  "pattern": "^[\\d]{4,14}$"
 				}
 			}

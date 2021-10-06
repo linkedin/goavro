@@ -30,7 +30,7 @@ func (e ErrInvalidName) Error() string {
 // NOTE: This function designed to work with name components, after they have
 // been split on the period rune.
 func isRuneInvalidForFirstCharacter(r rune) bool {
-	return (r < 'A' || r > 'Z') && (r < 'a' || r > 'z') && r != '_' && r != '-'
+	return (r < 'A' || r > 'Z') && (r < 'a' || r > 'z') && r != '_'
 }
 
 func isRuneInvalidForOtherCharacters(r rune) bool {
