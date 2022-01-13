@@ -11,9 +11,15 @@ package goavro
 
 import (
 	"fmt"
+	"math"
 	"math/big"
 	"testing"
 	"time"
+)
+
+const (
+	precision = "precision"
+	scale     = "scale"
 )
 
 func TestSchemaLogicalType(t *testing.T) {
@@ -163,6 +169,12 @@ func TestDecimalFixedLogicalTypeEncode(t *testing.T) {
 	// Encodes to 12 due to scale: 0
 	testBinaryEncodePass(t, schema0scale, big.NewRat(617, 50), []byte("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x0c"))
 	testBinaryDecodePass(t, schema0scale, big.NewRat(12, 1), []byte("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x0c"))
+
+	schemaPrecision1 := `{"type": "fixed", "size": 4, "logicalType": "decimal", "precision": 1, "scale": 1}`
+	testBinaryCodecPass(t, schemaPrecision1, big.NewRat(163, 10), []byte("\x00\x00\x00\xa3"))
+	testBinaryCodecPass(t, schemaPrecision1, big.NewRat(-130, 4), []byte("\xff\xff\xfe\xbb"))
+	testBinaryCodecPass(t, schemaPrecision1, big.NewRat(25, 2), []byte("\x00\x00\x00\x7d"))
+	testBinaryEncodeFail(t, schemaPrecision1, big.NewRat(math.MaxInt, -1), "datum size ought to equal schema size")
 }
 
 func TestDecimalBytesLogicalTypeInRecordEncode(t *testing.T) {
@@ -257,4 +269,44 @@ func ExampleUnion_logicalType() {
 	out := decoded.(map[string]interface{})
 	fmt.Printf("%#v\n", out["long.timestamp-millis"].(time.Time).String())
 	// Output: "2006-01-02 15:04:05 +0000 UTC"
+}
+
+func TestPrecisionAndScaleFromSchemaMapValidation(t *testing.T) {
+	testCasesInvalid := []struct {
+		schemaMap map[string]interface{}
+		errMsg    string
+	}{
+		{map[string]interface{}{}, "cannot create decimal logical type without precision"},
+		{map[string]interface{}{
+			precision: true,
+		}, "wrong precision type"},
+		{map[string]interface{}{
+			precision: float64(0),
+		}, "precision is less than one"},
+		{map[string]interface{}{
+			precision: float64(2),
+			scale:     true,
+		}, "wrong scale type"},
+		{map[string]interface{}{
+			precision: float64(2),
+			scale:     float64(-1),
+		}, "scale is less than zero"},
+		{map[string]interface{}{
+			precision: float64(2),
+			scale:     float64(3),
+		}, "scale is larger than precision"},
+	}
+	for _, tc := range testCasesInvalid {
+		_, _, err := precisionAndScaleFromSchemaMap(tc.schemaMap)
+		ensureError(t, err, tc.errMsg)
+	}
+
+	// validation passes
+	p, s, err := precisionAndScaleFromSchemaMap(map[string]interface{}{
+		precision: float64(1),
+		scale:     float64(1),
+	})
+	if p != 1 || s != 1 || err != nil {
+		t.Errorf("GOT: %v %v %v; WANT: 1 1 nil", p, s, err)
+	}
 }

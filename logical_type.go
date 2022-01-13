@@ -237,14 +237,14 @@ func precisionAndScaleFromSchemaMap(schemaMap map[string]interface{}) (int, int,
 		return 0, 0, fmt.Errorf("cannot create decimal logical type with wrong precision type; expected: float64; received: %T", p1)
 	}
 	p3 := int(p2)
-	if p3 <= 1 {
+	if p3 < 1 {
 		return 0, 0, fmt.Errorf("cannot create decimal logical type when precision is less than one: %d", p3)
 	}
 	var s3 int // scale defaults to 0 if not set
 	if s1, ok := schemaMap["scale"]; ok {
 		s2, ok := s1.(float64)
 		if !ok {
-			return 0, 0, fmt.Errorf("cannot create decimal logical type with wrong precision type; expected: float64; received: %T", p1)
+			return 0, 0, fmt.Errorf("cannot create decimal logical type with wrong scale type; expected: float64; received: %T", s1)
 		}
 		s3 = int(s2)
 		if s3 < 0 {
