@@ -271,6 +271,11 @@ func makeDecimalBytesCodec(st map[string]*Codec, enclosingNamespace string, sche
 	if err != nil {
 		return nil, fmt.Errorf("Bytes ought to have valid name: %s", err)
 	}
+
+	// Add an additional cached codec for this "bytes.decimal" keyed also by "precision" and "scale"
+	decimalSearchType := fmt.Sprintf("bytes.decimal.%d.%d", precision, scale)
+	st[decimalSearchType] = c
+
 	c.binaryFromNative = decimalBytesFromNative(bytesBinaryFromNative, toSignedBytes, precision, scale)
 	c.textualFromNative = decimalBytesFromNative(bytesTextualFromNative, toSignedBytes, precision, scale)
 	c.nativeFromBinary = nativeFromDecimalBytes(bytesNativeFromBinary, precision, scale)

@@ -300,3 +300,34 @@ func ExampleSingleItemDecoding() {
 	fmt.Println(datum)
 	// Output: 3
 }
+
+func Test_buildCodecForTypeDescribedByString_CacheRespectsPrecisionScale(t *testing.T) {
+	schemaMap := map[string]interface{}{
+		"type":        "bytes",
+		"logicalType": "decimal",
+		"precision":   float64(4),
+		"scale":       float64(2),
+	}
+	cachedCodecIdentifier := "preexisting-cached-coded"
+	cache := map[string]*Codec{
+		"bytes.decimal": nil, // precision.scale-agnostic codec
+		"bytes.decimal.4.2": {
+			schemaOriginal: cachedCodecIdentifier, // using field as identifier
+		},
+	}
+
+	// cached bytes.decimal codec with matching precision.scale is returned
+	cacheHit, err := buildCodecForTypeDescribedByString(cache, "", "bytes", schemaMap, nil)
+	ensureError(t, err) // ensure NO error
+	if cacheHit.schemaOriginal != cachedCodecIdentifier {
+		t.Errorf("GOT: %v; WANT: %v", cacheHit.schemaOriginal, cachedCodecIdentifier)
+	}
+
+	// cached codec with unmatching precision.scale is not returned
+	schemaMap["scale"] = float64(1)
+	cacheMiss, err := buildCodecForTypeDescribedByString(cache, "", "bytes", schemaMap, nil)
+	ensureError(t, err) // ensure NO error
+	if cacheMiss.schemaOriginal == cachedCodecIdentifier {
+		t.Errorf("GOT: %v; WANT: %v", cacheMiss.schemaOriginal, "!= "+cachedCodecIdentifier)
+	}
+}
