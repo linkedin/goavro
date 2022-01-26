@@ -174,7 +174,7 @@ func TestDecimalFixedLogicalTypeEncode(t *testing.T) {
 	testBinaryCodecPass(t, schemaPrecision1, big.NewRat(163, 10), []byte("\x00\x00\x00\xa3"))
 	testBinaryCodecPass(t, schemaPrecision1, big.NewRat(-130, 4), []byte("\xff\xff\xfe\xbb"))
 	testBinaryCodecPass(t, schemaPrecision1, big.NewRat(25, 2), []byte("\x00\x00\x00\x7d"))
-	testBinaryEncodeFail(t, schemaPrecision1, big.NewRat(math.MaxInt, -1), "datum size ought to equal schema size")
+	testBinaryEncodeFail(t, schemaPrecision1, big.NewRat(math.MaxInt32, -1), "datum size ought to equal schema size")
 }
 
 func TestDecimalBytesLogicalTypeInRecordEncode(t *testing.T) {
