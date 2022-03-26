@@ -265,7 +265,7 @@ func buildCodecForTypeDescribedBySliceJSON(st map[string]*Codec, enclosingNamesp
 		typeName:          &name{"union", nullNamespace},
 		nativeFromBinary:  nativeFromBinary(&cr),
 		binaryFromNative:  binaryFromNative(&cr),
-		nativeFromTextual: nativeAvroFromTextualJson(&cr),
+		nativeFromTextual: nativeAvroFromTextualJSON(&cr),
 		textualFromNative: textualFromNative(&cr),
 	}
 	return rv, nil
@@ -289,7 +289,7 @@ func checkAll(allowedTypes []string, cr *codecInfo, buf []byte) (interface{}, []
 	}
 	return nil, buf, fmt.Errorf("could not decode any json data in input %v", string(buf))
 }
-func nativeAvroFromTextualJson(cr *codecInfo) func(buf []byte) (interface{}, []byte, error) {
+func nativeAvroFromTextualJSON(cr *codecInfo) func(buf []byte) (interface{}, []byte, error) {
 	return func(buf []byte) (interface{}, []byte, error) {
 
 		reader := bytes.NewReader(buf)

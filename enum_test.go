@@ -119,9 +119,9 @@ func ExampleCodec_NativeFromTextual_checkSolutionGH233() {
 	`
 	codec, _ := NewCodec(avroSchema)
 
-	const avroJson = `{"event":{"com.foo.bar.FooBarEvent":"CREATED"}}`
+	const avroJSON = `{"event":{"com.foo.bar.FooBarEvent":"CREATED"}}`
 
-	native, _, err := codec.NativeFromTextual([]byte(avroJson))
+	native, _, err := codec.NativeFromTextual([]byte(avroJSON))
 	if err != nil {
 		panic(err)
 	}
