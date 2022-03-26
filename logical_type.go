@@ -425,7 +425,7 @@ func validatedStringNativeFromTextual(fn toNativeFn, pattern string) toNativeFn 
 
 func padBytes(bytes []byte, fixedSize uint) []byte {
 	s := int(fixedSize)
-	padded := make([]byte, s, s)
+	padded := make([]byte, s)
 	if s >= len(bytes) {
 		copy(padded[s-len(bytes):], bytes)
 	}
