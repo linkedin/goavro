@@ -225,7 +225,6 @@ func timeStampMicrosFromNative(fn fromNativeFn) fromNativeFn {
 // two's complement algorithm taken from:
 // https://groups.google.com/d/msg/golang-nuts/TV4bRVrHZUw/UcQt7S4IYlcJ by rog
 /////////////////////////////////////////////////////////////////////////////////////////////
-type makeCodecFn func(st map[string]*Codec, enclosingNamespace string, schemaMap map[string]interface{}) (*Codec, error)
 
 func precisionAndScaleFromSchemaMap(schemaMap map[string]interface{}) (int, int, error) {
 	p1, ok := schemaMap["precision"]
