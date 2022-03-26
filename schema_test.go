@@ -71,10 +71,10 @@ func TestSchemaFooBarSpecificRecord(t *testing.T) {
         {"name": "name", "type": "string"},
         {"name": "nicknames", "type":
             {"type": "array", "items": "string"}},
-        {"name": "relatedids", "type": 
+        {"name": "relatedids", "type":
             {"type": "array", "items": "int"}},
-        {"name": "typeEnum", "type": 
-            ["null", { 
+        {"name": "typeEnum", "type":
+            ["null", {
                     "type": "enum",
                     "name": "TypeEnum",
                     "namespace": "org.apache.avro",

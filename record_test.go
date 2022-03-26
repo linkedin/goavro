@@ -410,7 +410,7 @@ func TestRecordRecursiveRoundTrip(t *testing.T) {
 	codec, err := NewCodec(`
 {
   "type": "record",
-  "name": "LongList",                  
+  "name": "LongList",
   "fields" : [
     {"name": "next", "type": ["null", "LongList"], "default": null}
   ]
