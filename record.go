@@ -68,7 +68,7 @@ func makeRecordCodec(st map[string]*Codec, enclosingNamespace string, schemaMap 
 				if !ok {
 					return nil, fmt.Errorf("Record %q field %q: default value ought to encode using field schema: %s", c.typeName, fieldName, err)
 				}
-				defaultValue = bool(v)
+				defaultValue = v
 			case "bytes":
 				v, ok := defaultValue.(string)
 				if !ok {
@@ -80,7 +80,7 @@ func makeRecordCodec(st map[string]*Codec, enclosingNamespace string, schemaMap 
 				if !ok {
 					return nil, fmt.Errorf("Record %q field %q: default value ought to encode using field schema: %s", c.typeName, fieldName, err)
 				}
-				defaultValue = float64(v)
+				defaultValue = v
 			case "float":
 				v, ok := defaultValue.(float64)
 				if !ok {
@@ -104,7 +104,7 @@ func makeRecordCodec(st map[string]*Codec, enclosingNamespace string, schemaMap 
 				if !ok {
 					return nil, fmt.Errorf("Record %q field %q: default value ought to encode using field schema: %s", c.typeName, fieldName, err)
 				}
-				defaultValue = string(v)
+				defaultValue = v
 			case "union":
 				// When codec is union, then default value ought to encode using
 				// first schema in union.  NOTE: To support a null default

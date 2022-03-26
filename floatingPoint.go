@@ -99,7 +99,7 @@ func floatBinaryFromNative(buf []byte, datum interface{}) ([]byte, error) {
 	}
 	// return floatingBinaryEncoder(buf, uint64(math.Float32bits(value)), floatEncodedLength)
 	buf = append(buf, 0, 0, 0, 0)
-	binary.LittleEndian.PutUint32(buf[len(buf)-floatEncodedLength:], uint32(math.Float32bits(value)))
+	binary.LittleEndian.PutUint32(buf[len(buf)-floatEncodedLength:], math.Float32bits(value))
 	return buf, nil
 }
 
