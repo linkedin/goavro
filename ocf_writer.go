@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
-	"io/ioutil"
 	"os"
 
 	"github.com/golang/snappy"
@@ -140,7 +139,7 @@ func (ocfw *OCFWriter) quickScanToTail(ior io.Reader) error {
 			return fmt.Errorf("cannot read when block size exceeds MaxBlockSize: %d > %d", blockSize, MaxBlockSize)
 		}
 		// Advance reader to end of block
-		if _, err = io.CopyN(ioutil.Discard, ior, blockSize); err != nil {
+		if _, err = io.CopyN(io.Discard, ior, blockSize); err != nil {
 			return fmt.Errorf("cannot seek to next block: %s", err)
 		}
 		// Read and validate sync marker

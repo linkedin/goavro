@@ -10,12 +10,12 @@
 package goavro
 
 import (
-	"io/ioutil"
+	"os"
 	"testing"
 )
 
 func BenchmarkNewCodecUsingV2(b *testing.B) {
-	schema, err := ioutil.ReadFile("fixtures/quickstop.avsc")
+	schema, err := os.ReadFile("fixtures/quickstop.avsc")
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -26,7 +26,7 @@ func BenchmarkNewCodecUsingV2(b *testing.B) {
 }
 
 func BenchmarkNativeFromAvroUsingV2(b *testing.B) {
-	avroBlob, err := ioutil.ReadFile("fixtures/quickstop-null.avro")
+	avroBlob, err := os.ReadFile("fixtures/quickstop-null.avro")
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -37,7 +37,7 @@ func BenchmarkNativeFromAvroUsingV2(b *testing.B) {
 }
 
 func BenchmarkBinaryFromNativeUsingV2(b *testing.B) {
-	avroBlob, err := ioutil.ReadFile("fixtures/quickstop-null.avro")
+	avroBlob, err := os.ReadFile("fixtures/quickstop-null.avro")
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -49,7 +49,7 @@ func BenchmarkBinaryFromNativeUsingV2(b *testing.B) {
 }
 
 func BenchmarkNativeFromBinaryUsingV2(b *testing.B) {
-	avroBlob, err := ioutil.ReadFile("fixtures/quickstop-null.avro")
+	avroBlob, err := os.ReadFile("fixtures/quickstop-null.avro")
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -62,7 +62,7 @@ func BenchmarkNativeFromBinaryUsingV2(b *testing.B) {
 }
 
 func BenchmarkTextualFromNativeUsingV2(b *testing.B) {
-	avroBlob, err := ioutil.ReadFile("fixtures/quickstop-null.avro")
+	avroBlob, err := os.ReadFile("fixtures/quickstop-null.avro")
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func BenchmarkTextualFromNativeUsingV2(b *testing.B) {
 }
 
 func BenchmarkNativeFromTextualUsingV2(b *testing.B) {
-	avroBlob, err := ioutil.ReadFile("fixtures/quickstop-null.avro")
+	avroBlob, err := os.ReadFile("fixtures/quickstop-null.avro")
 	if err != nil {
 		b.Fatal(err)
 	}
