@@ -380,15 +380,11 @@ func makeValidatedStringCodec(st map[string]*Codec, enclosingNamespace string, s
 }
 
 func validatedStringBinaryFromNative(fromNativeFn fromNativeFn) fromNativeFn {
-	return func(b []byte, d interface{}) ([]byte, error) {
-		return stringBinaryFromNative(b, d)
-	}
+	return stringBinaryFromNative
 }
 
 func validatedStringTextualFromNative(fromNativeFn fromNativeFn) fromNativeFn {
-	return func(b []byte, d interface{}) ([]byte, error) {
-		return stringTextualFromNative(b, d)
-	}
+	return stringTextualFromNative
 }
 
 func validatedStringNativeFromBinary(fn toNativeFn, pattern string) toNativeFn {

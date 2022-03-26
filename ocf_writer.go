@@ -71,11 +71,10 @@ func NewOCFWriter(config OCFConfig) (*OCFWriter, error) {
 	var err error
 	ocf := &OCFWriter{iow: config.W}
 
-	switch config.W.(type) {
+	switch file := config.W.(type) {
 	case nil:
 		return nil, errors.New("cannot create OCFWriter when W is nil")
 	case *os.File:
-		file := config.W.(*os.File)
 		stat, err := file.Stat()
 		if err != nil {
 			return nil, fmt.Errorf("cannot create OCFWriter: %s", err)

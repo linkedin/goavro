@@ -88,6 +88,7 @@ func newOCFHeader(config OCFConfig) (*ocfHeader, error) {
 	//
 	// avro.schema
 	//
+	// nolint:gocritic
 	if config.Codec != nil {
 		header.codec = config.Codec
 	} else if config.Schema == "" {

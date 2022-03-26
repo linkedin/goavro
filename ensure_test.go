@@ -24,7 +24,11 @@ func ensureError(tb testing.TB, err error, contains ...string) {
 		if err != nil {
 			tb.Fatalf("GOT: %v; WANT: %v", err, contains)
 		}
-	} else if err == nil {
+
+		return
+	}
+
+	if err == nil {
 		tb.Errorf("GOT: %v; WANT: %v", err, contains)
 	} else {
 		for _, stub := range contains {
