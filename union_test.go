@@ -285,7 +285,7 @@ func ExampleCodec_NativeFromTextual_json() {
 
 	// pull out the string to show its all good
 	_v := o["string"]
-	v, ok := _v.(string)
+	v := _v.(string)
 	fmt.Println(v)
 	// Output: some string one
 }

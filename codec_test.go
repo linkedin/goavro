@@ -182,10 +182,7 @@ func TestSingleObjectEncoding(t *testing.T) {
 		})
 
 		t.Run("decoding", func(t *testing.T) {
-			const original = ""
-			buf := []byte(original)
-
-			buf, err = codec.SingleFromNative(nil, 3)
+			buf, err := codec.SingleFromNative(nil, 3)
 			ensureError(t, err)
 
 			buf = append(buf, "\xDE\xAD"...) // append some junk
