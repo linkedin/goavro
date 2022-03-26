@@ -96,7 +96,7 @@ func TestGH233(t *testing.T) {
 
 }
 
-func ExampleCheckSolutionGH233() {
+func ExampleCodec_NativeFromTextual_checkSolutionGH233() {
 	const avroSchema = `
 	{
 		"type": "record",

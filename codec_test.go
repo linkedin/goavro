@@ -16,7 +16,7 @@ import (
 	"testing"
 )
 
-func ExampleCodecCanonicalSchema() {
+func ExampleCodec_CanonicalSchema() {
 	schema := `{"type":"map","values":{"type":"enum","name":"foo","symbols":["alpha","bravo"]}}`
 	codec, err := NewCodec(schema)
 	if err != nil {
@@ -245,7 +245,7 @@ func TestSingleObjectEncoding(t *testing.T) {
 	})
 }
 
-func ExampleSingleItemEncoding() {
+func ExampleCodec_SingleFromNative() {
 	codec, err := NewCodec(`"int"`)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
@@ -262,7 +262,7 @@ func ExampleSingleItemEncoding() {
 	// Output: [195 1 143 92 57 63 26 213 117 114 6]
 }
 
-func ExampleSingleItemDecoding() {
+func ExampleCodec_NativeFromBinary_singleItemDecoding() {
 	codec1, err := NewCodec(`"int"`)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)

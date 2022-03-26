@@ -445,7 +445,7 @@ func TestRecordRecursiveRoundTrip(t *testing.T) {
 	}
 }
 
-func ExampleRecordRecursiveRoundTrip() {
+func ExampleCodec_NativeFromTextual_roundTrip() {
 	codec, err := NewCodec(`
 {
   "type": "record",
@@ -492,7 +492,7 @@ func ExampleRecordRecursiveRoundTrip() {
 	// Output: {"next":{"LongList":{"next":{"LongList":{"next":null}}}}}
 }
 
-func ExampleBinaryFromNative() {
+func ExampleCodec_BinaryFromNative_avro() {
 	codec, err := NewCodec(`
 {
   "type": "record",
@@ -526,7 +526,7 @@ func ExampleBinaryFromNative() {
 	// Output: []byte{0x2, 0x2, 0x0}
 }
 
-func ExampleNativeFromBinary() {
+func ExampleCodec_NativeFromBinary_avro() {
 	codec, err := NewCodec(`
 {
   "type": "record",
@@ -552,7 +552,7 @@ func ExampleNativeFromBinary() {
 	// Output: map[next:map[LongList:map[next:map[LongList:map[next:<nil>]]]]]
 }
 
-func ExampleNativeFromTextual() {
+func ExampleCodec_NativeFromTextual_avro() {
 	codec, err := NewCodec(`
 {
   "type": "record",
@@ -578,7 +578,7 @@ func ExampleNativeFromTextual() {
 	// Output: map[next:map[LongList:map[next:map[LongList:map[next:<nil>]]]]]
 }
 
-func ExampleTextualFromNative() {
+func ExampleCodec_TextualFromNative_avro() {
 	codec, err := NewCodec(`
 {
   "type": "record",

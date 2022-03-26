@@ -159,7 +159,7 @@ func TestUnionText(t *testing.T) {
 	testTextCodecPass(t, `["null","int","string"]`, Union("string", "😂 "), []byte(`{"string":"\u0001\uD83D\uDE02 "}`))
 }
 
-func ExampleUnion() {
+func ExampleCodec_TextualFromNative_union() {
 	codec, err := NewCodec(`["null","string","int"]`)
 	if err != nil {
 		fmt.Println(err)
@@ -172,7 +172,7 @@ func ExampleUnion() {
 	// Output: {"string":"some string"}
 }
 
-func ExampleUnion3() {
+func ExampleCodec_TextualFromNative_union_json() {
 	// Imagine a record field with the following union type. I have seen this
 	// sort of type in many schemas. I have been told the reasoning behind it is
 	// when the writer desires to encode data to JSON that cannot be written as
@@ -221,19 +221,6 @@ func ExampleUnion3() {
 	// Output: decoded string: NaN
 }
 
-func ExampleJSONUnion() {
-	codec, err := NewCodec(`["null","string","int"]`)
-	if err != nil {
-		fmt.Println(err)
-	}
-	buf, err := codec.TextualFromNative(nil, Union("string", "some string"))
-	if err != nil {
-		fmt.Println(err)
-	}
-	fmt.Println(string(buf))
-	// Output: {"string":"some string"}
-}
-
 //
 // The following examples show the way to put a new codec into use
 // Currently the only new codec is ont that supports standard json
@@ -241,7 +228,7 @@ func ExampleJSONUnion() {
 // so standard json data needs to be guided into avro unions
 
 // show how to use the default codec via the NewCodecFrom mechanism
-func ExampleCustomCodec() {
+func ExampleCodec_TextualFromNative() {
 	codec, err := NewCodecFrom(`"string"`, &codecBuilder{
 		buildCodecForTypeDescribedByMap,
 		buildCodecForTypeDescribedByString,
@@ -259,7 +246,7 @@ func ExampleCustomCodec() {
 }
 
 // Use the standard JSON codec instead
-func ExampleJSONStringToTextual() {
+func ExampleCodec_TextualFromNative_json() {
 	codec, err := NewCodecFrom(`["null","string","int"]`, &codecBuilder{
 		buildCodecForTypeDescribedByMap,
 		buildCodecForTypeDescribedByString,
@@ -276,7 +263,7 @@ func ExampleJSONStringToTextual() {
 	// Output: {"string":"some string"}
 }
 
-func ExampleJSONStringToNative() {
+func ExampleCodec_NativeFromTextual_json() {
 	codec, err := NewCodecFrom(`["null","string","int"]`, &codecBuilder{
 		buildCodecForTypeDescribedByMap,
 		buildCodecForTypeDescribedByString,
