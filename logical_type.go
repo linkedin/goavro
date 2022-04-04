@@ -127,7 +127,7 @@ func timeMicrosFromNative(fn fromNativeFn) fromNativeFn {
 			return fn(b, val)
 
 		case time.Duration:
-			duration := int32(val.Nanoseconds() / int64(time.Microsecond))
+			duration := val.Nanoseconds() / int64(time.Microsecond)
 			return fn(b, duration)
 
 		default:
