@@ -52,9 +52,9 @@ type OCFConfig struct {
 	// this field is ignored.
 	CompressionName string
 
-	//MetaData specifies application specific meta data to be added to
-	//the OCF file.  When appending to an existing OCF, this field
-	//is ignored
+	// MetaData specifies application specific meta data to be added to
+	// the OCF file.  When appending to an existing OCF, this field
+	// is ignored.
 	MetaData map[string][]byte
 }
 
