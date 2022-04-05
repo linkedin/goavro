@@ -43,8 +43,7 @@ func TestLongLogicalTypeFallback(t *testing.T) {
 func TestTimeStampMillisLogicalTypeEncode(t *testing.T) {
 	schema := `{"type": "long", "logicalType": "timestamp-millis"}`
 	testBinaryDecodeFail(t, schema, []byte(""), "short buffer")
-	t.Skip("this test is broken")
-	testBinaryEncodeFail(t, schema, "test", "cannot transform binary timestamp-millis, expected time.Time")
+	testBinaryEncodeFail(t, schema, "test", "cannot transform to binary timestamp-millis, expected time.Time or Go numeric")
 	testBinaryCodecPass(t, schema, time.Date(2006, 1, 2, 15, 04, 05, 565000000, time.UTC), []byte("\xfa\x82\xac\xba\x91\x42"))
 }
 
@@ -57,8 +56,7 @@ func TestTimeStampMillisLogicalTypeUnionEncode(t *testing.T) {
 func TestTimeStampMicrosLogicalTypeEncode(t *testing.T) {
 	schema := `{"type": "long", "logicalType": "timestamp-micros"}`
 	testBinaryDecodeFail(t, schema, []byte(""), "short buffer")
-	t.Skip("this test is broken")
-	testBinaryEncodeFail(t, schema, "test", "cannot transform binary timestamp-micros, expected time.Time")
+	testBinaryEncodeFail(t, schema, "test", "cannot transform to binary timestamp-micros, expected time.Time or Go numeric")
 	testBinaryCodecPass(t, schema, time.Date(2006, 1, 2, 15, 04, 05, 565283000, time.UTC), []byte("\xc6\x8d\xf7\xe7\xaf\xd8\x84\x04"))
 }
 
@@ -96,8 +94,7 @@ func TestTimeMicrosLogicalTypeUnionEncode(t *testing.T) {
 func TestDateLogicalTypeEncode(t *testing.T) {
 	schema := `{"type": "int", "logicalType": "date"}`
 	testBinaryDecodeFail(t, schema, []byte(""), "short buffer")
-	t.Skip("this test is broken")
-	testBinaryEncodeFail(t, schema, "test", "cannot transform to binary date, expected time.Time, received string")
+	testBinaryEncodeFail(t, schema, "test", "cannot transform to binary date, expected time.Time or Go numeric, received string")
 	testBinaryCodecPass(t, schema, time.Date(2006, 1, 2, 0, 0, 0, 0, time.UTC), []byte("\xbc\xcd\x01"))
 }
 
