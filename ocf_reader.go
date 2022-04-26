@@ -19,7 +19,9 @@ import (
 	"io"
 	"io/ioutil"
 
+	"github.com/dsnet/compress/bzip2"
 	"github.com/golang/snappy"
+	"github.com/klauspost/compress/zstd"
 )
 
 // OCFReader structure is used to read Object Container Files (OCF).
@@ -80,6 +82,10 @@ func (ocfr *OCFReader) CompressionName() string {
 		return CompressionDeflateLabel
 	case compressionSnappy:
 		return CompressionSnappyLabel
+	case compressionBzip2:
+		return CompressionBzip2Label
+	case compressionZstd:
+		return CompressionZstdLabel
 	default:
 		return "should not get here: unrecognized compression algorithm"
 	}
@@ -219,6 +225,35 @@ func (ocfr *OCFReader) Scan() bool {
 				return false
 			}
 			ocfr.block = decoded
+
+		case compressionBzip2:
+			rc, err := bzip2.NewReader(bytes.NewBuffer(ocfr.block), nil)
+			if err != nil {
+				ocfr.rerr = fmt.Errorf("bzip2 error: %s", err)
+				return false
+			}
+			ocfr.block, ocfr.rerr = ioutil.ReadAll(rc)
+			if ocfr.rerr != nil {
+				_ = rc.Close()
+				return false
+			}
+			if ocfr.rerr = rc.Close(); ocfr.rerr != nil {
+				return false
+			}
+
+		case compressionZstd:
+			rc, err := zstd.NewReader(bytes.NewBuffer(ocfr.block))
+			if err != nil {
+				ocfr.rerr = fmt.Errorf("zstd error: %s", err)
+				return false
+			}
+			ocfr.block, ocfr.rerr = ioutil.ReadAll(rc)
+			if cerr := rc.Close(); ocfr.rerr == nil {
+			    ocfr.rerr = cerr
+			}
+			if ocfr.rerr != nil {
+				return false
+			}
 
 		default:
 			ocfr.rerr = fmt.Errorf("should not get here: cannot compress block using unrecognized compression: %d", ocfr.header.compressionID)
