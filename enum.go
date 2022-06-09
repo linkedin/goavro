@@ -14,6 +14,11 @@ import (
 	"io"
 )
 
+type avroEnum interface {
+	Parse(val string)
+	Str() string
+}
+
 // enum does not have child objects, therefore whatever namespace it defines is
 // just to store its name in the symbol table.
 func makeEnumCodec(st map[string]*Codec, enclosingNamespace string, schemaMap map[string]interface{}) (*Codec, error) {
@@ -58,10 +63,16 @@ func makeEnumCodec(st map[string]*Codec, enclosingNamespace string, schemaMap ma
 		return symbols[index], buf, nil
 	}
 	c.binaryFromNative = func(buf []byte, datum interface{}) ([]byte, error) {
-		someString, ok := datum.(string)
-		if !ok {
-			return nil, fmt.Errorf("cannot encode binary enum %q: expected string; received: %T", c.typeName, datum)
+
+		someString, stringOk := datum.(string)
+		if !stringOk {
+			ave, aveOk := datum.(avroEnum)
+			if !aveOk {
+				return nil, fmt.Errorf("cannot encode binary enum %q: expected string or a type that implements avroEnum received: %T", c.typeName, datum)
+			}
+			someString = ave.Str()
 		}
+
 		for i, symbol := range symbols {
 			if symbol == someString {
 				return longBinaryFromNative(buf, i)
