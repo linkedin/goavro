@@ -15,7 +15,6 @@ import (
 )
 
 type avroEnum interface {
-	Parse(val string)
 	Str() string
 }
 
