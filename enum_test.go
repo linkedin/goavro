@@ -46,7 +46,7 @@ func TestEnumDecodeError(t *testing.T) {
 }
 
 func TestEnumEncodeError(t *testing.T) {
-	testBinaryEncodeFail(t, `{"type":"enum","name":"e1","symbols":["alpha","bravo"]}`, 13, `cannot encode binary enum "e1": expected string; received: int`)
+	testBinaryEncodeFail(t, `{"type":"enum","name":"e1","symbols":["alpha","bravo"]}`, 13, `cannot encode binary enum "e1": expected string or a type that implements avroEnum received: int`)
 	testBinaryEncodeFail(t, `{"type":"enum","name":"e1","symbols":["alpha","bravo"]}`, "charlie", `cannot encode binary enum "e1": value ought to be member of symbols`)
 }
 

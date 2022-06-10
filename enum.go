@@ -71,7 +71,6 @@ func makeEnumCodec(st map[string]*Codec, enclosingNamespace string, schemaMap ma
 			}
 			someString = ave.Str()
 		}
-
 		for i, symbol := range symbols {
 			if symbol == someString {
 				return longBinaryFromNative(buf, i)
