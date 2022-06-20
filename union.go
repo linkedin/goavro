@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"sort"
 )
 
@@ -110,12 +111,17 @@ func nativeFromBinary(cr *codecInfo) func(buf []byte) (interface{}, []byte, erro
 			// do not wrap a nil value in a map
 			return nil, buf, nil
 		}
-		// Non-nil values are wrapped in a map with single key set to type name of value
+		// Single value union values are returned as a pointer type. Multi value non-nil
+		// union values are wrapped in a map with single key set to type name of value
+		if len(cr.allowedTypes) == 2 {
+			return decoded, buf, nil
+		} 
 		return Union(cr.allowedTypes[index], decoded), buf, nil
 	}
 }
 func binaryFromNative(cr *codecInfo) func(buf []byte, datum interface{}) ([]byte, error) {
 	return func(buf []byte, datum interface{}) ([]byte, error) {
+
 		switch v := datum.(type) {
 		case nil:
 			index, ok := cr.indexFromName["null"]
@@ -137,6 +143,29 @@ func binaryFromNative(cr *codecInfo) func(buf []byte, datum interface{}) ([]byte
 				buf, _ = longBinaryFromNative(buf, index)
 				return c.binaryFromNative(buf, value)
 			}
+		default:
+			if reflect.ValueOf(v).Type().Kind() == reflect.Struct {
+				return nil, fmt.Errorf("cannot encode binary union: two value nullable unions must be passed as a single pointer type")
+			}
+
+			if v == nil {
+				index, ok := cr.indexFromName["null"]
+				if !ok {
+					return nil, fmt.Errorf("cannot encode binary union: no member schema types support datum: allowed types: %v; received: %T", cr.allowedTypes, datum)
+				}
+				return longBinaryFromNative(buf, index)
+			}
+
+			val := datum.(*string)
+
+			typeStr := reflect.TypeOf(v).Elem().Name()
+			index, ok := cr.indexFromName[typeStr]
+			if !ok {
+				return nil, fmt.Errorf("cannot encode binary union: no member schema types support datum: allowed types: %v; received: %T", cr.allowedTypes, datum)
+			}
+			c := cr.codecFromIndex[index]
+			buf, _ = longBinaryFromNative(buf, index)
+			return c.binaryFromNative(buf, *val)
 		}
 		return nil, fmt.Errorf("cannot encode binary union: non-nil Union values ought to be specified with Go map[string]interface{}, with single key equal to type name, and value equal to datum value: %v; received: %T", cr.allowedTypes, datum)
 	}
@@ -192,7 +221,40 @@ func textualFromNative(cr *codecInfo) func(buf []byte, datum interface{}) ([]byt
 				}
 				return append(buf, '}'), nil
 			}
+		default:
+			if reflect.ValueOf(v).Type().Kind() == reflect.Struct {
+				return nil, fmt.Errorf("cannot encode binary union: two value nullable unions must be passed as a single pointer type")
+			}
+
+			if v == nil {
+				_, ok := cr.indexFromName["null"]
+				if !ok {
+					return nil, fmt.Errorf("cannot encode binary union: no member schema types support datum: allowed types: %v; received: %T", cr.allowedTypes, datum)
+				}
+				return append(buf, "null"...), nil
+			}
+
+			typeStr := reflect.TypeOf(v).Elem().Name()
+			index, ok := cr.indexFromName[typeStr]
+			if !ok {
+				return nil, fmt.Errorf("cannot encode binary union: no member schema types support datum: allowed types: %v; received: %T", cr.allowedTypes, datum)
+			}
+
+			buf = append(buf, '{')
+			var err error
+			buf, err = stringTextualFromNative(buf, index)
+			if err != nil {
+				return nil, fmt.Errorf("cannot encode textual union: %s", err)
+			}
+			buf = append(buf, ':')
+			c := cr.codecFromIndex[index]
+			buf, err = c.textualFromNative(buf, datum)
+			if err != nil {
+				return nil, fmt.Errorf("cannot encode textual union: %s", err)
+			}
+			return append(buf, '}'), nil
 		}
+
 		return nil, fmt.Errorf("cannot encode textual union: non-nil values ought to be specified with Go map[string]interface{}, with single key equal to type name, and value equal to datum value: %v; received: %T", cr.allowedTypes, datum)
 	}
 }
