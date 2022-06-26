@@ -107,7 +107,19 @@ func NewCodecForStandardJSON(schemaSpecification string) (*Codec, error) {
 	return NewCodecFrom(schemaSpecification, &codecBuilder{
 		buildCodecForTypeDescribedByMap,
 		buildCodecForTypeDescribedByString,
-		buildCodecForTypeDescribedBySliceJSON,
+		buildCodecForTypeDescribedBySliceOneWayJson,
+	})
+}
+
+func NewCodecForStandardJsonOneWay(schemaSpecification string) (*Codec, error) {
+	return NewCodecForStandardJSON(schemaSpecification)
+}
+
+func NewCodecForStandardJsonFull(schemaSpecification string) (*Codec, error) {
+	return NewCodecFrom(schemaSpecification, &codecBuilder{
+		buildCodecForTypeDescribedByMap,
+		buildCodecForTypeDescribedByString,
+		buildCodecForTypeDescribedBySliceTwoWayJson,
 	})
 }
 

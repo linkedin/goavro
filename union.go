@@ -87,7 +87,7 @@ func makeCodecInfo(st map[string]*Codec, enclosingNamespace string, schemaArray 
 
 }
 
-func nativeFromBinary(cr *codecInfo) func(buf []byte) (interface{}, []byte, error) {
+func unionNativeFromBinary(cr *codecInfo) func(buf []byte) (interface{}, []byte, error) {
 
 	return func(buf []byte) (interface{}, []byte, error) {
 		var decoded interface{}
@@ -114,7 +114,7 @@ func nativeFromBinary(cr *codecInfo) func(buf []byte) (interface{}, []byte, erro
 		return Union(cr.allowedTypes[index], decoded), buf, nil
 	}
 }
-func binaryFromNative(cr *codecInfo) func(buf []byte, datum interface{}) ([]byte, error) {
+func unionBinaryFromNative(cr *codecInfo) func(buf []byte, datum interface{}) ([]byte, error) {
 	return func(buf []byte, datum interface{}) ([]byte, error) {
 		switch v := datum.(type) {
 		case nil:
@@ -141,7 +141,7 @@ func binaryFromNative(cr *codecInfo) func(buf []byte, datum interface{}) ([]byte
 		return nil, fmt.Errorf("cannot encode binary union: non-nil Union values ought to be specified with Go map[string]interface{}, with single key equal to type name, and value equal to datum value: %v; received: %T", cr.allowedTypes, datum)
 	}
 }
-func nativeFromTextual(cr *codecInfo) func(buf []byte) (interface{}, []byte, error) {
+func unionNativeFromTextual(cr *codecInfo) func(buf []byte) (interface{}, []byte, error) {
 	return func(buf []byte) (interface{}, []byte, error) {
 		if len(buf) >= 4 && bytes.Equal(buf[:4], []byte("null")) {
 			if _, ok := cr.indexFromName["null"]; ok {
@@ -159,7 +159,7 @@ func nativeFromTextual(cr *codecInfo) func(buf []byte) (interface{}, []byte, err
 		return datum, buf, nil
 	}
 }
-func textualFromNative(cr *codecInfo) func(buf []byte, datum interface{}) ([]byte, error) {
+func unionTextualFromNative(cr *codecInfo) func(buf []byte, datum interface{}) ([]byte, error) {
 	return func(buf []byte, datum interface{}) ([]byte, error) {
 		switch v := datum.(type) {
 		case nil:
@@ -196,6 +196,37 @@ func textualFromNative(cr *codecInfo) func(buf []byte, datum interface{}) ([]byt
 		return nil, fmt.Errorf("cannot encode textual union: non-nil values ought to be specified with Go map[string]interface{}, with single key equal to type name, and value equal to datum value: %v; received: %T", cr.allowedTypes, datum)
 	}
 }
+func textualJsonFromNativeAvro(cr *codecInfo) func(buf []byte, datum interface{}) ([]byte, error) {
+	return func(buf []byte, datum interface{}) ([]byte, error) {
+		switch v := datum.(type) {
+		case nil:
+			_, ok := cr.indexFromName["null"]
+			if !ok {
+				return nil, fmt.Errorf("cannot encode textual union: no member schema types support datum: allowed types: %v; received: %T", cr.allowedTypes, datum)
+			}
+			return append(buf, "null"...), nil
+		case map[string]interface{}:
+			if len(v) != 1 {
+				return nil, fmt.Errorf("cannot encode textual union: non-nil Union values ought to be specified with Go map[string]interface{}, with single key equal to type name, and value equal to datum value: %v; received: %T", cr.allowedTypes, datum)
+			}
+			// will execute exactly once
+			for key, value := range v {
+				index, ok := cr.indexFromName[key]
+				if !ok {
+					return nil, fmt.Errorf("cannot encode textual union: no member schema types support datum: allowed types: %v; received: %T", cr.allowedTypes, datum)
+				}
+				var err error
+				c := cr.codecFromIndex[index]
+				buf, err = c.textualFromNative(buf, value)
+				if err != nil {
+					return nil, fmt.Errorf("cannot encode textual union: %s", err)
+				}
+				return buf, nil
+			}
+		}
+		return nil, fmt.Errorf("cannot encode textual union: non-nil values ought to be specified with Go map[string]interface{}, with single key equal to type name, and value equal to datum value: %v; received: %T", cr.allowedTypes, datum)
+	}
+}
 func buildCodecForTypeDescribedBySlice(st map[string]*Codec, enclosingNamespace string, schemaArray []interface{}, cb *codecBuilder) (*Codec, error) {
 	if len(schemaArray) == 0 {
 		return nil, errors.New("Union ought to have one or more members")
@@ -213,10 +244,10 @@ func buildCodecForTypeDescribedBySlice(st map[string]*Codec, enclosingNamespace 
 		schemaOriginal: cr.codecFromIndex[0].typeName.fullName,
 
 		typeName:          &name{"union", nullNamespace},
-		nativeFromBinary:  nativeFromBinary(&cr),
-		binaryFromNative:  binaryFromNative(&cr),
-		nativeFromTextual: nativeFromTextual(&cr),
-		textualFromNative: textualFromNative(&cr),
+		nativeFromBinary:  unionNativeFromBinary(&cr),
+		binaryFromNative:  unionBinaryFromNative(&cr),
+		nativeFromTextual: unionNativeFromTextual(&cr),
+		textualFromNative: unionTextualFromNative(&cr),
 	}
 	return rv, nil
 }
@@ -246,7 +277,7 @@ func buildCodecForTypeDescribedBySlice(st map[string]*Codec, enclosingNamespace 
 // and then it will remain avro-json object
 // avro data is not serialized back into standard json
 // the data goes to avro-json and stays that way
-func buildCodecForTypeDescribedBySliceJSON(st map[string]*Codec, enclosingNamespace string, schemaArray []interface{}, cb *codecBuilder) (*Codec, error) {
+func buildCodecForTypeDescribedBySliceOneWayJson(st map[string]*Codec, enclosingNamespace string, schemaArray []interface{}, cb *codecBuilder) (*Codec, error) {
 	if len(schemaArray) == 0 {
 		return nil, errors.New("Union ought to have one or more members")
 	}
@@ -263,10 +294,34 @@ func buildCodecForTypeDescribedBySliceJSON(st map[string]*Codec, enclosingNamesp
 		schemaOriginal: cr.codecFromIndex[0].typeName.fullName,
 
 		typeName:          &name{"union", nullNamespace},
-		nativeFromBinary:  nativeFromBinary(&cr),
-		binaryFromNative:  binaryFromNative(&cr),
+		nativeFromBinary:  unionNativeFromBinary(&cr),
+		binaryFromNative:  unionBinaryFromNative(&cr),
 		nativeFromTextual: nativeAvroFromTextualJson(&cr),
-		textualFromNative: textualFromNative(&cr),
+		textualFromNative: unionTextualFromNative(&cr),
+	}
+	return rv, nil
+}
+func buildCodecForTypeDescribedBySliceTwoWayJson(st map[string]*Codec, enclosingNamespace string, schemaArray []interface{}, cb *codecBuilder) (*Codec, error) {
+	if len(schemaArray) == 0 {
+		return nil, errors.New("Union ought to have one or more members")
+	}
+
+	cr, err := makeCodecInfo(st, enclosingNamespace, schemaArray, cb)
+	if err != nil {
+		return nil, err
+	}
+
+	rv := &Codec{
+		// NOTE: To support record field default values, union schema set to the
+		// type name of first member
+		// TODO: add/change to schemaCanonical below
+		schemaOriginal: cr.codecFromIndex[0].typeName.fullName,
+
+		typeName:          &name{"union", nullNamespace},
+		nativeFromBinary:  unionNativeFromBinary(&cr),
+		binaryFromNative:  unionBinaryFromNative(&cr),
+		nativeFromTextual: nativeAvroFromTextualJson(&cr),
+		textualFromNative: textualJsonFromNativeAvro(&cr),
 	}
 	return rv, nil
 }

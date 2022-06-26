@@ -263,7 +263,7 @@ func ExampleJSONStringToTextual() {
 	codec, err := NewCodecFrom(`["null","string","int"]`, &codecBuilder{
 		buildCodecForTypeDescribedByMap,
 		buildCodecForTypeDescribedByString,
-		buildCodecForTypeDescribedBySliceJSON,
+		buildCodecForTypeDescribedBySliceOneWayJson,
 	})
 	if err != nil {
 		fmt.Println(err)
@@ -280,7 +280,7 @@ func ExampleJSONStringToNative() {
 	codec, err := NewCodecFrom(`["null","string","int"]`, &codecBuilder{
 		buildCodecForTypeDescribedByMap,
 		buildCodecForTypeDescribedByString,
-		buildCodecForTypeDescribedBySliceJSON,
+		buildCodecForTypeDescribedBySliceOneWayJson,
 	})
 	if err != nil {
 		fmt.Println(err)
@@ -303,35 +303,69 @@ func ExampleJSONStringToNative() {
 	// Output: some string one
 }
 
-func TestUnionJSON(t *testing.T) {
-	testJSONDecodePass(t, `["null","int"]`, nil, []byte("null"))
-	testJSONDecodePass(t, `["null","int","long"]`, Union("int", 3), []byte(`3`))
-	testJSONDecodePass(t, `["null","long","int"]`, Union("int", 3), []byte(`3`))
-	testJSONDecodePass(t, `["null","int","long"]`, Union("long", 333333333333333), []byte(`333333333333333`))
-	testJSONDecodePass(t, `["null","long","int"]`, Union("long", 333333333333333), []byte(`333333333333333`))
-	testJSONDecodePass(t, `["null","float","int","long"]`, Union("float", 6.77), []byte(`6.77`))
-	testJSONDecodePass(t, `["null","int","float","long"]`, Union("float", 6.77), []byte(`6.77`))
-	testJSONDecodePass(t, `["null","double","int","long"]`, Union("double", 6.77), []byte(`6.77`))
-	testJSONDecodePass(t, `["null","int","float","double","long"]`, Union("double", 6.77), []byte(`6.77`))
-	testJSONDecodePass(t, `["null",{"type":"array","items":"int"}]`, Union("array", []interface{}{1, 2}), []byte(`[1,2]`))
-	testJSONDecodePass(t, `["null",{"type":"map","values":"int"}]`, Union("map", map[string]interface{}{"k1": 13}), []byte(`{"k1":13}`))
-	testJSONDecodePass(t, `["null",{"name":"r1","type":"record","fields":[{"name":"field1","type":"string"},{"name":"field2","type":"string"}]}]`, Union("r1", map[string]interface{}{"field1": "value1", "field2": "value2"}), []byte(`{"field1": "value1", "field2": "value2"}`))
-	testJSONDecodePass(t, `["null","boolean"]`, Union("boolean", true), []byte(`true`))
-	testJSONDecodePass(t, `["null","boolean"]`, Union("boolean", false), []byte(`false`))
-	testJSONDecodePass(t, `["null",{"type":"enum","name":"e1","symbols":["alpha","bravo"]}]`, Union("e1", "bravo"), []byte(`"bravo"`))
-	testJSONDecodePass(t, `["null", "bytes"]`, Union("bytes", []byte("")), []byte("\"\""))
-	testJSONDecodePass(t, `["null", "bytes", "string"]`, Union("bytes", []byte("")), []byte("\"\""))
-	testJSONDecodePass(t, `["null", "string", "bytes"]`, Union("string", "value1"), []byte(`"value1"`))
-	testJSONDecodePass(t, `["null", {"type":"enum","name":"e1","symbols":["alpha","bravo"]}, "string"]`, Union("e1", "bravo"), []byte(`"bravo"`))
-	testJSONDecodePass(t, `["null", {"type":"fixed","name":"f1","size":4}]`, Union("f1", []byte(`abcd`)), []byte(`"abcd"`))
-	testJSONDecodePass(t, `"string"`, "abcd", []byte(`"abcd"`))
-	testJSONDecodePass(t, `{"type":"record","name":"kubeEvents","fields":[{"name":"field1","type":"string","default":""}]}`, map[string]interface{}{"field1": "value1"}, []byte(`{"field1":"value1"}`))
-	testJSONDecodePass(t, `{"type":"record","name":"kubeEvents","fields":[{"name":"field1","type":"string","default":""},{"name":"field2","type":"string"}]}`, map[string]interface{}{"field1": "", "field2": "deef"}, []byte(`{"field2": "deef"}`))
-	testJSONDecodePass(t, `{"type":"record","name":"kubeEvents","fields":[{"name":"field1","type":["string","null"],"default":""}]}`, map[string]interface{}{"field1": Union("string", "value1")}, []byte(`{"field1":"value1"}`))
-	testJSONDecodePass(t, `{"type":"record","name":"kubeEvents","fields":[{"name":"field1","type":["string","null"],"default":""}]}`, map[string]interface{}{"field1": nil}, []byte(`{"field1":null}`))
+func TestUnionJson(t *testing.T) {
+	testJsonDecodePass(t, `["null","int"]`, nil, []byte("null"))
+	testJsonDecodePass(t, `["null","int","long"]`, Union("int", 3), []byte(`3`))
+	testJsonDecodePass(t, `["null","long","int"]`, Union("int", 3), []byte(`3`))
+	testJsonDecodePass(t, `["null","int","long"]`, Union("long", 333333333333333), []byte(`333333333333333`))
+	testJsonDecodePass(t, `["null","long","int"]`, Union("long", 333333333333333), []byte(`333333333333333`))
+	testJsonDecodePass(t, `["null","float","int","long"]`, Union("float", 6.77), []byte(`6.77`))
+	testJsonDecodePass(t, `["null","int","float","long"]`, Union("float", 6.77), []byte(`6.77`))
+	testJsonDecodePass(t, `["null","double","int","long"]`, Union("double", 6.77), []byte(`6.77`))
+	testJsonDecodePass(t, `["null","int","float","double","long"]`, Union("double", 6.77), []byte(`6.77`))
+	testJsonDecodePass(t, `["null",{"type":"array","items":"int"}]`, Union("array", []interface{}{1, 2}), []byte(`[1,2]`))
+	testJsonDecodePass(t, `["null",{"type":"map","values":"int"}]`, Union("map", map[string]interface{}{"k1": 13}), []byte(`{"k1":13}`))
+	testJsonDecodePass(t, `["null",{"name":"r1","type":"record","fields":[{"name":"field1","type":"string"},{"name":"field2","type":"string"}]}]`, Union("r1", map[string]interface{}{"field1": "value1", "field2": "value2"}), []byte(`{"field1": "value1", "field2": "value2"}`))
+	testJsonDecodePass(t, `["null","boolean"]`, Union("boolean", true), []byte(`true`))
+	testJsonDecodePass(t, `["null","boolean"]`, Union("boolean", false), []byte(`false`))
+	testJsonDecodePass(t, `["null",{"type":"enum","name":"e1","symbols":["alpha","bravo"]}]`, Union("e1", "bravo"), []byte(`"bravo"`))
+	testJsonDecodePass(t, `["null", "bytes"]`, Union("bytes", []byte("")), []byte("\"\""))
+	testJsonDecodePass(t, `["null", "bytes", "string"]`, Union("bytes", []byte("")), []byte("\"\""))
+	testJsonDecodePass(t, `["null", "string", "bytes"]`, Union("string", "value1"), []byte(`"value1"`))
+	testJsonDecodePass(t, `["null", {"type":"enum","name":"e1","symbols":["alpha","bravo"]}, "string"]`, Union("e1", "bravo"), []byte(`"bravo"`))
+	testJsonDecodePass(t, `["null", {"type":"fixed","name":"f1","size":4}]`, Union("f1", []byte(`abcd`)), []byte(`"abcd"`))
+	testJsonDecodePass(t, `"string"`, "abcd", []byte(`"abcd"`))
+	testJsonDecodePass(t, `{"type":"record","name":"kubeEvents","fields":[{"name":"field1","type":"string","default":""}]}`, map[string]interface{}{"field1": "value1"}, []byte(`{"field1":"value1"}`))
+	testJsonDecodePass(t, `{"type":"record","name":"kubeEvents","fields":[{"name":"field1","type":"string","default":""},{"name":"field2","type":"string"}]}`, map[string]interface{}{"field1": "", "field2": "deef"}, []byte(`{"field2": "deef"}`))
+	testJsonDecodePass(t, `{"type":"record","name":"kubeEvents","fields":[{"name":"field1","type":["string","null"],"default":""}]}`, map[string]interface{}{"field1": Union("string", "value1")}, []byte(`{"field1":"value1"}`))
+	testJsonDecodePass(t, `{"type":"record","name":"kubeEvents","fields":[{"name":"field1","type":["string","null"],"default":""}]}`, map[string]interface{}{"field1": nil}, []byte(`{"field1":null}`))
 	// union of null which has minimal syntax
-	testJSONDecodePass(t, `{"type":"record","name":"LongList","fields":[{"name":"next","type":["null","LongList"],"default":null}]}`, map[string]interface{}{"next": nil}, []byte(`{"next": null}`))
+	testJsonDecodePass(t, `{"type":"record","name":"LongList","fields":[{"name":"next","type":["null","LongList"],"default":null}]}`, map[string]interface{}{"next": nil}, []byte(`{"next": null}`))
 	// record containing union of record (recursive record)
-	testJSONDecodePass(t, `{"type":"record","name":"LongList","fields":[{"name":"next","type":["null","LongList"],"default":null}]}`, map[string]interface{}{"next": Union("LongList", map[string]interface{}{"next": nil})}, []byte(`{"next":{"next":null}}`))
-	testJSONDecodePass(t, `{"type":"record","name":"LongList","fields":[{"name":"next","type":["null","LongList"],"default":null}]}`, map[string]interface{}{"next": Union("LongList", map[string]interface{}{"next": Union("LongList", map[string]interface{}{"next": nil})})}, []byte(`{"next":{"next":{"next":null}}}`))
+	testJsonDecodePass(t, `{"type":"record","name":"LongList","fields":[{"name":"next","type":["null","LongList"],"default":null}]}`, map[string]interface{}{"next": Union("LongList", map[string]interface{}{"next": nil})}, []byte(`{"next":{"next":null}}`))
+	testJsonDecodePass(t, `{"type":"record","name":"LongList","fields":[{"name":"next","type":["null","LongList"],"default":null}]}`, map[string]interface{}{"next": Union("LongList", map[string]interface{}{"next": Union("LongList", map[string]interface{}{"next": nil})})}, []byte(`{"next":{"next":{"next":null}}}`))
+}
+
+//testNativeToTextualJsonPass(t, `["null","int"]`, nil, []byte("null"))
+func TestUnionNativeToJson(t *testing.T) {
+	testNativeToTextualJsonPass(t, `["null","int"]`, nil, []byte("null"))
+	testNativeToTextualJsonPass(t, `["null","int","long"]`, Union("int", 3), []byte(`3`))
+	testNativeToTextualJsonPass(t, `["null","long","int"]`, Union("int", 3), []byte(`3`))
+	testNativeToTextualJsonPass(t, `["null","int","long"]`, Union("long", 333333333333333), []byte(`333333333333333`))
+	testNativeToTextualJsonPass(t, `["null","long","int"]`, Union("long", 333333333333333), []byte(`333333333333333`))
+	testNativeToTextualJsonPass(t, `["null","float","int","long"]`, Union("float", 6.77), []byte(`6.77`))
+	testNativeToTextualJsonPass(t, `["null","int","float","long"]`, Union("float", 6.77), []byte(`6.77`))
+	testNativeToTextualJsonPass(t, `["null","double","int","long"]`, Union("double", 6.77), []byte(`6.77`))
+	testNativeToTextualJsonPass(t, `["null","int","float","double","long"]`, Union("double", 6.77), []byte(`6.77`))
+	testNativeToTextualJsonPass(t, `["null",{"type":"array","items":"int"}]`, Union("array", []interface{}{1, 2}), []byte(`[1,2]`))
+	testNativeToTextualJsonPass(t, `["null",{"type":"map","values":"int"}]`, Union("map", map[string]interface{}{"k1": 13}), []byte(`{"k1":13}`))
+	testNativeToTextualJsonPass(t, `["null",{"name":"r1","type":"record","fields":[{"name":"field1","type":"string"},{"name":"field2","type":"string"}]}]`, Union("r1", map[string]interface{}{"field1": "value1", "field2": "value2"}), []byte(`{"field1":"value1","field2":"value2"}`))
+	testNativeToTextualJsonPass(t, `["null","boolean"]`, Union("boolean", true), []byte(`true`))
+	testNativeToTextualJsonPass(t, `["null","boolean"]`, Union("boolean", false), []byte(`false`))
+	testNativeToTextualJsonPass(t, `["null",{"type":"enum","name":"e1","symbols":["alpha","bravo"]}]`, Union("e1", "bravo"), []byte(`"bravo"`))
+	testNativeToTextualJsonPass(t, `["null", "bytes"]`, Union("bytes", []byte("")), []byte("\"\""))
+	testNativeToTextualJsonPass(t, `["null", "bytes", "string"]`, Union("bytes", []byte("")), []byte("\"\""))
+	testNativeToTextualJsonPass(t, `["null", "string", "bytes"]`, Union("string", "value1"), []byte(`"value1"`))
+	testNativeToTextualJsonPass(t, `["null", {"type":"enum","name":"e1","symbols":["alpha","bravo"]}, "string"]`, Union("e1", "bravo"), []byte(`"bravo"`))
+	testNativeToTextualJsonPass(t, `["null", {"type":"fixed","name":"f1","size":4}]`, Union("f1", []byte(`abcd`)), []byte(`"abcd"`))
+	testNativeToTextualJsonPass(t, `"string"`, "abcd", []byte(`"abcd"`))
+	testNativeToTextualJsonPass(t, `{"type":"record","name":"kubeEvents","fields":[{"name":"field1","type":"string","default":""}]}`, map[string]interface{}{"field1": "value1"}, []byte(`{"field1":"value1"}`))
+	testNativeToTextualJsonPass(t, `{"type":"record","name":"kubeEvents","fields":[{"name":"field1","type":"string","default":""},{"name":"field2","type":"string"}]}`, map[string]interface{}{"field1": "", "field2": "deef"}, []byte(`{"field1":"","field2":"deef"}`))
+	testNativeToTextualJsonPass(t, `{"type":"record","name":"kubeEvents","fields":[{"name":"field1","type":["string","null"],"default":""}]}`, map[string]interface{}{"field1": Union("string", "value1")}, []byte(`{"field1":"value1"}`))
+	testNativeToTextualJsonPass(t, `{"type":"record","name":"kubeEvents","fields":[{"name":"field1","type":["string","null"],"default":""}]}`, map[string]interface{}{"field1": nil}, []byte(`{"field1":null}`))
+	// union of null which has minimal syntax
+	testNativeToTextualJsonPass(t, `{"type":"record","name":"LongList","fields":[{"name":"next","type":["null","LongList"],"default":null}]}`, map[string]interface{}{"next": nil}, []byte(`{"next":null}`))
+	// record containing union of record (recursive record)
+	testNativeToTextualJsonPass(t, `{"type":"record","name":"LongList","fields":[{"name":"next","type":["null","LongList"],"default":null}]}`, map[string]interface{}{"next": Union("LongList", map[string]interface{}{"next": nil})}, []byte(`{"next":{"next":null}}`))
+	testNativeToTextualJsonPass(t, `{"type":"record","name":"LongList","fields":[{"name":"next","type":["null","LongList"],"default":null}]}`, map[string]interface{}{"next": Union("LongList", map[string]interface{}{"next": Union("LongList", map[string]interface{}{"next": nil})})}, []byte(`{"next":{"next":{"next":null}}}`))
 }

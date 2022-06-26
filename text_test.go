@@ -63,18 +63,41 @@ func testTextDecodePass(t *testing.T, schema string, datum interface{}, encoded 
 	}
 	toNativeAndCompare(t, schema, datum, encoded, codec)
 }
-func testJSONDecodePass(t *testing.T, schema string, datum interface{}, encoded []byte) {
+func testJsonDecodePass(t *testing.T, schema string, datum interface{}, encoded []byte) {
 	t.Helper()
 	codec, err := NewCodecFrom(schema, &codecBuilder{
 		buildCodecForTypeDescribedByMap,
 		buildCodecForTypeDescribedByString,
-		buildCodecForTypeDescribedBySliceJSON,
+		buildCodecForTypeDescribedBySliceOneWayJson,
 	})
 	if err != nil {
 		t.Fatalf("schema: %s; %s", schema, err)
 	}
 	toNativeAndCompare(t, schema, datum, encoded, codec)
 }
+func testNativeToTextualJsonPass(t *testing.T, schema string, datum interface{}, encoded []byte) {
+	t.Helper()
+	codec, err := NewCodecFrom(schema, &codecBuilder{
+		buildCodecForTypeDescribedByMap,
+		buildCodecForTypeDescribedByString,
+		buildCodecForTypeDescribedBySliceTwoWayJson,
+	})
+	if err != nil {
+		t.Fatalf("schema: %s; %s", schema, err)
+	}
+	toTextualAndCompare(t, schema, datum, encoded, codec)
+}
+func toTextualAndCompare(t *testing.T, schema string, datum interface{}, encoded []byte, codec *Codec) {
+	t.Helper()
+	decoded, err := codec.TextualFromNative(nil, datum)
+	if err != nil {
+		t.Fatalf("schema: %s; %s", schema, err)
+	}
+	if !bytes.Equal(decoded, encoded) {
+		t.Errorf("GOT: %v; WANT: %v", string(decoded), string(encoded))
+	}
+}
+
 func toNativeAndCompare(t *testing.T, schema string, datum interface{}, encoded []byte, codec *Codec) {
 	t.Helper()
 	decoded, remaining, err := codec.NativeFromTextual(encoded)
