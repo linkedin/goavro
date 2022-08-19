@@ -18,14 +18,14 @@ import (
 //
 // Copied with author's permission from https://github.com/karrick/gorill.
 //
-//   bb := NopCloseBuffer()
-//   sw := ShortWriter(bb, 16)
+//	bb := NopCloseBuffer()
+//	sw := ShortWriter(bb, 16)
 //
-//   n, err := sw.Write([]byte("short write"))
-//   // n == 11, err == nil
+//	n, err := sw.Write([]byte("short write"))
+//	// n == 11, err == nil
 //
-//   n, err := sw.Write([]byte("a somewhat longer write"))
-//   // n == 16, err == io.ErrShortWrite
+//	n, err := sw.Write([]byte("a somewhat longer write"))
+//	// n == 16, err == io.ErrShortWrite
 func ShortWriter(w io.Writer, max int) io.Writer {
 	return shortWriter{Writer: w, max: max}
 }

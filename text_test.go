@@ -66,24 +66,24 @@ func testTextDecodePass(t *testing.T, schema string, datum interface{}, encoded 
 	}
 	toNativeAndCompare(t, schema, datum, encoded, codec)
 }
-func testJsonDecodePass(t *testing.T, schema string, datum interface{}, encoded []byte) {
+func testJSONDecodePass(t *testing.T, schema string, datum interface{}, encoded []byte) {
 	t.Helper()
 	codec, err := NewCodecFrom(schema, &codecBuilder{
 		buildCodecForTypeDescribedByMap,
 		buildCodecForTypeDescribedByString,
-		buildCodecForTypeDescribedBySliceOneWayJson,
+		buildCodecForTypeDescribedBySliceOneWayJSON,
 	})
 	if err != nil {
 		t.Fatalf("schema: %s; %s", schema, err)
 	}
 	toNativeAndCompare(t, schema, datum, encoded, codec)
 }
-func testNativeToTextualJsonPass(t *testing.T, schema string, datum interface{}, encoded []byte) {
+func testNativeToTextualJSONPass(t *testing.T, schema string, datum interface{}, encoded []byte) {
 	t.Helper()
 	codec, err := NewCodecFrom(schema, &codecBuilder{
 		buildCodecForTypeDescribedByMap,
 		buildCodecForTypeDescribedByString,
-		buildCodecForTypeDescribedBySliceTwoWayJson,
+		buildCodecForTypeDescribedBySliceTwoWayJSON,
 	})
 	if err != nil {
 		t.Fatalf("schema: %s; %s", schema, err)

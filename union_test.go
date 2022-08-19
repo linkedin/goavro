@@ -250,7 +250,7 @@ func ExampleCodec_TextualFromNative_json() {
 	codec, err := NewCodecFrom(`["null","string","int"]`, &codecBuilder{
 		buildCodecForTypeDescribedByMap,
 		buildCodecForTypeDescribedByString,
-		buildCodecForTypeDescribedBySliceOneWayJson,
+		buildCodecForTypeDescribedBySliceOneWayJSON,
 	})
 	if err != nil {
 		fmt.Println(err)
@@ -267,7 +267,7 @@ func ExampleCodec_NativeFromTextual_json() {
 	codec, err := NewCodecFrom(`["null","string","int"]`, &codecBuilder{
 		buildCodecForTypeDescribedByMap,
 		buildCodecForTypeDescribedByString,
-		buildCodecForTypeDescribedBySliceOneWayJson,
+		buildCodecForTypeDescribedBySliceOneWayJSON,
 	})
 	if err != nil {
 		fmt.Println(err)
@@ -328,14 +328,14 @@ func TestUnionJson(t *testing.T) {
 	}
 
 	for _, td := range testData {
-		testJsonDecodePass(t, td.schema, td.datum, td.encoded)
-		testNativeToTextualJsonPass(t, td.schema, td.datum, td.encoded)
+		testJSONDecodePass(t, td.schema, td.datum, td.encoded)
+		testNativeToTextualJSONPass(t, td.schema, td.datum, td.encoded)
 	}
 
-	//these two give different results depending on if its going into native or into a string
+	// these two give different results depending on if its going into native or into a string
 	// when this goes to native it gets the "field2" because its given, but it also gets a "field1" because "field1" has a default value
 	// when this goes to a string it has a field from both "field1" and one for "field2"
-	testJsonDecodePass(t, `{"type":"record","name":"kubeEvents","fields":[{"name":"field1","type":"string","default":""},{"name":"field2","type":"string"}]}`, map[string]interface{}{"field1": "", "field2": "deef"}, []byte(`{"field2": "deef"}`))
-	testNativeToTextualJsonPass(t, `{"type":"record","name":"kubeEvents","fields":[{"name":"field1","type":"string","default":""},{"name":"field2","type":"string"}]}`, map[string]interface{}{"field1": "", "field2": "deef"}, []byte(`{"field1":"","field2":"deef"}`))
+	testJSONDecodePass(t, `{"type":"record","name":"kubeEvents","fields":[{"name":"field1","type":"string","default":""},{"name":"field2","type":"string"}]}`, map[string]interface{}{"field1": "", "field2": "deef"}, []byte(`{"field2": "deef"}`))
+	testNativeToTextualJSONPass(t, `{"type":"record","name":"kubeEvents","fields":[{"name":"field1","type":"string","default":""},{"name":"field2","type":"string"}]}`, map[string]interface{}{"field1": "", "field2": "deef"}, []byte(`{"field1":"","field2":"deef"}`))
 
 }

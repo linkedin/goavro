@@ -35,18 +35,18 @@ type codecInfo struct {
 // Avro type name and the value is the datum's value. As a convenience, the
 // `Union` function wraps any datum value in a map as specified above.
 //
-//     func ExampleUnion() {
-//        codec, err := goavro.NewCodec(`["null","string","int"]`)
-//        if err != nil {
-//            fmt.Println(err)
-//        }
-//        buf, err := codec.TextualFromNative(nil, goavro.Union("string", "some string"))
-//        if err != nil {
-//            fmt.Println(err)
-//        }
-//        fmt.Println(string(buf))
-//        // Output: {"string":"some string"}
-//     }
+//	func ExampleUnion() {
+//	   codec, err := goavro.NewCodec(`["null","string","int"]`)
+//	   if err != nil {
+//	       fmt.Println(err)
+//	   }
+//	   buf, err := codec.TextualFromNative(nil, goavro.Union("string", "some string"))
+//	   if err != nil {
+//	       fmt.Println(err)
+//	   }
+//	   fmt.Println(string(buf))
+//	   // Output: {"string":"some string"}
+//	}
 func Union(name string, datum interface{}) interface{} {
 	if datum == nil && name == "null" {
 		return nil
@@ -196,7 +196,7 @@ func unionTextualFromNative(cr *codecInfo) func(buf []byte, datum interface{}) (
 		return nil, fmt.Errorf("cannot encode textual union: non-nil values ought to be specified with Go map[string]interface{}, with single key equal to type name, and value equal to datum value: %v; received: %T", cr.allowedTypes, datum)
 	}
 }
-func textualJsonFromNativeAvro(cr *codecInfo) func(buf []byte, datum interface{}) ([]byte, error) {
+func textualJSONFromNativeAvro(cr *codecInfo) func(buf []byte, datum interface{}) ([]byte, error) {
 	return func(buf []byte, datum interface{}) ([]byte, error) {
 		switch v := datum.(type) {
 		case nil:
@@ -277,7 +277,7 @@ func buildCodecForTypeDescribedBySlice(st map[string]*Codec, enclosingNamespace 
 // and then it will remain avro-json object
 // avro data is not serialized back into standard json
 // the data goes to avro-json and stays that way
-func buildCodecForTypeDescribedBySliceOneWayJson(st map[string]*Codec, enclosingNamespace string, schemaArray []interface{}, cb *codecBuilder) (*Codec, error) {
+func buildCodecForTypeDescribedBySliceOneWayJSON(st map[string]*Codec, enclosingNamespace string, schemaArray []interface{}, cb *codecBuilder) (*Codec, error) {
 	if len(schemaArray) == 0 {
 		return nil, errors.New("Union ought to have one or more members")
 	}
@@ -296,12 +296,12 @@ func buildCodecForTypeDescribedBySliceOneWayJson(st map[string]*Codec, enclosing
 		typeName:          &name{"union", nullNamespace},
 		nativeFromBinary:  unionNativeFromBinary(&cr),
 		binaryFromNative:  unionBinaryFromNative(&cr),
-		nativeFromTextual: nativeAvroFromTextualJson(&cr),
+		nativeFromTextual: nativeAvroFromTextualJSON(&cr),
 		textualFromNative: unionTextualFromNative(&cr),
 	}
 	return rv, nil
 }
-func buildCodecForTypeDescribedBySliceTwoWayJson(st map[string]*Codec, enclosingNamespace string, schemaArray []interface{}, cb *codecBuilder) (*Codec, error) {
+func buildCodecForTypeDescribedBySliceTwoWayJSON(st map[string]*Codec, enclosingNamespace string, schemaArray []interface{}, cb *codecBuilder) (*Codec, error) {
 	if len(schemaArray) == 0 {
 		return nil, errors.New("Union ought to have one or more members")
 	}
@@ -320,8 +320,8 @@ func buildCodecForTypeDescribedBySliceTwoWayJson(st map[string]*Codec, enclosing
 		typeName:          &name{"union", nullNamespace},
 		nativeFromBinary:  unionNativeFromBinary(&cr),
 		binaryFromNative:  unionBinaryFromNative(&cr),
-		nativeFromTextual: nativeAvroFromTextualJson(&cr),
-		textualFromNative: textualJsonFromNativeAvro(&cr),
+		nativeFromTextual: nativeAvroFromTextualJSON(&cr),
+		textualFromNative: textualJSONFromNativeAvro(&cr),
 	}
 	return rv, nil
 }
@@ -344,7 +344,7 @@ func checkAll(allowedTypes []string, cr *codecInfo, buf []byte) (interface{}, []
 	}
 	return nil, buf, fmt.Errorf("could not decode any json data in input %v", string(buf))
 }
-func nativeAvroFromTextualJson(cr *codecInfo) func(buf []byte) (interface{}, []byte, error) {
+func nativeAvroFromTextualJSON(cr *codecInfo) func(buf []byte) (interface{}, []byte, error) {
 	return func(buf []byte) (interface{}, []byte, error) {
 
 		reader := bytes.NewReader(buf)

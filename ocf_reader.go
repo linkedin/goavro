@@ -34,23 +34,23 @@ type OCFReader struct {
 // NewOCFReader initializes and returns a new structure used to read an Avro
 // Object Container File (OCF).
 //
-//     func example(ior io.Reader) error {
-//         // NOTE: Wrap provided io.Reader in a buffered reader, which improves the
-//         // performance of streaming file data.
-//         br := bufio.NewReader(ior)
-//         ocfr, err := goavro.NewOCFReader(br)
-//         if err != nil {
-//             return err
-//         }
-//         for ocfr.Scan() {
-//             datum, err := ocfr.Read()
-//             if err != nil {
-//                 return err
-//             }
-//             fmt.Println(datum)
-//         }
-//         return ocfr.Err()
-//     }
+//	func example(ior io.Reader) error {
+//	    // NOTE: Wrap provided io.Reader in a buffered reader, which improves the
+//	    // performance of streaming file data.
+//	    br := bufio.NewReader(ior)
+//	    ocfr, err := goavro.NewOCFReader(br)
+//	    if err != nil {
+//	        return err
+//	    }
+//	    for ocfr.Scan() {
+//	        datum, err := ocfr.Read()
+//	        if err != nil {
+//	            return err
+//	        }
+//	        fmt.Println(datum)
+//	    }
+//	    return ocfr.Err()
+//	}
 func NewOCFReader(ior io.Reader) (*OCFReader, error) {
 	header, err := readOCFHeader(ior)
 	if err != nil {

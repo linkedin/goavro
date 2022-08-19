@@ -293,33 +293,33 @@ const soeHeaderLen = soeMagicPrefix + 8 // 2-byte prefix plus 8-byte fingerprint
 // the second return value.  On failure this function returns an
 // ErrNotSingleObjectEncoded error.
 //
-//     func decode(codex map[uint64]*goavro.Codec, buf []byte) error {
-//         // Perform a sanity check on the buffer, then return the Rabin fingerprint
-//         // of the schema used to encode the data.
-//         fingerprint, newBuf, err := goavro.FingerprintFromSOE(buf)
-//         if err != nil {
-//             return err
-//         }
+//	func decode(codex map[uint64]*goavro.Codec, buf []byte) error {
+//	    // Perform a sanity check on the buffer, then return the Rabin fingerprint
+//	    // of the schema used to encode the data.
+//	    fingerprint, newBuf, err := goavro.FingerprintFromSOE(buf)
+//	    if err != nil {
+//	        return err
+//	    }
 //
-//         // Get a previously stored Codec from the codex map.
-//         codec, ok := codex[fingerprint]
-//         if !ok {
-//             return fmt.Errorf("unknown codec: %#x", fingerprint)
-//         }
+//	    // Get a previously stored Codec from the codex map.
+//	    codec, ok := codex[fingerprint]
+//	    if !ok {
+//	        return fmt.Errorf("unknown codec: %#x", fingerprint)
+//	    }
 //
-//         // Use the fetched Codec to decode the buffer as a SOE.
-//         //
-//         // Faster because SOE magic prefix and schema fingerprint already
-//         // checked and used to fetch the Codec.  Just need to decode the binary
-//         // bytes remaining after the prefix were removed.
-//         datum, _, err := codec.NativeFromBinary(newBuf)
-//         if err != nil {
-//             return err
-//         }
+//	    // Use the fetched Codec to decode the buffer as a SOE.
+//	    //
+//	    // Faster because SOE magic prefix and schema fingerprint already
+//	    // checked and used to fetch the Codec.  Just need to decode the binary
+//	    // bytes remaining after the prefix were removed.
+//	    datum, _, err := codec.NativeFromBinary(newBuf)
+//	    if err != nil {
+//	        return err
+//	    }
 //
-//         _, err = fmt.Println(datum)
-//         return err
-//     }
+//	    _, err = fmt.Println(datum)
+//	    return err
+//	}
 func FingerprintFromSOE(buf []byte) (uint64, []byte, error) {
 	if len(buf) < soeHeaderLen {
 		// Not enough bytes to encode schema fingerprint.
