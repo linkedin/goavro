@@ -11,9 +11,12 @@ package goavro
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"math"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func testTextDecodeFail(t *testing.T, schema string, buf []byte, errorMessage string) {
@@ -63,18 +66,56 @@ func testTextDecodePass(t *testing.T, schema string, datum interface{}, encoded 
 	}
 	toNativeAndCompare(t, schema, datum, encoded, codec)
 }
-func testJSONDecodePass(t *testing.T, schema string, datum interface{}, encoded []byte) {
+func testJsonDecodePass(t *testing.T, schema string, datum interface{}, encoded []byte) {
 	t.Helper()
 	codec, err := NewCodecFrom(schema, &codecBuilder{
 		buildCodecForTypeDescribedByMap,
 		buildCodecForTypeDescribedByString,
-		buildCodecForTypeDescribedBySliceJSON,
+		buildCodecForTypeDescribedBySliceOneWayJson,
 	})
 	if err != nil {
 		t.Fatalf("schema: %s; %s", schema, err)
 	}
 	toNativeAndCompare(t, schema, datum, encoded, codec)
 }
+func testNativeToTextualJsonPass(t *testing.T, schema string, datum interface{}, encoded []byte) {
+	t.Helper()
+	codec, err := NewCodecFrom(schema, &codecBuilder{
+		buildCodecForTypeDescribedByMap,
+		buildCodecForTypeDescribedByString,
+		buildCodecForTypeDescribedBySliceTwoWayJson,
+	})
+	if err != nil {
+		t.Fatalf("schema: %s; %s", schema, err)
+	}
+	toTextualAndCompare(t, schema, datum, encoded, codec)
+}
+
+func toTextualAndCompare(t *testing.T, schema string, datum interface{}, expected []byte, codec *Codec) {
+	t.Helper()
+	decoded, err := codec.TextualFromNative(nil, datum)
+	if err != nil {
+		t.Fatalf("schema: %s; %s", schema, err)
+	}
+
+	// do extra stuff to to the challenge equality of maps
+	var want interface{}
+
+	if err := json.Unmarshal(expected, &want); err != nil {
+		t.Errorf("Could not unmarshal the expected data into a go struct:%#v:", string(expected))
+	}
+
+	var got interface{}
+
+	if err := json.Unmarshal(decoded, &got); err != nil {
+		t.Errorf("Could not unmarshal the received data into a go struct:%#v:", string(decoded))
+	}
+
+	if !assert.Equal(t, want, got) {
+		t.Errorf("GOT: %v; WANT: %v", string(decoded), string(expected))
+	}
+}
+
 func toNativeAndCompare(t *testing.T, schema string, datum interface{}, encoded []byte, codec *Codec) {
 	t.Helper()
 	decoded, remaining, err := codec.NativeFromTextual(encoded)

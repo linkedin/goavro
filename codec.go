@@ -103,11 +103,98 @@ func NewCodec(schemaSpecification string) (*Codec, error) {
 	})
 }
 
+// NewCodecForStandardJSON returns a codec that uses a special union
+// processing code that allows normal json to be ingested via an
+// avro schema, by inferring the "type" intended for union types.
+//
+// This is the one-way code to get such json into the avro system
+// and the deserialization is not supported in this codec - its
+// json into avro-json one-way and one-way only for this codec.
+//
+// The "type" inference is done by using the types specified as
+// potentially acceptable types for the union, and trying to
+// unpack the incomin json into each of the specified types for
+// the union type. See union.go +/Standard JSON/ for a general
+// description of the problem and details of the solution
+// are in union.go +/nativeAvroFromTextualJson/
+//
+// For a general description of a codex seen the comment for NewCodec
+// above.
+//
+// The following is the exact same schema used in the above
+// code for NewCodec:
+//
+//     codec, err := goavro.NewCodecForStandardJSON(`
+//         {
+//           "type": "record",
+//           "name": "LongList",
+//           "fields" : [
+//             {"name": "next", "type": ["null", "LongList"], "default": null}
+//           ]
+//         }`)
+//     if err != nil {
+//             fmt.Println(err)
+//     }
+//
+// The above will take json of this sort:
+//
+// {"next": null}
+//
+// {"next":{"next":null}}
+//
+// {"next":{"next":{"next":null}}}
+//
+// For more examples see the test cases in union_test.go
 func NewCodecForStandardJSON(schemaSpecification string) (*Codec, error) {
 	return NewCodecFrom(schemaSpecification, &codecBuilder{
 		buildCodecForTypeDescribedByMap,
 		buildCodecForTypeDescribedByString,
-		buildCodecForTypeDescribedBySliceJSON,
+		buildCodecForTypeDescribedBySliceOneWayJson,
+	})
+}
+
+// NewCodecForStandardJSONOneWay is an alias for NewCodecForStandardJSON
+// added to make the transition to two-way json handling more smooth
+//
+// This will unambiguously provide OneWay avro encoding for standard
+// internet json. This takes in internet json, and brings it into
+// the avro world, but the deserialization retains the unique
+// form of normal avro-friendly json where unions have their
+// types types specified in stream like this example from
+// the official docs // https://avro.apache.org/docs/1.11.1/api/c/
+//
+// `{"string": "Follow your bliss."}`
+//
+// To be clear this means the incoming json string:
+//
+// "Follow your bliss."
+//
+// would deserialize according to the avro-json expectations to:
+//
+// `{"string": "Follow your bliss."}`
+//
+// To get full two-way support see the below NewCodecForStandardJSONFull
+func NewCodecForStandardJSONOneWay(schemaSpecification string) (*Codec, error) {
+	return NewCodecForStandardJSON(schemaSpecification)
+}
+
+// NewCodecForStandardJSONFull provides full serialization/deserialization
+// for json that meets the expectations of regular internet json, viewed as
+// something distinct from avro-json which has special handling for union
+// types.  For details see the above comments.
+//
+// With this `codec` you can expect to see a json string like this:
+//
+// "Follow your bliss."
+//
+// to deserialize into the same json structure
+//
+// "Follow your bliss."
+func NewCodecForStandardJSONFull(schemaSpecification string) (*Codec, error) {
+	return NewCodecFrom(schemaSpecification, &codecBuilder{
+		buildCodecForTypeDescribedByMap,
+		buildCodecForTypeDescribedByString,
+		buildCodecForTypeDescribedBySliceTwoWayJson,
 	})
 }
 
