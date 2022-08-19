@@ -301,7 +301,7 @@ func convertMap(datum interface{}) (map[string]interface{}, error) {
 			// bail when map key type is not string
 			return nil, fmt.Errorf("cannot create map[string]interface{}: expected map[string]...; received: %T", datum)
 		}
-		mapValues[string(k)] = v.MapIndex(key).Interface()
+		mapValues[k] = v.MapIndex(key).Interface()
 	}
 	return mapValues, nil
 }

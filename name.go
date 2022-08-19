@@ -75,6 +75,7 @@ func newName(n, ns, ens string) (*name, error) {
 		nn.namespace = n[:index]
 	} else {
 		// inputName does not contain a dot, therefore is not the full name
+		// nolint:gocritic
 		if ns != nullNamespace {
 			// if namespace provided in the schema in the same schema level, use it
 			nn.fullName = ns + "." + n

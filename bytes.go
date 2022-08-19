@@ -14,7 +14,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"unicode"
 	"unicode/utf16"
 	"unicode/utf8"
@@ -458,80 +457,3 @@ var (
 	sliceTab            = []byte("\\t")
 	sliceUnicode        = []byte("\\u")
 )
-
-// DEBUG -- remove function prior to committing
-func decodedStringFromJSON(buf []byte) (string, []byte, error) {
-	fmt.Fprintf(os.Stderr, "decodedStringFromJSON(%v)\n", buf)
-	buflen := len(buf)
-	if buflen < 2 {
-		return "", buf, fmt.Errorf("cannot decode string: %s", io.ErrShortBuffer)
-	}
-	if buf[0] != '"' {
-		return "", buf, fmt.Errorf("cannot decode string: expected initial '\"'; found: %#U", buf[0])
-	}
-	var newBytes []byte
-	var escaped, ok bool
-	// Loop through bytes following initial double quote, but note we will
-	// return immediately when find unescaped double quote.
-	for i := 1; i < buflen; i++ {
-		b := buf[i]
-		if escaped {
-			escaped = false
-			if b, ok = unescapeSpecialJSON(b); ok {
-				newBytes = append(newBytes, b)
-				continue
-			}
-			if b == 'u' {
-				// NOTE: Need at least 4 more bytes to read uint16, but subtract
-				// 1 because do not want to count the trailing quote and
-				// subtract another 1 because already consumed u but have yet to
-				// increment i.
-				if i > buflen-6 {
-					return "", buf[i+1:], fmt.Errorf("cannot decode string: %s", io.ErrShortBuffer)
-				}
-				v, err := parseUint64FromHexSlice(buf[i+1 : i+5])
-				if err != nil {
-					return "", buf[i+1:], fmt.Errorf("cannot decode string: %s", err)
-				}
-				i += 4 // absorb 4 characters: one 'u' and three of the digits
-
-				nbl := len(newBytes)
-				newBytes = append(newBytes, 0, 0, 0, 0) // grow to make room for UTF-8 encoded rune
-
-				r := rune(v)
-				if utf16.IsSurrogate(r) {
-					i++ // absorb final hexidecimal digit from previous value
-
-					// Expect second half of surrogate pair
-					if i > buflen-6 || buf[i] != '\\' || buf[i+1] != 'u' {
-						return "", buf[i+1:], errors.New("cannot decode string: missing second half of surrogate pair")
-					}
-
-					v, err = parseUint64FromHexSlice(buf[i+2 : i+6])
-					if err != nil {
-						return "", buf[i+1:], fmt.Errorf("cannot decode string: cannot decode second half of surrogate pair: %s", err)
-					}
-					i += 5 // absorb 5 characters: two for '\u', and 3 of the 4 digits
-
-					// Get code point by combining high and low surrogate bits
-					r = utf16.DecodeRune(r, rune(v))
-				}
-
-				width := utf8.EncodeRune(newBytes[nbl:], r) // append UTF-8 encoded version of code point
-				newBytes = newBytes[:nbl+width]             // trim off excess bytes
-				continue
-			}
-			newBytes = append(newBytes, b)
-			continue
-		}
-		if b == '\\' {
-			escaped = true
-			continue
-		}
-		if b == '"' {
-			return string(newBytes), buf[i+1:], nil
-		}
-		newBytes = append(newBytes, b)
-	}
-	return "", buf, fmt.Errorf("cannot decode string: expected final '\"'; found: %#U", buf[buflen-1])
-}

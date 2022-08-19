@@ -99,7 +99,7 @@ func floatBinaryFromNative(buf []byte, datum interface{}) ([]byte, error) {
 	}
 	// return floatingBinaryEncoder(buf, uint64(math.Float32bits(value)), floatEncodedLength)
 	buf = append(buf, 0, 0, 0, 0)
-	binary.LittleEndian.PutUint32(buf[len(buf)-floatEncodedLength:], uint32(math.Float32bits(value)))
+	binary.LittleEndian.PutUint32(buf[len(buf)-floatEncodedLength:], math.Float32bits(value))
 	return buf, nil
 }
 
@@ -161,6 +161,7 @@ func numberLength(buf []byte, floatAllowed bool) (int, error) {
 		}
 	}
 	// STATE 1: if 0, goto 2; otherwise if 1-9, goto 3; otherwise bail
+	// nolint:gocritic
 	if b = buf[index]; b == '0' {
 		if index++; index == buflen {
 			return index, nil // valid number

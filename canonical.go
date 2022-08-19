@@ -16,10 +16,6 @@ import (
 	"strings"
 )
 
-// pcfProcessor is a function type that given a parsed JSON object, returns its
-// Parsing Canonical Form according to the Avro specification.
-type pcfProcessor func(s interface{}) (string, error)
-
 // parsingCanonialForm returns the "Parsing Canonical Form" (pcf) for a parsed
 // JSON structure of a valid Avro schema, or an error describing the schema
 // error.

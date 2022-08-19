@@ -225,7 +225,6 @@ func timeStampMicrosFromNative(fn fromNativeFn) fromNativeFn {
 // two's complement algorithm taken from:
 // https://groups.google.com/d/msg/golang-nuts/TV4bRVrHZUw/UcQt7S4IYlcJ by rog
 /////////////////////////////////////////////////////////////////////////////////////////////
-type makeCodecFn func(st map[string]*Codec, enclosingNamespace string, schemaMap map[string]interface{}) (*Codec, error)
 
 func precisionAndScaleFromSchemaMap(schemaMap map[string]interface{}) (int, int, error) {
 	p1, ok := schemaMap["precision"]
@@ -380,15 +379,11 @@ func makeValidatedStringCodec(st map[string]*Codec, enclosingNamespace string, s
 }
 
 func validatedStringBinaryFromNative(fromNativeFn fromNativeFn) fromNativeFn {
-	return func(b []byte, d interface{}) ([]byte, error) {
-		return stringBinaryFromNative(b, d)
-	}
+	return stringBinaryFromNative
 }
 
 func validatedStringTextualFromNative(fromNativeFn fromNativeFn) fromNativeFn {
-	return func(b []byte, d interface{}) ([]byte, error) {
-		return stringTextualFromNative(b, d)
-	}
+	return stringTextualFromNative
 }
 
 func validatedStringNativeFromBinary(fn toNativeFn, pattern string) toNativeFn {
@@ -425,7 +420,7 @@ func validatedStringNativeFromTextual(fn toNativeFn, pattern string) toNativeFn 
 
 func padBytes(bytes []byte, fixedSize uint) []byte {
 	s := int(fixedSize)
-	padded := make([]byte, s, s)
+	padded := make([]byte, s)
 	if s >= len(bytes) {
 		copy(padded[s-len(bytes):], bytes)
 	}

@@ -118,7 +118,7 @@ func integerBinaryEncoder(buf []byte, encoded uint64) ([]byte, error) {
 	}
 	for encoded > 0 {
 		b := byte(encoded) & intMask
-		encoded = encoded >> 7
+		encoded >>= 7
 		if encoded != 0 {
 			b |= intFlag // set high bit; we have more bytes
 		}

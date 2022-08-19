@@ -1,4 +1,4 @@
-// +build goavro_debug
+//go:build goavro_debug
 
 package goavro
 

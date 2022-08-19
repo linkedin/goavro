@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
-	"io/ioutil"
 	"os"
 
 	"github.com/golang/snappy"
@@ -72,11 +71,10 @@ func NewOCFWriter(config OCFConfig) (*OCFWriter, error) {
 	var err error
 	ocf := &OCFWriter{iow: config.W}
 
-	switch config.W.(type) {
+	switch file := config.W.(type) {
 	case nil:
 		return nil, errors.New("cannot create OCFWriter when W is nil")
 	case *os.File:
-		file := config.W.(*os.File)
 		stat, err := file.Stat()
 		if err != nil {
 			return nil, fmt.Errorf("cannot create OCFWriter: %s", err)
@@ -140,7 +138,7 @@ func (ocfw *OCFWriter) quickScanToTail(ior io.Reader) error {
 			return fmt.Errorf("cannot read when block size exceeds MaxBlockSize: %d > %d", blockSize, MaxBlockSize)
 		}
 		// Advance reader to end of block
-		if _, err = io.CopyN(ioutil.Discard, ior, blockSize); err != nil {
+		if _, err = io.CopyN(io.Discard, ior, blockSize); err != nil {
 			return fmt.Errorf("cannot seek to next block: %s", err)
 		}
 		// Read and validate sync marker

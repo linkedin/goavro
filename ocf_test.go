@@ -11,7 +11,6 @@ package goavro
 
 import (
 	"bytes"
-	"fmt"
 	"testing"
 )
 
@@ -72,8 +71,8 @@ func testOCFRoundTripWithHeaders(t *testing.T, compressionName string, headers m
 
 	readMeta := ocfr.MetaData()
 	for k, v := range headers {
-		expected := fmt.Sprintf("%s", v)
-		actual := fmt.Sprintf("%s", readMeta[k])
+		expected := string(v)
+		actual := string(readMeta[k])
 		if actual != expected {
 			t.Errorf("GOT: %v; WANT: %v (%v)", actual, expected, k)
 		}
