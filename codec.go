@@ -84,17 +84,17 @@ type codecBuilder struct {
 // after instantiation. In other words, `Codec`s may be safely used by
 // many go routines simultaneously, as your program requires.
 //
-//     codec, err := goavro.NewCodec(`
-//         {
-//           "type": "record",
-//           "name": "LongList",
-//           "fields" : [
-//             {"name": "next", "type": ["null", "LongList"], "default": null}
-//           ]
-//         }`)
-//     if err != nil {
-//             fmt.Println(err)
-//     }
+//	codec, err := goavro.NewCodec(`
+//	    {
+//	      "type": "record",
+//	      "name": "LongList",
+//	      "fields" : [
+//	        {"name": "next", "type": ["null", "LongList"], "default": null}
+//	      ]
+//	    }`)
+//	if err != nil {
+//	        fmt.Println(err)
+//	}
 func NewCodec(schemaSpecification string) (*Codec, error) {
 	return NewCodecFrom(schemaSpecification, &codecBuilder{
 		buildCodecForTypeDescribedByMap,
@@ -124,17 +124,17 @@ func NewCodec(schemaSpecification string) (*Codec, error) {
 // The following is the exact same schema used in the above
 // code for NewCodec:
 //
-//     codec, err := goavro.NewCodecForStandardJSON(`
-//         {
-//           "type": "record",
-//           "name": "LongList",
-//           "fields" : [
-//             {"name": "next", "type": ["null", "LongList"], "default": null}
-//           ]
-//         }`)
-//     if err != nil {
-//             fmt.Println(err)
-//     }
+//	codec, err := goavro.NewCodecForStandardJSON(`
+//	    {
+//	      "type": "record",
+//	      "name": "LongList",
+//	      "fields" : [
+//	        {"name": "next", "type": ["null", "LongList"], "default": null}
+//	      ]
+//	    }`)
+//	if err != nil {
+//	        fmt.Println(err)
+//	}
 //
 // The above will take json of this sort:
 //
@@ -149,7 +149,7 @@ func NewCodecForStandardJSON(schemaSpecification string) (*Codec, error) {
 	return NewCodecFrom(schemaSpecification, &codecBuilder{
 		buildCodecForTypeDescribedByMap,
 		buildCodecForTypeDescribedByString,
-		buildCodecForTypeDescribedBySliceOneWayJson,
+		buildCodecForTypeDescribedBySliceOneWayJSON,
 	})
 }
 
@@ -194,7 +194,7 @@ func NewCodecForStandardJSONFull(schemaSpecification string) (*Codec, error) {
 	return NewCodecFrom(schemaSpecification, &codecBuilder{
 		buildCodecForTypeDescribedByMap,
 		buildCodecForTypeDescribedByString,
-		buildCodecForTypeDescribedBySliceTwoWayJson,
+		buildCodecForTypeDescribedBySliceTwoWayJSON,
 	})
 }
 
@@ -357,38 +357,38 @@ func newSymbolTable() map[string]*Codec {
 // a nil error value.  On error, it returns the original byte slice, and the
 // error message.
 //
-//     func ExampleBinaryFromNative() {
-//         codec, err := goavro.NewCodec(`
-//             {
-//               "type": "record",
-//               "name": "LongList",
-//               "fields" : [
-//                 {"name": "next", "type": ["null", "LongList"], "default": null}
-//               ]
-//             }`)
-//         if err != nil {
-//             fmt.Println(err)
-//         }
+//	func ExampleBinaryFromNative() {
+//	    codec, err := goavro.NewCodec(`
+//	        {
+//	          "type": "record",
+//	          "name": "LongList",
+//	          "fields" : [
+//	            {"name": "next", "type": ["null", "LongList"], "default": null}
+//	          ]
+//	        }`)
+//	    if err != nil {
+//	        fmt.Println(err)
+//	    }
 //
-//         // Convert native Go form to binary Avro data
-//         binary, err := codec.BinaryFromNative(nil, map[string]interface{}{
-//             "next": map[string]interface{}{
-//                 "LongList": map[string]interface{}{
-//                     "next": map[string]interface{}{
-//                         "LongList": map[string]interface{}{
-//                         // NOTE: May omit fields when using default value
-//                         },
-//                     },
-//                 },
-//             },
-//         })
-//         if err != nil {
-//             fmt.Println(err)
-//         }
+//	    // Convert native Go form to binary Avro data
+//	    binary, err := codec.BinaryFromNative(nil, map[string]interface{}{
+//	        "next": map[string]interface{}{
+//	            "LongList": map[string]interface{}{
+//	                "next": map[string]interface{}{
+//	                    "LongList": map[string]interface{}{
+//	                    // NOTE: May omit fields when using default value
+//	                    },
+//	                },
+//	            },
+//	        },
+//	    })
+//	    if err != nil {
+//	        fmt.Println(err)
+//	    }
 //
-//         fmt.Printf("%#v", binary)
-//         // Output: []byte{0x2, 0x2, 0x0}
-//     }
+//	    fmt.Printf("%#v", binary)
+//	    // Output: []byte{0x2, 0x2, 0x0}
+//	}
 func (c *Codec) BinaryFromNative(buf []byte, datum interface{}) ([]byte, error) {
 	newBuf, err := c.binaryFromNative(buf, datum)
 	if err != nil {
@@ -403,30 +403,30 @@ func (c *Codec) BinaryFromNative(buf []byte, datum interface{}) ([]byte, error) 
 // undecoded bytes, and a nil error value. On error, it returns nil for
 // the datum value, the original byte slice, and the error message.
 //
-//     func ExampleNativeFromBinary() {
-//         codec, err := goavro.NewCodec(`
-//             {
-//               "type": "record",
-//               "name": "LongList",
-//               "fields" : [
-//                 {"name": "next", "type": ["null", "LongList"], "default": null}
-//               ]
-//             }`)
-//         if err != nil {
-//             fmt.Println(err)
-//         }
+//	func ExampleNativeFromBinary() {
+//	    codec, err := goavro.NewCodec(`
+//	        {
+//	          "type": "record",
+//	          "name": "LongList",
+//	          "fields" : [
+//	            {"name": "next", "type": ["null", "LongList"], "default": null}
+//	          ]
+//	        }`)
+//	    if err != nil {
+//	        fmt.Println(err)
+//	    }
 //
-//         // Convert native Go form to binary Avro data
-//         binary := []byte{0x2, 0x2, 0x0}
+//	    // Convert native Go form to binary Avro data
+//	    binary := []byte{0x2, 0x2, 0x0}
 //
-//         native, _, err := codec.NativeFromBinary(binary)
-//         if err != nil {
-//             fmt.Println(err)
-//         }
+//	    native, _, err := codec.NativeFromBinary(binary)
+//	    if err != nil {
+//	        fmt.Println(err)
+//	    }
 //
-//         fmt.Printf("%v", native)
-//         // Output: map[next:map[LongList:map[next:map[LongList:map[next:<nil>]]]]]
-//     }
+//	    fmt.Printf("%v", native)
+//	    // Output: map[next:map[LongList:map[next:map[LongList:map[next:<nil>]]]]]
+//	}
 func (c *Codec) NativeFromBinary(buf []byte) (interface{}, []byte, error) {
 	value, newBuf, err := c.nativeFromBinary(buf)
 	if err != nil {
@@ -442,14 +442,14 @@ func (c *Codec) NativeFromBinary(buf []byte) (interface{}, []byte, error) {
 // error value.  On error, it returns nil for the datum value, the original byte
 // slice, and the error message.
 //
-//     func decode(codec *goavro.Codec, buf []byte) error {
-//         datum, _, err := codec.NativeFromSingle(buf)
-//         if err != nil {
-//             return err
-//         }
-//         _, err = fmt.Println(datum)
-//         return err
-//     }
+//	func decode(codec *goavro.Codec, buf []byte) error {
+//	    datum, _, err := codec.NativeFromSingle(buf)
+//	    if err != nil {
+//	        return err
+//	    }
+//	    _, err = fmt.Println(datum)
+//	    return err
+//	}
 func (c *Codec) NativeFromSingle(buf []byte) (interface{}, []byte, error) {
 	fingerprint, newBuf, err := FingerprintFromSOE(buf)
 	if err != nil {
@@ -472,30 +472,30 @@ func (c *Codec) NativeFromSingle(buf []byte) (interface{}, []byte, error) {
 // error, it returns nil for the datum value, the original byte slice, and the
 // error message.
 //
-//     func ExampleNativeFromTextual() {
-//         codec, err := goavro.NewCodec(`
-//             {
-//               "type": "record",
-//               "name": "LongList",
-//               "fields" : [
-//                 {"name": "next", "type": ["null", "LongList"], "default": null}
-//               ]
-//             }`)
-//         if err != nil {
-//             fmt.Println(err)
-//         }
+//	func ExampleNativeFromTextual() {
+//	    codec, err := goavro.NewCodec(`
+//	        {
+//	          "type": "record",
+//	          "name": "LongList",
+//	          "fields" : [
+//	            {"name": "next", "type": ["null", "LongList"], "default": null}
+//	          ]
+//	        }`)
+//	    if err != nil {
+//	        fmt.Println(err)
+//	    }
 //
-//         // Convert native Go form to text Avro data
-//         text := []byte(`{"next":{"LongList":{"next":{"LongList":{"next":null}}}}}`)
+//	    // Convert native Go form to text Avro data
+//	    text := []byte(`{"next":{"LongList":{"next":{"LongList":{"next":null}}}}}`)
 //
-//         native, _, err := codec.NativeFromTextual(text)
-//         if err != nil {
-//             fmt.Println(err)
-//         }
+//	    native, _, err := codec.NativeFromTextual(text)
+//	    if err != nil {
+//	        fmt.Println(err)
+//	    }
 //
-//         fmt.Printf("%v", native)
-//         // Output: map[next:map[LongList:map[next:map[LongList:map[next:<nil>]]]]]
-//     }
+//	    fmt.Printf("%v", native)
+//	    // Output: map[next:map[LongList:map[next:map[LongList:map[next:<nil>]]]]]
+//	}
 func (c *Codec) NativeFromTextual(buf []byte) (interface{}, []byte, error) {
 	value, newBuf, err := c.nativeFromTextual(buf)
 	if err != nil {
@@ -512,22 +512,22 @@ func (c *Codec) NativeFromTextual(buf []byte) (interface{}, []byte, error) {
 // encoded bytes appended, and a nil error value.  On error, it returns the
 // original byte slice, and the error message.
 //
-//     func ExampleSingleItemEncoding() {
-//         codec, err := goavro.NewCodec(`"int"`)
-//         if err != nil {
-//             fmt.Fprintf(os.Stderr, "%s\n", err)
-//             return
-//         }
+//	func ExampleSingleItemEncoding() {
+//	    codec, err := goavro.NewCodec(`"int"`)
+//	    if err != nil {
+//	        fmt.Fprintf(os.Stderr, "%s\n", err)
+//	        return
+//	    }
 //
-//         buf, err := codec.SingleFromNative(nil, 3)
-//         if err != nil {
-//             fmt.Fprintf(os.Stderr, "%s\n", err)
-//             return
-//         }
+//	    buf, err := codec.SingleFromNative(nil, 3)
+//	    if err != nil {
+//	        fmt.Fprintf(os.Stderr, "%s\n", err)
+//	        return
+//	    }
 //
-//         fmt.Println(buf)
-//         // Output: [195 1 143 92 57 63 26 213 117 114 6]
-//     }
+//	    fmt.Println(buf)
+//	    // Output: [195 1 143 92 57 63 26 213 117 114 6]
+//	}
 func (c *Codec) SingleFromNative(buf []byte, datum interface{}) ([]byte, error) {
 	newBuf, err := c.binaryFromNative(append(buf, c.soeHeader...), datum)
 	if err != nil {
@@ -543,38 +543,38 @@ func (c *Codec) SingleFromNative(buf []byte, datum interface{}) ([]byte, error) 
 // appended, and a nil error value. On error, it returns the original byte
 // slice, and the error message.
 //
-//     func ExampleTextualFromNative() {
-//         codec, err := goavro.NewCodec(`
-//             {
-//               "type": "record",
-//               "name": "LongList",
-//               "fields" : [
-//                 {"name": "next", "type": ["null", "LongList"], "default": null}
-//               ]
-//             }`)
-//         if err != nil {
-//             fmt.Println(err)
-//         }
+//	func ExampleTextualFromNative() {
+//	    codec, err := goavro.NewCodec(`
+//	        {
+//	          "type": "record",
+//	          "name": "LongList",
+//	          "fields" : [
+//	            {"name": "next", "type": ["null", "LongList"], "default": null}
+//	          ]
+//	        }`)
+//	    if err != nil {
+//	        fmt.Println(err)
+//	    }
 //
-//         // Convert native Go form to text Avro data
-//         text, err := codec.TextualFromNative(nil, map[string]interface{}{
-//             "next": map[string]interface{}{
-//                 "LongList": map[string]interface{}{
-//                     "next": map[string]interface{}{
-//                         "LongList": map[string]interface{}{
-//                         // NOTE: May omit fields when using default value
-//                         },
-//                     },
-//                 },
-//             },
-//         })
-//         if err != nil {
-//             fmt.Println(err)
-//         }
+//	    // Convert native Go form to text Avro data
+//	    text, err := codec.TextualFromNative(nil, map[string]interface{}{
+//	        "next": map[string]interface{}{
+//	            "LongList": map[string]interface{}{
+//	                "next": map[string]interface{}{
+//	                    "LongList": map[string]interface{}{
+//	                    // NOTE: May omit fields when using default value
+//	                    },
+//	                },
+//	            },
+//	        },
+//	    })
+//	    if err != nil {
+//	        fmt.Println(err)
+//	    }
 //
-//         fmt.Printf("%s", text)
-//         // Output: {"next":{"LongList":{"next":{"LongList":{"next":null}}}}}
-//     }
+//	    fmt.Printf("%s", text)
+//	    // Output: {"next":{"LongList":{"next":{"LongList":{"next":null}}}}}
+//	}
 func (c *Codec) TextualFromNative(buf []byte, datum interface{}) ([]byte, error) {
 	newBuf, err := c.textualFromNative(buf, datum)
 	if err != nil {
