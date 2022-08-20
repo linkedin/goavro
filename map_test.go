@@ -174,7 +174,7 @@ func ExampleMap() {
 	// Output: {"f1":{"k1":3.5}}
 }
 
-func ExampleMapDeterministic() {
+func exampleMapDeterministic() {
 	codec, err := NewCodec(`{
    "name":"r1",
    "type":"record",
@@ -215,7 +215,7 @@ func ExampleMapDeterministic() {
 		log.Fatal(err)
 	}
 
-	buf, err := codec.TextualFromNative(nil, map[string]interface{}{
+	_, err = codec.TextualFromNative(nil, map[string]interface{}{
 		"f1": 3.5,
 		"a1": 3.5,
 		"b2": 3.5,
@@ -225,6 +225,10 @@ func ExampleMapDeterministic() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(string(buf))
-	// Output: {"a1":3.5,"b2":3.5,"c3":3.5,"d4":3.5,"f1":3.5}
+}
+
+func BenchmarkMapDeterministic(b *testing.B) {
+	b.Run("TextualFromNative deterministic map ", func(b *testing.B) {
+		exampleMapDeterministic()
+	})
 }
