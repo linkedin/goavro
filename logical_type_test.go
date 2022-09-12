@@ -40,6 +40,13 @@ func TestLongLogicalTypeFallback(t *testing.T) {
 	testBinaryCodecPass(t, schema, 12345, []byte("\xf2\xc0\x01"))
 }
 
+func TestUUIDLogicalTypeEncode(t *testing.T) {
+	schema := `{"type": "string", "logicalType": "uuid"}`
+	testBinaryDecodeFail(t, schema, []byte(""), "short buffer")
+	testBinaryEncodeFail(t, schema, "test", "cannot transform to binary uuid, expected valid uuid, received \"test\"")
+	testBinaryCodecPass(t, schema, "fec2c005-8c57-44c0-89bd-b39ab94afc7e", []byte("\x48\x66\x65\x63\x32\x63\x30\x30\x35\x2d\x38\x63\x35\x37\x2d\x34\x34\x63\x30\x2d\x38\x39\x62\x64\x2d\x62\x33\x39\x61\x62\x39\x34\x61\x66\x63\x37\x65"))
+}
+
 func TestTimeStampMillisLogicalTypeEncode(t *testing.T) {
 	schema := `{"type": "long", "logicalType": "timestamp-millis"}`
 	testBinaryDecodeFail(t, schema, []byte(""), "short buffer")
