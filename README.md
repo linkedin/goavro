@@ -104,7 +104,7 @@ work with a rarely changing schema, programs that use code generated
 functions can potentially be more performant than a program that uses
 goavro to create a `Codec` dynamically at run time.
 
-* [gogen-avro](https://github.com/alanctgardner/gogen-avro)
+* [gogen-avro](https://github.com/actgardner/gogen-avro)
 
 I recommend benchmarking the resultant programs using typical data
 using both the code generated functions and using goavro to see which
