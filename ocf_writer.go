@@ -55,13 +55,21 @@ type OCFConfig struct {
 	// the OCF file.  When appending to an existing OCF, this field
 	// is ignored.
 	MetaData map[string][]byte
+
+	// Advanced option that allows to reuse internal buffers when
+	// appending records. May save memory allocations and may improve
+	// performances. Do benchmarks before activate this option.
+	ReuseBuffers bool
 }
 
 // OCFWriter is used to create a new or append to an existing Avro Object
 // Container File (OCF).
 type OCFWriter struct {
-	header *ocfHeader
-	iow    io.Writer
+	header        *ocfHeader
+	iow           io.Writer
+	reuseBuffers  bool
+	expandedBlock []byte
+	deflateBlock  []byte
 }
 
 // NewOCFWriter returns a new OCFWriter instance that may be used for appending
@@ -69,7 +77,7 @@ type OCFWriter struct {
 // new OCF file.
 func NewOCFWriter(config OCFConfig) (*OCFWriter, error) {
 	var err error
-	ocf := &OCFWriter{iow: config.W}
+	ocf := &OCFWriter{iow: config.W, reuseBuffers: config.ReuseBuffers}
 
 	switch file := config.W.(type) {
 	case nil:
@@ -176,6 +184,10 @@ func (ocfw *OCFWriter) appendDataIntoBlock(data []interface{}) error {
 	var block []byte // working buffer for encoding data values
 	var err error
 
+	if ocfw.reuseBuffers {
+		block = ocfw.expandedBlock
+	}
+
 	// Encode and concatenate each data item into the block
 	for _, datum := range data {
 		if block, err = ocfw.header.codec.BinaryFromNative(block, datum); err != nil {
@@ -183,13 +195,29 @@ func (ocfw *OCFWriter) appendDataIntoBlock(data []interface{}) error {
 		}
 	}
 
+	if ocfw.reuseBuffers {
+		ocfw.expandedBlock = block[:0]
+	}
+
+	var block2 []byte
 	switch ocfw.header.compressionID {
 	case compressionNull:
 		// no-op
+		block2 = block
 
 	case compressionDeflate:
 		// compress into new bytes buffer.
-		bb := bytes.NewBuffer(make([]byte, 0, len(block)))
+		var deflateBlock []byte
+		if ocfw.reuseBuffers {
+			deflateBlock = ocfw.deflateBlock
+			if cap(deflateBlock) < len(block) {
+				deflateBlock = make([]byte, 0, len(block))
+			}
+		} else {
+			deflateBlock = make([]byte, 0, len(block))
+		}
+
+		bb := bytes.NewBuffer(deflateBlock)
 
 		cw, _ := flate.NewWriter(bb, flate.DefaultCompression)
 		// writing bytes to cw will compress bytes and send to bb.
@@ -199,7 +227,11 @@ func (ocfw *OCFWriter) appendDataIntoBlock(data []interface{}) error {
 		if err := cw.Close(); err != nil {
 			return err
 		}
-		block = bb.Bytes()
+		block2 = bb.Bytes()
+
+		if ocfw.reuseBuffers {
+			ocfw.deflateBlock = deflateBlock[:0]
+		}
 
 	case compressionSnappy:
 		compressed := snappy.Encode(nil, block)
@@ -208,7 +240,7 @@ func (ocfw *OCFWriter) appendDataIntoBlock(data []interface{}) error {
 		compressed = append(compressed, 0, 0, 0, 0)                                           // expand slice by 4 bytes so checksum will fit
 		binary.BigEndian.PutUint32(compressed[len(compressed)-4:], crc32.ChecksumIEEE(block)) // checksum of decompressed block
 
-		block = compressed
+		block2 = compressed
 
 	default:
 		return fmt.Errorf("should not get here: cannot compress block using unrecognized compression: %d", ocfw.header.compressionID)
@@ -216,11 +248,11 @@ func (ocfw *OCFWriter) appendDataIntoBlock(data []interface{}) error {
 	}
 
 	// create file data block
-	buf := make([]byte, 0, len(block)+ocfBlockConst) // pre-allocate block bytes
-	buf, _ = longBinaryFromNative(buf, len(data))    // block count (number of data items)
-	buf, _ = longBinaryFromNative(buf, len(block))   // block size (number of bytes in block)
-	buf = append(buf, block...)                      // serialized objects
-	buf = append(buf, ocfw.header.syncMarker[:]...)  // sync marker
+	buf := make([]byte, 0, len(block2)+ocfBlockConst) // pre-allocate block bytes
+	buf, _ = longBinaryFromNative(buf, len(data))     // block count (number of data items)
+	buf, _ = longBinaryFromNative(buf, len(block2))   // block size (number of bytes in block)
+	buf = append(buf, block2...)                      // serialized objects
+	buf = append(buf, ocfw.header.syncMarker[:]...)   // sync marker
 
 	_, err = ocfw.iow.Write(buf)
 	return err

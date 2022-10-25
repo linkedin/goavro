@@ -85,3 +85,62 @@ func BenchmarkNativeFromTextualUsingV2(b *testing.B) {
 		_ = nativeFromTextUsingV2(b, codec, textData)
 	}
 }
+
+func benchWriteSimilarSizeRecords(b *testing.B, reuseBuffers, deflate bool) {
+	const schema = `{
+		"namespace": "my.namespace.com",
+		"type":	"record",
+		"name": "indentity",
+		"fields": [
+			{ "name": "Name", "type": "string"},
+			{ "name": "Picture", "type": "bytes"}
+		]
+	}`
+
+	record := map[string]interface{}{
+		"Name":    "MyName",
+		"Picture": make([]byte, 2048),
+	}
+
+	var records []map[string]interface{}
+	for i := 0; i < 1000; i++ {
+		records = append(records, record)
+	}
+
+	var compressionName string
+	if deflate {
+		compressionName = CompressionDeflateLabel
+	} else {
+		compressionName = CompressionNullLabel
+	}
+
+	w, _ := NewOCFWriter(OCFConfig{
+		W:               ioutil.Discard,
+		Schema:          schema,
+		ReuseBuffers:    reuseBuffers,
+		CompressionName: compressionName,
+	})
+
+	b.ResetTimer()
+
+	for n := 0; n < b.N; n++ {
+		for j := 0; j < 10; j++ {
+			w.Append(records)
+		}
+	}
+}
+
+func BenchmarkWriteSimilarSizeRecords(b *testing.B) {
+	b.Run("ReuseBuffers=false Deflate=false", func(b *testing.B) {
+		benchWriteSimilarSizeRecords(b, false, false)
+	})
+	b.Run("ReuseBuffers=true Deflate=false", func(b *testing.B) {
+		benchWriteSimilarSizeRecords(b, true, false)
+	})
+	b.Run("ReuseBuffers=false Deflate=true", func(b *testing.B) {
+		benchWriteSimilarSizeRecords(b, false, true)
+	})
+	b.Run("ReuseBuffers=true Deflate=true", func(b *testing.B) {
+		benchWriteSimilarSizeRecords(b, true, true)
+	})
+}
