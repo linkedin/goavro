@@ -164,7 +164,7 @@ func TestOCFWriterAppendWhenCannotWrite(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = ocfw.Append([]interface{}{13, 42})
+	_, err = ocfw.Append([]interface{}{13, 42})
 	ensureError(t, err, testPathname)
 }
 
@@ -186,7 +186,8 @@ func TestOCFWriterAppendSomeItemsToNothing(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err = ocfw.Append([]interface{}{13, 42}); err != nil {
+	bytesWritten, err := ocfw.Append([]interface{}{13, 42})
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -227,6 +228,9 @@ func TestOCFWriterAppendSomeItemsToNothing(t *testing.T) {
 	if actual, expected := values[1], int64(42); actual != expected {
 		t.Errorf("GOT: %v; WANT: %v", actual, expected)
 	}
+	if actual, expected := bytesWritten, 20; actual != expected {
+		t.Errorf("GOT: %v; WANT: %v", actual, expected)
+	}
 }
 
 func TestOCFWriterAppendSomeItemsToSomeItems(t *testing.T) {
@@ -247,7 +251,8 @@ func TestOCFWriterAppendSomeItemsToSomeItems(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err = ocfw.Append([]interface{}{-10, -100}); err != nil {
+	bytesWritten, err := ocfw.Append([]interface{}{-10, -100})
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -292,6 +297,9 @@ func TestOCFWriterAppendSomeItemsToSomeItems(t *testing.T) {
 		t.Errorf("GOT: %v; WANT: %v", actual, expected)
 	}
 	if actual, expected := values[3], int64(-100); actual != expected {
+		t.Errorf("GOT: %v; WANT: %v", actual, expected)
+	}
+	if actual, expected := bytesWritten, 21; actual != expected {
 		t.Errorf("GOT: %v; WANT: %v", actual, expected)
 	}
 }
