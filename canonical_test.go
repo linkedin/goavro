@@ -285,3 +285,44 @@ func TestCanonicalSchema(t *testing.T) {
 		}
 	}
 }
+
+func TestCanonicalSchemaFingerprintFlake(t *testing.T) {
+	const schema = `{
+  "name" : "thename",
+  "type" : "record",
+  "namespace" : "com.fooname",
+  "fields" : [
+    {
+      "name" : "bar" ,
+      "type" : {
+        "name" : "bar",
+        "type" : "record",
+        "fields" : [
+          {
+            "name" : "car",
+            "type" : "int"
+          }
+        ]
+      }
+    }
+  ]
+}
+`
+	codec, err := NewCodec(schema)
+	if err != nil {
+		t.Fatalf("unexpected schema parse failure, err=%v", err)
+	}
+	prevRun := codec.Rabin
+
+	// This test is flaky. It exposes a bug that manifests due to
+	// randomized map iteration. However, 32 iterations should give
+	// high probability to see the failure.
+	for i := 0; i < 32; i++ {
+		codec, err = NewCodec(schema)
+		currentRun := codec.Rabin
+		if prevRun != currentRun {
+			t.Fatalf("same schema should always have same fingerprint, rabin1: %d, rabin2: %d", prevRun, currentRun)
+		}
+		prevRun = currentRun
+	}
+}
