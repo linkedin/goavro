@@ -12,6 +12,7 @@ package goavro
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"os"
 	"testing"
 )
@@ -20,7 +21,7 @@ func ExampleCodec_CanonicalSchema() {
 	schema := `{"type":"map","values":{"type":"enum","name":"foo","symbols":["alpha","bravo"]}}`
 	codec, err := NewCodec(schema)
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	} else {
 		fmt.Println(codec.CanonicalSchema())
 	}

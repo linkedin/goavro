@@ -137,7 +137,7 @@ func TestSchemaFixedNameCanBeUsedLater(t *testing.T) {
 // 	schema := `{"type":"map","values":{"type":"enum","name":"foo","symbols":["alpha","bravo"]}}`
 // 	codec, err := NewCodec(schema)
 // 	if err != nil {
-// 		fmt.Println(err)
+// 		log.Fatal(err)
 // 	}
 // 	fmt.Println(codec.Schema())
 // 	// Output: {"type":"map","values":{"name":"foo","type":"enum","symbols":["alpha","bravo"]}}

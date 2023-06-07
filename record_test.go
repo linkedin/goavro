@@ -12,6 +12,7 @@ package goavro
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"testing"
 )
 
@@ -456,7 +457,7 @@ func ExampleCodec_NativeFromTextual_roundTrip() {
 }
 `)
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
 
 	// NOTE: May omit fields when using default value
@@ -465,25 +466,25 @@ func ExampleCodec_NativeFromTextual_roundTrip() {
 	// Convert textual Avro data (in Avro JSON format) to native Go form
 	native, _, err := codec.NativeFromTextual(textual)
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
 
 	// Convert native Go form to binary Avro data
 	binary, err := codec.BinaryFromNative(nil, native)
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
 
 	// Convert binary Avro data back to native Go form
 	native, _, err = codec.NativeFromBinary(binary)
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
 
 	// Convert native Go form to textual Avro data
 	textual, err = codec.TextualFromNative(nil, native)
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
 
 	// NOTE: Textual encoding will show all fields, even those with values that
@@ -503,7 +504,7 @@ func ExampleCodec_BinaryFromNative_avro() {
 }
 `)
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
 
 	// Convert native Go form to binary Avro data
@@ -519,7 +520,7 @@ func ExampleCodec_BinaryFromNative_avro() {
 		},
 	})
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
 
 	fmt.Printf("%#v", binary)
@@ -537,7 +538,7 @@ func ExampleCodec_NativeFromBinary_avro() {
 }
 `)
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
 
 	// Convert native Go form to binary Avro data
@@ -545,7 +546,7 @@ func ExampleCodec_NativeFromBinary_avro() {
 
 	native, _, err := codec.NativeFromBinary(binary)
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
 
 	fmt.Printf("%v", native)
@@ -563,7 +564,7 @@ func ExampleCodec_NativeFromTextual_avro() {
 }
 `)
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
 
 	// Convert native Go form to text Avro data
@@ -571,7 +572,7 @@ func ExampleCodec_NativeFromTextual_avro() {
 
 	native, _, err := codec.NativeFromTextual(text)
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
 
 	fmt.Printf("%v", native)
@@ -589,7 +590,7 @@ func ExampleCodec_TextualFromNative_avro() {
 }
 `)
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
 
 	// Convert native Go form to text Avro data
@@ -605,7 +606,7 @@ func ExampleCodec_TextualFromNative_avro() {
 		},
 	})
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
 
 	fmt.Printf("%s", text)

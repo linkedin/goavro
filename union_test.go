@@ -12,6 +12,7 @@ package goavro
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"math"
 	"strconv"
 	"testing"
@@ -162,11 +163,11 @@ func TestUnionText(t *testing.T) {
 func ExampleCodec_TextualFromNative_union() {
 	codec, err := NewCodec(`["null","string","int"]`)
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
 	buf, err := codec.TextualFromNative(nil, Union("string", "some string"))
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
 	fmt.Println(string(buf))
 	// Output: {"string":"some string"}
@@ -180,12 +181,12 @@ func ExampleCodec_TextualFromNative_union_json() {
 	// parse the string accordingly.
 	codec, err := NewCodec(`["null","double","string"]`)
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
 
 	native, _, err := codec.NativeFromTextual([]byte(`{"string":"NaN"}`))
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
 
 	value := math.NaN()
@@ -211,7 +212,7 @@ func ExampleCodec_TextualFromNative_union_json() {
 					var err error
 					value, err = strconv.ParseFloat(s, 64)
 					if err != nil {
-						fmt.Println(err)
+						log.Fatal(err)
 					}
 				}
 			}
@@ -235,11 +236,11 @@ func ExampleCodec_TextualFromNative() {
 		buildCodecForTypeDescribedBySlice,
 	})
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
 	buf, err := codec.TextualFromNative(nil, "some string 22")
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
 	fmt.Println(string(buf))
 	// Output: "some string 22"
@@ -253,11 +254,11 @@ func ExampleCodec_TextualFromNative_json() {
 		buildCodecForTypeDescribedBySliceOneWayJSON,
 	})
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
 	buf, err := codec.TextualFromNative(nil, Union("string", "some string"))
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
 	fmt.Println(string(buf))
 	// Output: {"string":"some string"}
@@ -270,12 +271,12 @@ func ExampleCodec_NativeFromTextual_json() {
 		buildCodecForTypeDescribedBySliceOneWayJSON,
 	})
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
 	// send in a legit json string
 	t, _, err := codec.NativeFromTextual([]byte("\"some string one\""))
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
 	// see it parse into a map like the avro encoder does
 	o, ok := t.(map[string]interface{})

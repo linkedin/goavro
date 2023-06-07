@@ -38,11 +38,11 @@ type codecInfo struct {
 //	func ExampleUnion() {
 //	   codec, err := goavro.NewCodec(`["null","string","int"]`)
 //	   if err != nil {
-//	       fmt.Println(err)
+//	       log.Fatal(err)
 //	   }
 //	   buf, err := codec.TextualFromNative(nil, goavro.Union("string", "some string"))
 //	   if err != nil {
-//	       fmt.Println(err)
+//	       log.Fatal(err)
 //	   }
 //	   fmt.Println(string(buf))
 //	   // Output: {"string":"some string"}
