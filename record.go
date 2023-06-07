@@ -229,5 +229,21 @@ func makeRecordCodec(st map[string]*Codec, enclosingNamespace string, schemaMap 
 		return genericMapTextEncoder(buf, datum, nil, codecFromFieldName)
 	}
 
+	c.scanBinary = func(buf []byte, dest ...interface{}) ([]byte, error) {
+		for i, fieldCodec := range codecFromIndex {
+			name := nameFromIndex[i]
+			var value interface{}
+			var err error
+			value, buf, err = fieldCodec.nativeFromBinary(buf)
+			if err != nil {
+				return nil, fmt.Errorf("cannot decode binary record %q field %q: %w", c.typeName, name, err)
+			}
+			if err := convertAssign(dest[i], value); err != nil {
+				return nil, fmt.Errorf("cannot convert binary record %q field %q: %w", c.typeName, name, err)
+			}
+		}
+		return buf, nil
+	}
+
 	return c, nil
 }
