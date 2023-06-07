@@ -12,6 +12,7 @@ package goavro
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"testing"
 )
 
@@ -610,6 +611,37 @@ func ExampleCodec_TextualFromNative_avro() {
 
 	fmt.Printf("%s", text)
 	// Output: {"next":{"LongList":{"next":{"LongList":{"next":null}}}}}
+}
+
+func ExampleCodec_ScanBinary_avro() {
+	codec, err := NewCodec(`
+{
+  "type": "record",
+  "name": "r1",
+  "fields" : [
+    {"name": "f1", "type": "string"},
+    {"name": "f2", "type": "int"}
+  ]
+}
+`)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	binary := []byte{
+		0x10, // field1 size = 8
+		't', 'h', 'i', 'r', 't', 'e', 'e', 'n',
+		0x1a, // field2 == 13
+	}
+
+	var f1 string
+	var f2 int
+	if _, err = codec.ScanBinary(binary, &f1, &f2); err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("f1: %v, f2: %v", f1, f2)
+	// Output: f1: thirteen, f2: 13
 }
 
 func TestRecordFieldFixedDefaultValue(t *testing.T) {
