@@ -72,6 +72,31 @@ func doubleBinaryFromNative(buf []byte, datum interface{}) ([]byte, error) {
 	return buf, nil
 }
 
+func doubleBinaryFromNativeOutput(out io.Writer, datum interface{}) error {
+	var value float64
+	switch v := datum.(type) {
+	case float64:
+		value = v
+	case float32:
+		value = float64(v)
+	case int:
+		if value = float64(v); int(value) != v {
+			return fmt.Errorf("cannot encode binary double: provided Go int would lose precision: %d", v)
+		}
+	case int64:
+		if value = float64(v); int64(value) != v {
+			return fmt.Errorf("cannot encode binary double: provided Go int64 would lose precision: %d", v)
+		}
+	case int32:
+		if value = float64(v); int32(value) != v {
+			return fmt.Errorf("cannot encode binary double: provided Go int32 would lose precision: %d", v)
+		}
+	default:
+		return fmt.Errorf("cannot encode binary double: expected: Go numeric; received: %T", datum)
+	}
+	return binary.Write(out, binary.LittleEndian, value)
+}
+
 func floatBinaryFromNative(buf []byte, datum interface{}) ([]byte, error) {
 	var value float32
 	switch v := datum.(type) {
@@ -101,6 +126,34 @@ func floatBinaryFromNative(buf []byte, datum interface{}) ([]byte, error) {
 	buf = append(buf, 0, 0, 0, 0)
 	binary.LittleEndian.PutUint32(buf[len(buf)-floatEncodedLength:], math.Float32bits(value))
 	return buf, nil
+}
+
+func floatBinaryFromNativeOutput(out io.Writer, datum interface{}) error {
+	var value float32
+	switch v := datum.(type) {
+	case float32:
+		value = v
+	case float64:
+		// Assume runtime can cast special floats correctly, and if there is a
+		// loss of precision from float64 and float32, that should be expected
+		// or at least understood by the client.
+		value = float32(v)
+	case int:
+		if value = float32(v); int(value) != v {
+			return fmt.Errorf("cannot encode binary float: provided Go int would lose precision: %d", v)
+		}
+	case int64:
+		if value = float32(v); int64(value) != v {
+			return fmt.Errorf("cannot encode binary float: provided Go int64 would lose precision: %d", v)
+		}
+	case int32:
+		if value = float32(v); int32(value) != v {
+			return fmt.Errorf("cannot encode binary float: provided Go int32 would lose precision: %d", v)
+		}
+	default:
+		return fmt.Errorf("cannot encode binary float: expected: Go numeric; received: %T", datum)
+	}
+	return binary.Write(out, binary.LittleEndian, value)
 }
 
 ////////////////////////////////////////

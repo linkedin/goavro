@@ -11,6 +11,7 @@ package goavro
 
 import (
 	"fmt"
+	"io"
 	"strconv"
 )
 
@@ -47,6 +48,23 @@ func makeFixedCodec(st map[string]*Codec, enclosingNamespace string, schemaMap m
 			return nil, fmt.Errorf("cannot encode binary fixed %q: datum size ought to equal schema size: %d != %d", c.typeName, count, size)
 		}
 		return append(buf, someBytes...), nil
+	}
+
+	c.binaryFromNativeOutput = func(out io.Writer, datum interface{}) error {
+		var someBytes []byte
+		switch d := datum.(type) {
+		case []byte:
+			someBytes = d
+		case string:
+			someBytes = []byte(d)
+		default:
+			return fmt.Errorf("cannot encode binary fixed %q: expected []byte or string; received: %T", c.typeName, datum)
+		}
+		if count := uint(len(someBytes)); count != size {
+			return fmt.Errorf("cannot encode binary fixed %q: datum size ought to equal schema size: %d != %d", c.typeName, count, size)
+		}
+		_, err := out.Write(someBytes)
+		return err
 	}
 
 	c.nativeFromTextual = func(buf []byte) (interface{}, []byte, error) {

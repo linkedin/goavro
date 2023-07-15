@@ -69,6 +69,18 @@ func makeEnumCodec(st map[string]*Codec, enclosingNamespace string, schemaMap ma
 		}
 		return nil, fmt.Errorf("cannot encode binary enum %q: value ought to be member of symbols: %v; %q", c.typeName, symbols, someString)
 	}
+	c.binaryFromNativeOutput = func(out io.Writer, datum interface{}) error {
+		someString, ok := datum.(string)
+		if !ok {
+			return fmt.Errorf("cannot encode binary enum %q: expected string; received: %T", c.typeName, datum)
+		}
+		for i, symbol := range symbols {
+			if symbol == someString {
+				return longBinaryFromNativeOutput(out, i)
+			}
+		}
+		return fmt.Errorf("cannot encode binary enum %q: value ought to be member of symbols: %v; %q", c.typeName, symbols, someString)
+	}
 	c.nativeFromTextual = func(buf []byte) (interface{}, []byte, error) {
 		if buf, _ = advanceToNonWhitespace(buf); len(buf) == 0 {
 			return nil, nil, fmt.Errorf("cannot decode textual enum: %s", io.ErrShortBuffer)

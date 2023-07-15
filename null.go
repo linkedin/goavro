@@ -27,6 +27,13 @@ func nullBinaryFromNative(buf []byte, datum interface{}) ([]byte, error) {
 	return buf, nil
 }
 
+func nullBinaryFromNativeOutput(out io.Writer, datum interface{}) error {
+	if datum != nil {
+		return fmt.Errorf("cannot encode binary null: expected: Go nil; received: %T", datum)
+	}
+	return nil
+}
+
 func nullNativeFromTextual(buf []byte) (interface{}, []byte, error) {
 	if len(buf) < 4 {
 		return nil, nil, fmt.Errorf("cannot decode textual null: %s", io.ErrShortBuffer)

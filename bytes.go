@@ -68,6 +68,24 @@ func bytesBinaryFromNative(buf []byte, datum interface{}) ([]byte, error) {
 	return append(buf, someBytes...), nil              // append datum bytes
 }
 
+func bytesBinaryFromNativeOutput(out io.Writer, datum interface{}) (err error) {
+	var someBytes []byte
+	switch d := datum.(type) {
+	case []byte:
+		someBytes = d
+	case string:
+		someBytes = []byte(d)
+	default:
+		return fmt.Errorf("cannot encode binary bytes: expected: []byte or string; received: %T", datum)
+	}
+	err = longBinaryFromNativeOutput(out, len(someBytes)) // only fails when given non integer
+	if err != nil {
+		return
+	}
+	_, err = out.Write(someBytes)
+	return
+}
+
 func stringBinaryFromNative(buf []byte, datum interface{}) ([]byte, error) {
 	var someBytes []byte
 	switch d := datum.(type) {
@@ -80,6 +98,24 @@ func stringBinaryFromNative(buf []byte, datum interface{}) ([]byte, error) {
 	}
 	buf, _ = longBinaryFromNative(buf, len(someBytes)) // only fails when given non integer
 	return append(buf, someBytes...), nil              // append datum bytes
+}
+
+func stringBinaryFromNativeOutput(out io.Writer, datum interface{}) error {
+	var someBytes []byte
+	switch d := datum.(type) {
+	case []byte:
+		someBytes = d
+	case string:
+		someBytes = []byte(d)
+	default:
+		return fmt.Errorf("cannot encode binary bytes: expected: string; received: %T", datum)
+	}
+	err := longBinaryFromNativeOutput(out, len(someBytes)) // only fails when given non integer
+	if err != nil {
+		return err
+	}
+	_, err = out.Write(someBytes)
+	return err
 }
 
 ////////////////////////////////////////

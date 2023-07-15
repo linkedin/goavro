@@ -126,6 +126,35 @@ func makeArrayCodec(st map[string]*Codec, enclosingNamespace string, schemaMap m
 
 			return longBinaryFromNative(buf, 0) // append trailing 0 block count to signal end of Array
 		},
+		binaryFromNativeOutput: func(out io.Writer, datum interface{}) error {
+			arrayValues, err := convertArray(datum)
+			if err != nil {
+				return fmt.Errorf("cannot encode binary array: %s", err)
+			}
+
+			arrayLength := int64(len(arrayValues))
+			var alreadyEncoded, remainingInBlock int64
+
+			for i, item := range arrayValues {
+				if remainingInBlock == 0 { // start a new block
+					remainingInBlock = arrayLength - alreadyEncoded
+					if remainingInBlock > MaxBlockCount {
+						// limit block count to MacBlockCount
+						remainingInBlock = MaxBlockCount
+					}
+					longBinaryFromNativeOutput(out, remainingInBlock)
+				}
+
+				if err = itemCodec.binaryFromNativeOutput(out, item); err != nil {
+					return fmt.Errorf("cannot encode binary array item %d: %v: %s", i+1, item, err)
+				}
+
+				remainingInBlock--
+				alreadyEncoded++
+			}
+
+			return longBinaryFromNativeOutput(out, 0) // append trailing 0 block count to signal end of Array
+		},
 		nativeFromTextual: func(buf []byte) (interface{}, []byte, error) {
 			var arrayValues []interface{}
 			var value interface{}

@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"sort"
 )
 
@@ -141,6 +142,33 @@ func unionBinaryFromNative(cr *codecInfo) func(buf []byte, datum interface{}) ([
 		return nil, fmt.Errorf("cannot encode binary union: non-nil Union values ought to be specified with Go map[string]interface{}, with single key equal to type name, and value equal to datum value: %v; received: %T", cr.allowedTypes, datum)
 	}
 }
+func unionBinaryFromNativeOutput(cr *codecInfo) func(io.Writer, interface{}) error {
+	return func(out io.Writer, datum interface{}) error {
+		switch v := datum.(type) {
+		case nil:
+			index, ok := cr.indexFromName["null"]
+			if !ok {
+				return fmt.Errorf("cannot encode binary union: no member schema types support datum: allowed types: %v; received: %T", cr.allowedTypes, datum)
+			}
+			return longBinaryFromNativeOutput(out, index)
+		case map[string]interface{}:
+			if len(v) != 1 {
+				return fmt.Errorf("cannot encode binary union: non-nil Union values ought to be specified with Go map[string]interface{}, with single key equal to type name, and value equal to datum value: %v; received: %T", cr.allowedTypes, datum)
+			}
+			// will execute exactly once
+			for key, value := range v {
+				index, ok := cr.indexFromName[key]
+				if !ok {
+					return fmt.Errorf("cannot encode binary union: no member schema types support datum: allowed types: %v; received: %T", cr.allowedTypes, datum)
+				}
+				c := cr.codecFromIndex[index]
+				_ = longBinaryFromNativeOutput(out, index)
+				return c.binaryFromNativeOutput(out, value)
+			}
+		}
+		return fmt.Errorf("cannot encode binary union: non-nil Union values ought to be specified with Go map[string]interface{}, with single key equal to type name, and value equal to datum value: %v; received: %T", cr.allowedTypes, datum)
+	}
+}
 func unionNativeFromTextual(cr *codecInfo) func(buf []byte) (interface{}, []byte, error) {
 	return func(buf []byte) (interface{}, []byte, error) {
 		if len(buf) >= 4 && bytes.Equal(buf[:4], []byte("null")) {
@@ -243,11 +271,12 @@ func buildCodecForTypeDescribedBySlice(st map[string]*Codec, enclosingNamespace 
 		// TODO: add/change to schemaCanonical below
 		schemaOriginal: cr.codecFromIndex[0].typeName.fullName,
 
-		typeName:          &name{"union", nullNamespace},
-		nativeFromBinary:  unionNativeFromBinary(&cr),
-		binaryFromNative:  unionBinaryFromNative(&cr),
-		nativeFromTextual: unionNativeFromTextual(&cr),
-		textualFromNative: unionTextualFromNative(&cr),
+		typeName:               &name{"union", nullNamespace},
+		nativeFromBinary:       unionNativeFromBinary(&cr),
+		binaryFromNative:       unionBinaryFromNative(&cr),
+		binaryFromNativeOutput: unionBinaryFromNativeOutput(&cr),
+		nativeFromTextual:      unionNativeFromTextual(&cr),
+		textualFromNative:      unionTextualFromNative(&cr),
 	}
 	return rv, nil
 }
@@ -293,11 +322,12 @@ func buildCodecForTypeDescribedBySliceOneWayJSON(st map[string]*Codec, enclosing
 		// TODO: add/change to schemaCanonical below
 		schemaOriginal: cr.codecFromIndex[0].typeName.fullName,
 
-		typeName:          &name{"union", nullNamespace},
-		nativeFromBinary:  unionNativeFromBinary(&cr),
-		binaryFromNative:  unionBinaryFromNative(&cr),
-		nativeFromTextual: nativeAvroFromTextualJSON(&cr),
-		textualFromNative: unionTextualFromNative(&cr),
+		typeName:               &name{"union", nullNamespace},
+		nativeFromBinary:       unionNativeFromBinary(&cr),
+		binaryFromNative:       unionBinaryFromNative(&cr),
+		binaryFromNativeOutput: unionBinaryFromNativeOutput(&cr),
+		nativeFromTextual:      nativeAvroFromTextualJSON(&cr),
+		textualFromNative:      unionTextualFromNative(&cr),
 	}
 	return rv, nil
 }
@@ -317,11 +347,12 @@ func buildCodecForTypeDescribedBySliceTwoWayJSON(st map[string]*Codec, enclosing
 		// TODO: add/change to schemaCanonical below
 		schemaOriginal: cr.codecFromIndex[0].typeName.fullName,
 
-		typeName:          &name{"union", nullNamespace},
-		nativeFromBinary:  unionNativeFromBinary(&cr),
-		binaryFromNative:  unionBinaryFromNative(&cr),
-		nativeFromTextual: nativeAvroFromTextualJSON(&cr),
-		textualFromNative: textualJSONFromNativeAvro(&cr),
+		typeName:               &name{"union", nullNamespace},
+		nativeFromBinary:       unionNativeFromBinary(&cr),
+		binaryFromNative:       unionBinaryFromNative(&cr),
+		binaryFromNativeOutput: unionBinaryFromNativeOutput(&cr),
+		nativeFromTextual:      nativeAvroFromTextualJSON(&cr),
+		textualFromNative:      textualJSONFromNativeAvro(&cr),
 	}
 	return rv, nil
 }

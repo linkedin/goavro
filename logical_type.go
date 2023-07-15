@@ -12,6 +12,7 @@ package goavro
 import (
 	"errors"
 	"fmt"
+	"io"
 	"math/big"
 	"regexp"
 	"strings"
@@ -20,6 +21,7 @@ import (
 
 type toNativeFn func([]byte) (interface{}, []byte, error)
 type fromNativeFn func([]byte, interface{}) ([]byte, error)
+type fromNativeFnOutput func(io.Writer, interface{}) error
 
 var reFromPattern = make(map[string]*regexp.Regexp)
 
@@ -64,6 +66,29 @@ func dateFromNative(fn fromNativeFn) fromNativeFn {
 	}
 }
 
+func dateFromNativeOutput(fn fromNativeFnOutput) fromNativeFnOutput {
+	return func(out io.Writer, d interface{}) error {
+		switch val := d.(type) {
+		case int, int32, int64, float32, float64:
+			// "Language implementations may choose to represent logical types with an appropriate native type, although this is not required."
+			// especially permitted default values depend on the field's schema type and goavro encodes default values using the field schema
+			return fn(out, val)
+
+		case time.Time:
+			// rephrasing the avro 1.9.2 spec a date is actually stored as the duration since unix epoch in days
+			// time.Unix() returns this duration in seconds and time.UnixNano() in nanoseconds
+			// reviewing the source code, both functions are based on the internal function unixSec()
+			// unixSec() returns the seconds since unix epoch as int64, whereby Unix() provides the greater range and UnixNano() the higher precision
+			// As a date requires a precision of days Unix() provides more then enough precision and a greater range, including the go zero time
+			numDays := val.Unix() / 86400
+			return fn(out, numDays)
+
+		default:
+			return fmt.Errorf("cannot transform to binary date, expected time.Time or Go numeric, received %T", d)
+		}
+	}
+}
+
 // ////////////////////////////////////////////////////////////////////////////////////////////
 // time-millis logical type - to/from time.Time, time.UTC location
 // ////////////////////////////////////////////////////////////////////////////////////////////
@@ -96,6 +121,24 @@ func timeMillisFromNative(fn fromNativeFn) fromNativeFn {
 
 		default:
 			return nil, fmt.Errorf("cannot transform to binary time-millis, expected time.Duration or Go numeric, received %T", d)
+		}
+	}
+}
+
+func timeMillisFromNativeOutput(fn fromNativeFnOutput) fromNativeFnOutput {
+	return func(out io.Writer, d interface{}) error {
+		switch val := d.(type) {
+		case int, int32, int64, float32, float64:
+			// "Language implementations may choose to represent logical types with an appropriate native type, although this is not required."
+			// especially permitted default values depend on the field's schema type and goavro encodes default values using the field schema
+			return fn(out, val)
+
+		case time.Duration:
+			duration := int32(val.Nanoseconds() / int64(time.Millisecond))
+			return fn(out, duration)
+
+		default:
+			return fmt.Errorf("cannot transform to binary time-millis, expected time.Duration or Go numeric, received %T", d)
 		}
 	}
 }
@@ -136,6 +179,24 @@ func timeMicrosFromNative(fn fromNativeFn) fromNativeFn {
 	}
 }
 
+func timeMicrosFromNativeOutput(fn fromNativeFnOutput) fromNativeFnOutput {
+	return func(out io.Writer, d interface{}) error {
+		switch val := d.(type) {
+		case int, int32, int64, float32, float64:
+			// "Language implementations may choose to represent logical types with an appropriate native type, although this is not required."
+			// especially permitted default values depend on the field's schema type and goavro encodes default values using the field schema
+			return fn(out, val)
+
+		case time.Duration:
+			duration := val.Nanoseconds() / int64(time.Microsecond)
+			return fn(out, duration)
+
+		default:
+			return fmt.Errorf("cannot transform to binary time-micros, expected time.Duration or Go numeric, received %T", d)
+		}
+	}
+}
+
 // ////////////////////////////////////////////////////////////////////////////////////////////
 // timestamp-millis logical type - to/from time.Time, time.UTC location
 // ////////////////////////////////////////////////////////////////////////////////////////////
@@ -170,6 +231,25 @@ func timeStampMillisFromNative(fn fromNativeFn) fromNativeFn {
 
 		default:
 			return nil, fmt.Errorf("cannot transform to binary timestamp-millis, expected time.Time or Go numeric, received %T", d)
+		}
+	}
+}
+
+func timeStampMillisFromNativeOutput(fn fromNativeFnOutput) fromNativeFnOutput {
+	return func(out io.Writer, d interface{}) error {
+		switch val := d.(type) {
+		case int, int32, int64, float32, float64:
+			// "Language implementations may choose to represent logical types with an appropriate native type, although this is not required."
+			// especially permitted default values depend on the field's schema type and goavro encodes default values using the field schema
+			return fn(out, val)
+
+		case time.Time:
+			// While this code performs a few more steps than seem required, it is
+			// written this way to allow the best time resolution without overflowing the int64 value.
+			return fn(out, val.Unix()*1e3+int64(val.Nanosecond()/1e6))
+
+		default:
+			return fmt.Errorf("cannot transform to binary timestamp-millis, expected time.Time or Go numeric, received %T", d)
 		}
 	}
 }
@@ -216,6 +296,28 @@ func timeStampMicrosFromNative(fn fromNativeFn) fromNativeFn {
 
 		default:
 			return nil, fmt.Errorf("cannot transform to binary timestamp-micros, expected time.Time or Go numeric, received %T", d)
+		}
+	}
+}
+
+func timeStampMicrosFromNativeOutput(fn fromNativeFnOutput) fromNativeFnOutput {
+	return func(out io.Writer, d interface{}) error {
+		switch val := d.(type) {
+		case int, int32, int64, float32, float64:
+			// "Language implementations may choose to represent logical types with an appropriate native type, although this is not required."
+			// especially permitted default values depend on the field's schema type and goavro encodes default values using the field schema
+			return fn(out, val)
+
+		case time.Time:
+			// While this code performs a few more steps than seem required, it is
+			// written this way to allow the best time resolution on UNIX and
+			// Windows without overflowing the int64 value.  Windows has a zero-time
+			// value of 1601-01-01 UTC, and the number of nanoseconds since that
+			// zero-time overflows 64-bit integers.
+			return fn(out, val.Unix()*1e6+int64(val.Nanosecond()/1e3))
+
+		default:
+			return fmt.Errorf("cannot transform to binary timestamp-micros, expected time.Time or Go numeric, received %T", d)
 		}
 	}
 }
@@ -276,6 +378,7 @@ func makeDecimalBytesCodec(st map[string]*Codec, enclosingNamespace string, sche
 	st[decimalSearchType] = c
 
 	c.binaryFromNative = decimalBytesFromNative(bytesBinaryFromNative, toSignedBytes, precision, scale)
+	c.binaryFromNativeOutput = decimalBytesFromNativeOutput(bytesBinaryFromNativeOutput, toSignedBytes, precision, scale)
 	c.textualFromNative = decimalBytesFromNative(bytesTextualFromNative, toSignedBytes, precision, scale)
 	c.nativeFromBinary = nativeFromDecimalBytes(bytesNativeFromBinary, precision, scale)
 	c.nativeFromTextual = nativeFromDecimalBytes(bytesNativeFromTextual, precision, scale)
@@ -320,6 +423,26 @@ func decimalBytesFromNative(fromNativeFn fromNativeFn, toBytesFn toBytesFn, prec
 	}
 }
 
+func decimalBytesFromNativeOutput(fromNativeFn fromNativeFnOutput, toBytesFn toBytesFn, precision, scale int) fromNativeFnOutput {
+	return func(out io.Writer, d interface{}) error {
+		r, ok := d.(*big.Rat)
+		if !ok {
+			return fmt.Errorf("cannot transform to bytes, expected *big.Rat, received %T", d)
+		}
+		// Reduce accuracy to precision by dividing and multiplying by digit length
+		num := big.NewInt(0).Set(r.Num())
+		denom := big.NewInt(0).Set(r.Denom())
+		i := new(big.Int).Mul(num, new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(scale)), nil))
+		// divide that by the denominator
+		precnum := new(big.Int).Div(i, denom)
+		bout, err := toBytesFn(precnum)
+		if err != nil {
+			return err
+		}
+		return fromNativeFn(out, bout)
+	}
+}
+
 func makeDecimalFixedCodec(st map[string]*Codec, enclosingNamespace string, schemaMap map[string]interface{}) (*Codec, error) {
 	precision, scale, err := precisionAndScaleFromSchemaMap(schemaMap)
 	if err != nil {
@@ -337,6 +460,7 @@ func makeDecimalFixedCodec(st map[string]*Codec, enclosingNamespace string, sche
 		return nil, err
 	}
 	c.binaryFromNative = decimalBytesFromNative(c.binaryFromNative, toSignedFixedBytes(size), precision, scale)
+	c.binaryFromNativeOutput = decimalBytesFromNativeOutput(c.binaryFromNativeOutput, toSignedFixedBytes(size), precision, scale)
 	c.textualFromNative = decimalBytesFromNative(c.textualFromNative, toSignedFixedBytes(size), precision, scale)
 	c.nativeFromBinary = nativeFromDecimalBytes(c.nativeFromBinary, precision, scale)
 	c.nativeFromTextual = nativeFromDecimalBytes(c.nativeFromTextual, precision, scale)
@@ -372,6 +496,7 @@ func makeValidatedStringCodec(st map[string]*Codec, enclosingNamespace string, s
 	}
 
 	c.binaryFromNative = validatedStringBinaryFromNative(c.binaryFromNative)
+	c.binaryFromNativeOutput = validatedStringBinaryFromNativeOutput(c.binaryFromNativeOutput)
 	c.textualFromNative = validatedStringTextualFromNative(c.textualFromNative)
 	c.nativeFromBinary = validatedStringNativeFromBinary(c.nativeFromBinary, patternStr)
 	c.nativeFromTextual = validatedStringNativeFromTextual(c.nativeFromTextual, patternStr)
@@ -380,6 +505,10 @@ func makeValidatedStringCodec(st map[string]*Codec, enclosingNamespace string, s
 
 func validatedStringBinaryFromNative(fromNativeFn fromNativeFn) fromNativeFn {
 	return stringBinaryFromNative
+}
+
+func validatedStringBinaryFromNativeOutput(fromNativeFn fromNativeFnOutput) fromNativeFnOutput {
+	return stringBinaryFromNativeOutput
 }
 
 func validatedStringTextualFromNative(fromNativeFn fromNativeFn) fromNativeFn {

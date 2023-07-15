@@ -140,6 +140,38 @@ func makeMapCodec(st map[string]*Codec, namespace string, schemaMap map[string]i
 			}
 			return longBinaryFromNative(buf, 0) // append tailing 0 block count to signal end of Map
 		},
+		binaryFromNativeOutput: func(out io.Writer, datum interface{}) error {
+			mapValues, err := convertMap(datum)
+			if err != nil {
+				return fmt.Errorf("cannot encode binary map: %s", err)
+			}
+
+			keyCount := int64(len(mapValues))
+			var alreadyEncoded, remainingInBlock int64
+
+			for k, v := range mapValues {
+				if remainingInBlock == 0 { // start a new block
+					remainingInBlock = keyCount - alreadyEncoded
+					if remainingInBlock > MaxBlockCount {
+						// limit block count to MacBlockCount
+						remainingInBlock = MaxBlockCount
+					}
+					_ = longBinaryFromNativeOutput(out, remainingInBlock)
+				}
+
+				// only fails when given non string, so elide error checking
+				_ = stringBinaryFromNativeOutput(out, k)
+
+				// encode the value
+				if err = valueCodec.binaryFromNativeOutput(out, v); err != nil {
+					return fmt.Errorf("cannot encode binary map value for key %q: %v: %s", k, v, err)
+				}
+
+				remainingInBlock--
+				alreadyEncoded++
+			}
+			return longBinaryFromNativeOutput(out, 0) // append tailing 0 block count to signal end of Map
+		},
 		nativeFromTextual: func(buf []byte) (interface{}, []byte, error) {
 			return genericMapTextDecoder(buf, valueCodec, nil) // codecFromKey == nil
 		},

@@ -10,7 +10,9 @@
 package goavro
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 )
 
 func makeRecordCodec(st map[string]*Codec, enclosingNamespace string, schemaMap map[string]interface{}, cb *codecBuilder) (*Codec, error) {
@@ -125,6 +127,11 @@ func makeRecordCodec(st map[string]*Codec, enclosingNamespace string, schemaMap 
 			if err != nil {
 				return nil, fmt.Errorf("Record %q field %q: default value ought to encode using field schema: %s", c.typeName, fieldName, err)
 			}
+			out := &bytes.Buffer{}
+			err = fieldCodec.binaryFromNativeOutput(out, defaultValue)
+			if err != nil {
+				return nil, fmt.Errorf("Record %q field %q: default value ought to encode using field schema: %s", c.typeName, fieldName, err)
+			}
 			defaultValueFromName[fieldName] = defaultValue
 		}
 
@@ -160,6 +167,34 @@ func makeRecordCodec(st map[string]*Codec, enclosingNamespace string, schemaMap 
 			}
 		}
 		return buf, nil
+	}
+
+	c.binaryFromNativeOutput = func(out io.Writer, datum interface{}) error {
+		valueMap, ok := datum.(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("cannot encode binary record %q: expected map[string]interface{}; received: %T", c.typeName, datum)
+		}
+
+		// records encoded in order fields were defined in schema
+		for i, fieldCodec := range codecFromIndex {
+			fieldName := nameFromIndex[i]
+
+			// NOTE: If field value was not specified in map, then set
+			// fieldValue to its default value (which may or may not have been
+			// specified).
+			fieldValue, ok := valueMap[fieldName]
+			if !ok {
+				if fieldValue, ok = defaultValueFromName[fieldName]; !ok {
+					return fmt.Errorf("cannot encode binary record %q field %q: schema does not specify default value and no value provided", c.typeName, fieldName)
+				}
+			}
+
+			err := fieldCodec.binaryFromNativeOutput(out, fieldValue)
+			if err != nil {
+				return fmt.Errorf("cannot encode binary record %q field %q: value does not match its schema: %s", c.typeName, fieldName, err)
+			}
+		}
+		return nil
 	}
 
 	c.nativeFromBinary = func(buf []byte) (interface{}, []byte, error) {

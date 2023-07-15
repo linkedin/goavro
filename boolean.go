@@ -44,6 +44,19 @@ func booleanBinaryFromNative(buf []byte, datum interface{}) ([]byte, error) {
 	return append(buf, b), nil
 }
 
+func booleanBinaryFromNativeOutput(out io.Writer, datum interface{}) (err error) {
+	value, ok := datum.(bool)
+	if !ok {
+		return fmt.Errorf("cannot encode binary boolean: expected: Go bool; received: %T", datum)
+	}
+	var b byte
+	if value {
+		b = 1
+	}
+	_, err = out.Write([]byte{b})
+	return
+}
+
 func booleanNativeFromTextual(buf []byte) (interface{}, []byte, error) {
 	if len(buf) < 4 {
 		return nil, nil, fmt.Errorf("cannot decode textual boolean: %s", io.ErrShortBuffer)
