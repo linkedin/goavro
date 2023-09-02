@@ -141,6 +141,7 @@ package main
 
 import (
     "fmt"
+    "log"
 
     "github.com/linkedin/goavro/v2"
 )
@@ -155,7 +156,7 @@ func main() {
           ]
         }`)
     if err != nil {
-        fmt.Println(err)
+        log.Fatal(err)
     }
 
     // NOTE: May omit fields when using default value
@@ -164,25 +165,25 @@ func main() {
     // Convert textual Avro data (in Avro JSON format) to native Go form
     native, _, err := codec.NativeFromTextual(textual)
     if err != nil {
-        fmt.Println(err)
+        log.Fatal(err)
     }
 
     // Convert native Go form to binary Avro data
     binary, err := codec.BinaryFromNative(nil, native)
     if err != nil {
-        fmt.Println(err)
+        log.Fatal(err)
     }
 
     // Convert binary Avro data back to native Go form
     native, _, err = codec.NativeFromBinary(binary)
     if err != nil {
-        fmt.Println(err)
+        log.Fatal(err)
     }
 
     // Convert native Go form to textual Avro data
     textual, err = codec.TextualFromNative(nil, native)
     if err != nil {
-        fmt.Println(err)
+        log.Fatal(err)
     }
 
     // NOTE: Textual encoding will show all fields, even those with values that
@@ -205,6 +206,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+    "log"
 	"strings"
 
 	"github.com/linkedin/goavro/v2"
@@ -234,7 +236,7 @@ func main() {
 		Schema: avroSchema,
 	})
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
 	err = writer.Append([]map[string]interface{}{
 		{
@@ -251,13 +253,13 @@ func main() {
 	// Reading OCF data
 	ocfReader, err := goavro.NewOCFReader(strings.NewReader(ocfFileContents.String()))
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
 	fmt.Println("Records in OCF File");
 	for ocfReader.Scan() {
 		record, err := ocfReader.Read()
 		if err != nil {
-			fmt.Println(err)
+			log.Fatal(err)
 		}
 		fmt.Println("record", record)
 	}
@@ -372,11 +374,11 @@ specified above.
 func ExampleUnion() {
     codec, err := goavro.NewCodec(`["null","string","int"]`)
     if err != nil {
-        fmt.Println(err)
+        log.Fatal(err)
     }
     buf, err := codec.TextualFromNative(nil, goavro.Union("string", "some string"))
     if err != nil {
-        fmt.Println(err)
+        log.Fatal(err)
     }
     fmt.Println(string(buf))
     // Output: {"string":"some string"}

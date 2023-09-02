@@ -11,6 +11,7 @@ package goavro
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"math/big"
 	"testing"
@@ -247,19 +248,19 @@ func ExampleUnion_logicalType() {
 	// * decimal          - big.Rat
 	codec, err := NewCodec(`["null", {"type": "long", "logicalType": "timestamp-millis"}]`)
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
 
 	// Note the usage of type.logicalType i.e. `long.timestamp-millis` to denote the type in a union. This is due to the single string naming format
 	// used by goavro. Decimal can be both bytes.decimal or fixed.decimal
 	bytes, err := codec.BinaryFromNative(nil, map[string]interface{}{"long.timestamp-millis": time.Date(2006, 1, 2, 15, 4, 5, 0, time.UTC)})
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
 
 	decoded, _, err := codec.NativeFromBinary(bytes)
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
 	out := decoded.(map[string]interface{})
 	fmt.Printf("%#v\n", out["long.timestamp-millis"].(time.Time).String())
