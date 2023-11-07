@@ -604,6 +604,14 @@ func (c *Codec) SchemaCRC64Avro() int64 {
 	return int64(c.Rabin)
 }
 
+// Name returns the name of the Avro schema used to create the Codec.
+func (c *Codec) Name() (string, error) {
+	if c.typeName == nil {
+		return "", fmt.Errorf("codec has no name")
+	}
+	return c.typeName.String(), nil
+}
+
 // convert a schema data structure to a codec, prefixing with specified
 // namespace
 func buildCodec(st map[string]*Codec, enclosingNamespace string, schema interface{}, cb *codecBuilder) (*Codec, error) {

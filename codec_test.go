@@ -27,6 +27,22 @@ func ExampleCodec_CanonicalSchema() {
 	// Output: {"type":"map","values":{"name":"foo","type":"enum","symbols":["alpha","bravo"]}}
 }
 
+func ExampleCodec_Name() {
+	schema := `{"type":"map","values":{"type":"enum","name":"foo","symbols":["alpha","bravo"]}}`
+	codec, err := NewCodec(schema)
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		name, errName := codec.Name()
+		if errName != nil {
+			fmt.Println(errName)
+		} else {
+			fmt.Println(name)
+		}
+	}
+	// Output: map
+}
+
 func TestCodecRabin(t *testing.T) {
 	cases := []struct {
 		Schema string
