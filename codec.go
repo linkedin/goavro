@@ -199,17 +199,34 @@ func NewCodecForStandardJSONFull(schemaSpecification string) (*Codec, error) {
 }
 
 // NewCodecForUnambiguousJSON provides full serialization/deserialization
-// for json that meets the expectations of regular internet json, viewed as
-// something distinct from avro-json which has special handling for union
-// types.  For details see the above comments.
+// for json that is unambiguous in terms of what the field will contain.
+// This means that avro Union types containing only a single concrete type
+// e.g. ["null", "string"] no longer have to specify their type. Unlike
+// NewCodecForStandardJSONFull, ambiguous types ["int", "string"] do still
+// need to specify their type as map. See the following examples:
 //
-// With this `codec` you can expect to see a json string like this:
+// ["null", "string"] => "some string" || null
+// ["int", "string"] => {"int": 1} || {"string": "some string"}
+// ["null", "int", "string"] => null || {"int": 1} || {"string": "some string"}
 //
-// "Follow your bliss."
+// this is especially useful when using json.Marshal with structs containing
+// optional types:
 //
-// to deserialize into the same json structure
+//	type Person struct {
+//			Name *string `json:"name,omitempty"`
+//	}
 //
-// "Follow your bliss."
+// or using json.Marshal with structs containing a union:
+//
+//	type Message struct {
+//			Direction DirectionUnion `json:DirectionUnion"
+//	}
+//
+// type DirectionUnion struct { // only one of the fields can be non-nil
+//
+//			Request *string `json:"request,omitempty"`
+//			Response *string `json:"response,omitempty"`
+//	}
 func NewCodecForUnambiguousJSON(schemaSpecification string) (*Codec, error) {
 	return NewCodecFrom(schemaSpecification, &codecBuilder{
 		buildCodecForTypeDescribedByMap,
