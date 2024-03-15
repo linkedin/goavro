@@ -213,19 +213,19 @@ func NewCodecForStandardJSONFull(schemaSpecification string) (*Codec, error) {
 // optional types:
 //
 //	type Person struct {
-//			Name *string `json:"name,omitempty"`
+//	   Name *string `json:"name,omitempty"`
 //	}
 //
 // or using json.Marshal with structs containing a union:
 //
 //	type Message struct {
-//			Direction DirectionUnion `json:DirectionUnion"
+//	   Direction DirectionUnion `json:DirectionUnion"
 //	}
 //
 // type DirectionUnion struct { // only one of the fields can be non-nil
 //
-//			Request *string `json:"request,omitempty"`
-//			Response *string `json:"response,omitempty"`
+//	   Request *string `json:"request,omitempty"`
+//	   Response *string `json:"response,omitempty"`
 //	}
 func NewCodecForUnambiguousJSON(schemaSpecification string) (*Codec, error) {
 	return NewCodecFrom(schemaSpecification, &codecBuilder{
