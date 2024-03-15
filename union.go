@@ -20,10 +20,27 @@ import (
 // codecInfo is a set of quick lookups it holds all the lookup info for the
 // all the schemas we need to handle the list of types for this union
 type codecInfo struct {
-	allowedTypes   []string
-	codecFromIndex []*Codec
-	codecFromName  map[string]*Codec
-	indexFromName  map[string]int
+	allowedTypes    []string
+	codecFromIndex  []*Codec
+	codecFromName   map[string]*Codec
+	indexFromName   map[string]int
+	unambiguousMode bool
+}
+
+// isNullable returns if the "null" type is one of the registered types
+func (cr codecInfo) isNullable() bool {
+	_, nullable := cr.indexFromName["null"]
+	return nullable
+}
+
+// numConcreteTypes returns the number of concrete types (not "null") specified to the codec
+func (cr codecInfo) numConcreteTypes() int {
+	_, nullable := cr.indexFromName["null"]
+	numConcreteTypes := len(cr.allowedTypes)
+	if nullable {
+		numConcreteTypes -= 1
+	}
+	return numConcreteTypes
 }
 
 // Union wraps a datum value in a map for encoding as a Union, as required by
@@ -163,8 +180,7 @@ func unionTextualFromNative(cr *codecInfo) func(buf []byte, datum interface{}) (
 	return func(buf []byte, datum interface{}) ([]byte, error) {
 		switch v := datum.(type) {
 		case nil:
-			_, ok := cr.indexFromName["null"]
-			if !ok {
+			if !cr.isNullable() {
 				return nil, fmt.Errorf("cannot encode textual union: no member schema types support datum: allowed types: %v; received: %T", cr.allowedTypes, datum)
 			}
 			return append(buf, "null"...), nil
@@ -178,19 +194,24 @@ func unionTextualFromNative(cr *codecInfo) func(buf []byte, datum interface{}) (
 				if !ok {
 					return nil, fmt.Errorf("cannot encode textual union: no member schema types support datum: allowed types: %v; received: %T", cr.allowedTypes, datum)
 				}
-				buf = append(buf, '{')
 				var err error
-				buf, err = stringTextualFromNative(buf, key)
-				if err != nil {
-					return nil, fmt.Errorf("cannot encode textual union: %s", err)
+				if !cr.unambiguousMode || cr.numConcreteTypes() > 1 {
+					buf = append(buf, '{')
+					buf, err = stringTextualFromNative(buf, key)
+					if err != nil {
+						return nil, fmt.Errorf("cannot encode textual union: %s", err)
+					}
+					buf = append(buf, ':')
 				}
-				buf = append(buf, ':')
 				c := cr.codecFromIndex[index]
 				buf, err = c.textualFromNative(buf, value)
 				if err != nil {
 					return nil, fmt.Errorf("cannot encode textual union: %s", err)
 				}
-				return append(buf, '}'), nil
+				if !cr.unambiguousMode || cr.numConcreteTypes() > 1 {
+					buf = append(buf, '}')
+				}
+				return buf, nil
 			}
 		}
 		return nil, fmt.Errorf("cannot encode textual union: non-nil values ought to be specified with Go map[string]interface{}, with single key equal to type name, and value equal to datum value: %v; received: %T", cr.allowedTypes, datum)
@@ -200,8 +221,7 @@ func textualJSONFromNativeAvro(cr *codecInfo) func(buf []byte, datum interface{}
 	return func(buf []byte, datum interface{}) ([]byte, error) {
 		switch v := datum.(type) {
 		case nil:
-			_, ok := cr.indexFromName["null"]
-			if !ok {
+			if !cr.isNullable() {
 				return nil, fmt.Errorf("cannot encode textual union: no member schema types support datum: allowed types: %v; received: %T", cr.allowedTypes, datum)
 			}
 			return append(buf, "null"...), nil
@@ -301,6 +321,32 @@ func buildCodecForTypeDescribedBySliceOneWayJSON(st map[string]*Codec, enclosing
 	}
 	return rv, nil
 }
+func buildCodecForTypeDescribedBySliceUnambiguousJSON(st map[string]*Codec, enclosingNamespace string, schemaArray []interface{}, cb *codecBuilder) (*Codec, error) {
+	if len(schemaArray) == 0 {
+		return nil, errors.New("Union ought to have one or more members")
+	}
+
+	cr, err := makeCodecInfo(st, enclosingNamespace, schemaArray, cb)
+	cr.unambiguousMode = true
+	if err != nil {
+		return nil, err
+	}
+
+	rv := &Codec{
+		// NOTE: To support record field default values, union schema set to the
+		// type name of first member
+		// TODO: add/change to schemaCanonical below
+		schemaOriginal: cr.codecFromIndex[0].typeName.fullName,
+
+		typeName:          &name{"union", nullNamespace},
+		nativeFromBinary:  unionNativeFromBinary(&cr),
+		binaryFromNative:  unionBinaryFromNative(&cr),
+		nativeFromTextual: nativeAvroFromTextualJSON(&cr),
+		textualFromNative: unionTextualFromNative(&cr),
+	}
+	return rv, nil
+}
+
 func buildCodecForTypeDescribedBySliceTwoWayJSON(st map[string]*Codec, enclosingNamespace string, schemaArray []interface{}, cb *codecBuilder) (*Codec, error) {
 	if len(schemaArray) == 0 {
 		return nil, errors.New("Union ought to have one or more members")
@@ -339,6 +385,11 @@ func checkAll(allowedTypes []string, cr *codecInfo, buf []byte) (interface{}, []
 		rv, rb, err := theCodec.NativeFromTextual(buf)
 		if err != nil {
 			continue
+		}
+
+		// in unambiguous mode, don't return the type if only a single concrete type is registered
+		if cr.unambiguousMode && cr.numConcreteTypes() == 1 {
+			return rv, rb, nil
 		}
 		return map[string]interface{}{name: rv}, rb, nil
 	}
@@ -405,11 +456,59 @@ func nativeAvroFromTextualJSON(cr *codecInfo) func(buf []byte) (interface{}, []b
 			sort.Strings(cr.allowedTypes)
 
 		case map[string]interface{}:
+			if cr.unambiguousMode && cr.numConcreteTypes() > 1 {
+				asmap, ok := m.(map[string]interface{}) // we know this cast cannot fail
+				if !ok || len(asmap) != 1 {
+					return nil, buf, fmt.Errorf("expected map with a single key, got: %v", string(buf))
+				}
+
+				var name string
+				var value []byte
+				for _name, _value := range asmap {
+					name = _name
+					var err error
+					value, err = json.Marshal(_value)
+					if err != nil {
+						return nil, buf, fmt.Errorf("could not read value of type as []byte: %v", _value)
+					}
+				}
+
+				index, ok := cr.indexFromName[name]
+				if !ok {
+					return nil, buf, fmt.Errorf("invalid type: %v", name)
+				}
+
+				c := cr.codecFromIndex[index]
+				rv, rb, err := c.NativeFromTextual(value)
+				if err != nil {
+					return nil, buf, fmt.Errorf("could not decode json data in input: %v: %v", string(buf), err)
+				}
+				return map[string]interface{}{name: rv}, rb, nil
+			}
 
 			// try to decode it as a map
 			// because a map should fail faster than a record
 			// if that fails assume record and return it
 			sort.Strings(cr.allowedTypes)
+		case interface{}:
+			// if running in unambiguous mode, allow a nullable (NULL, T) type to be checked
+			if cr.unambiguousMode && cr.numConcreteTypes() == 2 {
+				// get T
+				var index int
+				for _key, _index := range cr.indexFromName {
+					if _key != "null" {
+						index = _index
+						break
+					}
+				}
+
+				c := cr.codecFromIndex[index]
+				rv, rb, err := c.NativeFromTextual(buf)
+				if err != nil {
+					return nil, buf, fmt.Errorf("could not decode json data in input: %v: %v", string(buf), err)
+				}
+				return rv, rb, nil
+			}
 		}
 
 		return checkAll(allowedTypes, cr, buf)

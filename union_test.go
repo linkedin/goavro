@@ -263,6 +263,214 @@ func ExampleCodec_TextualFromNative_json() {
 	// Output: {"string":"some string"}
 }
 
+// Use the unambiguous JSON codec instead for nullable types
+func ExampleCodec_TextualFromNative_unambiguous_primitive() {
+	codec, err := NewCodecFrom(`["null","string"]`, &codecBuilder{
+		buildCodecForTypeDescribedByMap,
+		buildCodecForTypeDescribedByString,
+		buildCodecForTypeDescribedBySliceUnambiguousJSON,
+	})
+	if err != nil {
+		fmt.Println(err)
+	}
+	buf, err := codec.TextualFromNative(nil, Union("string", "some string"))
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(string(buf))
+	// Output: "some string"
+}
+
+// Use the unambiguous JSON codec instead for nullable types
+func ExampleCodec_NativeFromTextual_unambiguous_primitive() {
+	codec, err := NewCodecFrom(`["null","string"]`, &codecBuilder{
+		buildCodecForTypeDescribedByMap,
+		buildCodecForTypeDescribedByString,
+		buildCodecForTypeDescribedBySliceUnambiguousJSON,
+	})
+	if err != nil {
+		fmt.Println(err)
+	}
+	// send in a legit json string
+	t, _, err := codec.NativeFromTextual([]byte("\"some string\""))
+	if err != nil {
+		fmt.Println(err)
+	}
+	// see it parse directly into string
+	o, ok := t.(string)
+	if !ok {
+		fmt.Printf("its a %T not a string", t)
+	}
+	// pull out the string to show its all good
+	fmt.Println(o)
+	// Output: some string
+}
+
+// Use the unambiguous JSON codec instead for nullable types
+func ExampleCodec_TextualFromNative_unambiguous_record() {
+	codec, err := NewCodecFrom(`["null",{"type": "record", "name": "Person", "fields": [{"name": "name", "type": "string"}]}]`, &codecBuilder{
+		buildCodecForTypeDescribedByMap,
+		buildCodecForTypeDescribedByString,
+		buildCodecForTypeDescribedBySliceUnambiguousJSON,
+	})
+	if err != nil {
+		fmt.Println(err)
+	}
+	buf, err := codec.TextualFromNative(nil, Union("Person", map[string]interface{}{"name": "John Doe"}))
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(string(buf))
+	// Output: {"name":"John Doe"}
+}
+
+// Use the unambiguous JSON codec instead for nullable types
+func ExampleCodec_NativeFromTextual_unambiguous_record() {
+	codec, err := NewCodecFrom(`["null",{"type": "record", "name": "Person", "fields": [{"name": "name", "type": "string"}]}]`, &codecBuilder{
+		buildCodecForTypeDescribedByMap,
+		buildCodecForTypeDescribedByString,
+		buildCodecForTypeDescribedBySliceUnambiguousJSON,
+	})
+	if err != nil {
+		fmt.Println(err)
+	}
+	// send in a legit json string
+	t, _, err := codec.NativeFromTextual([]byte("{\"name\": \"John Doe\"}"))
+	if err != nil {
+		fmt.Println(err)
+	}
+	// see it parse directly into string
+	o, ok := t.(map[string]interface{})
+	if !ok {
+		fmt.Printf("its a %T not a string", t)
+	}
+	// pull out the string to show its all good
+	fmt.Println(o)
+	// Output: map[name:John Doe]
+}
+
+// Use the unambiguous JSON codec instead for nullable types
+func ExampleCodec_TextualFromNative_unambiguous_nil() {
+	codec, err := NewCodecFrom(`["null","string"]`, &codecBuilder{
+		buildCodecForTypeDescribedByMap,
+		buildCodecForTypeDescribedByString,
+		buildCodecForTypeDescribedBySliceUnambiguousJSON,
+	})
+	if err != nil {
+		fmt.Println(err)
+	}
+	buf, err := codec.TextualFromNative(nil, Union("null", nil))
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(string(buf))
+	// Output: null
+}
+
+// Use the unambiguous JSON codec instead for nullable types
+func ExampleCodec_NativeFromTextual_unambiguous_nil() {
+	codec, err := NewCodecFrom(`["null","string"]`, &codecBuilder{
+		buildCodecForTypeDescribedByMap,
+		buildCodecForTypeDescribedByString,
+		buildCodecForTypeDescribedBySliceUnambiguousJSON,
+	})
+	if err != nil {
+		fmt.Println(err)
+	}
+	// send in a legit json string
+	t, _, err := codec.NativeFromTextual([]byte("null"))
+	if err != nil {
+		fmt.Println(err)
+	}
+	// pull out the string to show its all good
+	fmt.Println(t)
+	// Output: <nil>
+}
+
+// Use the unambiguous JSON codec instead for nullable types
+func ExampleCodec_TextualFromNative_ambiguous_primitive() {
+	codec, err := NewCodecFrom(`["int","string"]`, &codecBuilder{
+		buildCodecForTypeDescribedByMap,
+		buildCodecForTypeDescribedByString,
+		buildCodecForTypeDescribedBySliceUnambiguousJSON,
+	})
+	if err != nil {
+		fmt.Println(err)
+	}
+	buf, err := codec.TextualFromNative(nil, Union("string", "some string"))
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(string(buf))
+	// Output: {"string":"some string"}
+}
+
+// Use the unambiguous JSON codec instead for nullable types
+func ExampleCodec_NativeFromTextual_ambiguous_primitive() {
+	codec, err := NewCodecFrom(`["int","string"]`, &codecBuilder{
+		buildCodecForTypeDescribedByMap,
+		buildCodecForTypeDescribedByString,
+		buildCodecForTypeDescribedBySliceUnambiguousJSON,
+	})
+	if err != nil {
+		fmt.Println(err)
+	}
+	// send in a legit json string
+	t, _, err := codec.NativeFromTextual([]byte("{\"string\": \"some string\"}"))
+	// see it parse into a map like the avro encoder does
+	o, ok := t.(map[string]interface{})
+	if !ok {
+		fmt.Printf("its a %T not a map[string]interface{}", t)
+	}
+	// pull out the string to show its all good
+	v := o["string"]
+	fmt.Println(v)
+	// Output: some string
+}
+
+func ExampleCodec_TextualFromNative_ambiguous_record() {
+	codec, err := NewCodecFrom(`["int",{"type": "record", "name": "Person", "fields": [{"name": "name", "type": "string"}]}]`, &codecBuilder{
+		buildCodecForTypeDescribedByMap,
+		buildCodecForTypeDescribedByString,
+		buildCodecForTypeDescribedBySliceUnambiguousJSON,
+	})
+	if err != nil {
+		fmt.Println(err)
+	}
+	buf, err := codec.TextualFromNative(nil, Union("Person", map[string]interface{}{"name": "John Doe"}))
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(string(buf))
+	// Output: {"Person":{"name":"John Doe"}}
+}
+
+// Use the unambiguous JSON codec instead for nullable types
+func ExampleCodec_NativeFromTextual_ambiguous_record() {
+	codec, err := NewCodecFrom(`["int",{"type": "record", "name": "Person", "fields": [{"name": "name", "type": "string"}]}]`, &codecBuilder{
+		buildCodecForTypeDescribedByMap,
+		buildCodecForTypeDescribedByString,
+		buildCodecForTypeDescribedBySliceUnambiguousJSON,
+	})
+	if err != nil {
+		fmt.Println(err)
+	}
+	// send in a legit json string
+	t, _, err := codec.NativeFromTextual([]byte("{\"Person\": {\"name\": \"John Doe\"}}"))
+	if err != nil {
+		fmt.Println(err)
+	}
+	// see it parse into a map like the avro encoder does
+	o, ok := t.(map[string]interface{})
+	if !ok {
+		fmt.Printf("its a %T not a map[string]interface{}", t)
+	}
+	// pull out the Person to show its all good
+	v := o["Person"]
+	fmt.Println(v)
+	// Output: map[name:John Doe]
+}
+
 func ExampleCodec_NativeFromTextual_json() {
 	codec, err := NewCodecFrom(`["null","string","int"]`, &codecBuilder{
 		buildCodecForTypeDescribedByMap,

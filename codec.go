@@ -198,6 +198,26 @@ func NewCodecForStandardJSONFull(schemaSpecification string) (*Codec, error) {
 	})
 }
 
+// NewCodecForUnambiguousJSON provides full serialization/deserialization
+// for json that meets the expectations of regular internet json, viewed as
+// something distinct from avro-json which has special handling for union
+// types.  For details see the above comments.
+//
+// With this `codec` you can expect to see a json string like this:
+//
+// "Follow your bliss."
+//
+// to deserialize into the same json structure
+//
+// "Follow your bliss."
+func NewCodecForUnambiguousJSON(schemaSpecification string) (*Codec, error) {
+	return NewCodecFrom(schemaSpecification, &codecBuilder{
+		buildCodecForTypeDescribedByMap,
+		buildCodecForTypeDescribedByString,
+		buildCodecForTypeDescribedBySliceUnambiguousJSON,
+	})
+}
+
 func NewCodecFrom(schemaSpecification string, cb *codecBuilder) (*Codec, error) {
 	var schema interface{}
 
