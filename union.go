@@ -479,11 +479,11 @@ func nativeAvroFromTextualJSON(cr *codecInfo) func(buf []byte) (interface{}, []b
 				}
 
 				c := cr.codecFromIndex[index]
-				rv, rb, err := c.NativeFromTextual(value)
+				rv, _, err := c.NativeFromTextual(value)
 				if err != nil {
 					return nil, buf, fmt.Errorf("could not decode json data in input: %v: %v", string(buf), err)
 				}
-				return map[string]interface{}{name: rv}, rb, nil
+				return map[string]interface{}{name: rv}, buf[dec.InputOffset():], nil
 			}
 
 			// try to decode it as a map
@@ -503,11 +503,11 @@ func nativeAvroFromTextualJSON(cr *codecInfo) func(buf []byte) (interface{}, []b
 				}
 
 				c := cr.codecFromIndex[index]
-				rv, rb, err := c.NativeFromTextual(buf)
+				rv, _, err := c.NativeFromTextual(buf)
 				if err != nil {
 					return nil, buf, fmt.Errorf("could not decode json data in input: %v: %v", string(buf), err)
 				}
-				return rv, rb, nil
+				return rv, buf[dec.InputOffset():], nil
 			}
 		}
 
