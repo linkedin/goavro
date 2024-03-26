@@ -43,6 +43,17 @@ func (cr codecInfo) numConcreteTypes() int {
 	return numConcreteTypes
 }
 
+// firstConcreteTypeCodec returns the first non-null codec
+func (cr codecInfo) firstConcreteTypeCodec() *Codec {
+	for k, v := range cr.codecFromName {
+		if k == "null" {
+			continue
+		}
+		return v
+	}
+	return nil
+}
+
 // Union wraps a datum value in a map for encoding as a Union, as required by
 // Union encoder.
 //
@@ -141,6 +152,13 @@ func unionBinaryFromNative(cr *codecInfo) func(buf []byte, datum interface{}) ([
 			}
 			return longBinaryFromNative(buf, index)
 		case map[string]interface{}:
+			if cr.unambiguousMode && cr.isNullable() && cr.numConcreteTypes() == 1 {
+				c := cr.firstConcreteTypeCodec()
+				index := cr.indexFromName[c.typeName.fullName]
+				buf, _ = longBinaryFromNative(buf, index)
+				return c.binaryFromNative(buf, datum)
+			}
+
 			if len(v) != 1 {
 				return nil, fmt.Errorf("cannot encode binary union: non-nil Union values ought to be specified with Go map[string]interface{}, with single key equal to type name, and value equal to datum value: %v; received: %T", cr.allowedTypes, datum)
 			}
@@ -155,6 +173,14 @@ func unionBinaryFromNative(cr *codecInfo) func(buf []byte, datum interface{}) ([
 				return c.binaryFromNative(buf, value)
 			}
 		}
+
+		if cr.unambiguousMode && cr.isNullable() && cr.numConcreteTypes() == 1 {
+			c := cr.firstConcreteTypeCodec()
+			index := cr.indexFromName[c.typeName.fullName]
+			buf, _ = longBinaryFromNative(buf, index)
+			return c.binaryFromNative(buf, datum)
+		}
+
 		return nil, fmt.Errorf("cannot encode binary union: non-nil Union values ought to be specified with Go map[string]interface{}, with single key equal to type name, and value equal to datum value: %v; received: %T", cr.allowedTypes, datum)
 	}
 }
