@@ -145,70 +145,70 @@ func TestCodecRabin(t *testing.T) {
 	}
 }
 
-func TestTypeName(t* testing.T) {
+func TestTypeName(t *testing.T) {
 	cases := []struct {
-		Schema string
-		expectedFullName string
+		Schema            string
+		expectedFullName  string
 		expectedNamespace string
 	}{
 		{
-			Schema: `"null"`,
-			expectedFullName: "null",
+			Schema:            `"null"`,
+			expectedFullName:  "null",
 			expectedNamespace: "",
 		},
 		{
-			Schema: `"boolean"`,
-			expectedFullName: "boolean",
+			Schema:            `"boolean"`,
+			expectedFullName:  "boolean",
 			expectedNamespace: "",
 		},
 		{
-			Schema: `"int"`,
-			expectedFullName: "int",
+			Schema:            `"int"`,
+			expectedFullName:  "int",
 			expectedNamespace: "",
 		},
 		{
-			Schema: `"long"`,
-			expectedFullName: "long",
+			Schema:            `"long"`,
+			expectedFullName:  "long",
 			expectedNamespace: "",
 		},
 		{
-			Schema: `"float"`,
-			expectedFullName: "float",
+			Schema:            `"float"`,
+			expectedFullName:  "float",
 			expectedNamespace: "",
 		},
 		{
-			Schema: `[ "int"  ]`,
-			expectedFullName: "union",
+			Schema:            `[ "int"  ]`,
+			expectedFullName:  "union",
 			expectedNamespace: "",
 		},
 		{
-			Schema: `[ "int" , {"type":"boolean"} ]`,
-			expectedFullName: "union",
+			Schema:            `[ "int" , {"type":"boolean"} ]`,
+			expectedFullName:  "union",
 			expectedNamespace: "",
 		},
 		{
-			Schema: `{"fields":[], "type":"record", "name":"foo"}`,
-			expectedFullName: "foo",
+			Schema:            `{"fields":[], "type":"record", "name":"foo"}`,
+			expectedFullName:  "foo",
 			expectedNamespace: "",
 		},
 		{
-			Schema: `{"type":"enum", "name":"foo", "symbols":["A1"]}`,
-			expectedFullName: "foo",
+			Schema:            `{"type":"enum", "name":"foo", "symbols":["A1"]}`,
+			expectedFullName:  "foo",
 			expectedNamespace: "",
 		},
 		{
-			Schema: `{"name":"foo","type":"fixed","size":15}`,
-			expectedFullName: "foo",
+			Schema:            `{"name":"foo","type":"fixed","size":15}`,
+			expectedFullName:  "foo",
 			expectedNamespace: "",
 		},
 		{
-			Schema: `{"fields":[], "type":"record", "name":"foo", "namespace":"x.y"}`,
-			expectedFullName: "foo",
+			Schema:            `{"fields":[], "type":"record", "name":"foo", "namespace":"x.y"}`,
+			expectedFullName:  "foo",
 			expectedNamespace: "x.y",
 		},
 		{
-			Schema: `{"namespace":"x.y.z", "type":"enum", "name":"foo", "doc":"foo bar", "symbols":["A1", "A2"]}`,
-			expectedFullName: "foo",
+			Schema:            `{"namespace":"x.y.z", "type":"enum", "name":"foo", "doc":"foo bar", "symbols":["A1", "A2"]}`,
+			expectedFullName:  "foo",
 			expectedNamespace: "x.y.z",
 		},
 	}
@@ -225,8 +225,6 @@ func TestTypeName(t* testing.T) {
 		}
 	}
 }
-
-
 
 func TestSingleObjectEncoding(t *testing.T) {
 	t.Run("int", func(*testing.T) {

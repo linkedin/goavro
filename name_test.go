@@ -100,12 +100,11 @@ func TestNewNameFromSchemaMap(t *testing.T) {
 	}
 }
 
-
 func TestShortName(t *testing.T) {
 	cases := []struct {
-		name     string
+		name      string
 		namespace string
-		want     string
+		want      string
 	}{
 		{"bar", "", "bar"},
 		{"foo", "org.bar", "foo"},
