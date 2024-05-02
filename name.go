@@ -141,3 +141,9 @@ func (n *name) short() string {
 	}
 	return n.fullName
 }
+
+// Shortname returns the name without the prefixed namespace.
+// This uses the short method underneath but is visible outside the package.
+func (n *name) ShortName() string {
+	return n.short()
+}
