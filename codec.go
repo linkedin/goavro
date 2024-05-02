@@ -604,6 +604,12 @@ func (c *Codec) SchemaCRC64Avro() int64 {
 	return int64(c.Rabin)
 }
 
+// TypeName returns the name of the type described by the
+// schema used to create the Codec.
+func (c *Codec) TypeName() name {
+	return *c.typeName
+}
+
 // convert a schema data structure to a codec, prefixing with specified
 // namespace
 func buildCodec(st map[string]*Codec, enclosingNamespace string, schema interface{}, cb *codecBuilder) (*Codec, error) {

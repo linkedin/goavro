@@ -145,6 +145,87 @@ func TestCodecRabin(t *testing.T) {
 	}
 }
 
+func TestTypeName(t *testing.T) {
+	cases := []struct {
+		Schema            string
+		expectedFullName  string
+		expectedNamespace string
+	}{
+		{
+			Schema:            `"null"`,
+			expectedFullName:  "null",
+			expectedNamespace: "",
+		},
+		{
+			Schema:            `"boolean"`,
+			expectedFullName:  "boolean",
+			expectedNamespace: "",
+		},
+		{
+			Schema:            `"int"`,
+			expectedFullName:  "int",
+			expectedNamespace: "",
+		},
+		{
+			Schema:            `"long"`,
+			expectedFullName:  "long",
+			expectedNamespace: "",
+		},
+		{
+			Schema:            `"float"`,
+			expectedFullName:  "float",
+			expectedNamespace: "",
+		},
+		{
+			Schema:            `[ "int"  ]`,
+			expectedFullName:  "union",
+			expectedNamespace: "",
+		},
+		{
+			Schema:            `[ "int" , {"type":"boolean"} ]`,
+			expectedFullName:  "union",
+			expectedNamespace: "",
+		},
+		{
+			Schema:            `{"fields":[], "type":"record", "name":"foo"}`,
+			expectedFullName:  "foo",
+			expectedNamespace: "",
+		},
+		{
+			Schema:            `{"type":"enum", "name":"foo", "symbols":["A1"]}`,
+			expectedFullName:  "foo",
+			expectedNamespace: "",
+		},
+		{
+			Schema:            `{"name":"foo","type":"fixed","size":15}`,
+			expectedFullName:  "foo",
+			expectedNamespace: "",
+		},
+		{
+			Schema:            `{"fields":[], "type":"record", "name":"foo", "namespace":"x.y"}`,
+			expectedFullName:  "foo",
+			expectedNamespace: "x.y",
+		},
+		{
+			Schema:            `{"namespace":"x.y.z", "type":"enum", "name":"foo", "doc":"foo bar", "symbols":["A1", "A2"]}`,
+			expectedFullName:  "foo",
+			expectedNamespace: "x.y.z",
+		},
+	}
+
+	for _, c := range cases {
+		codec, err := NewCodec(c.Schema)
+		if err != nil {
+			t.Fatalf("CASE: %s; cannot create codec: %s", c.Schema, err)
+		}
+		typeName := codec.TypeName()
+		expected, _ := newName(c.expectedFullName, c.expectedNamespace, "")
+		if typeName != *expected {
+			t.Errorf("CASE: %s; GOT: %s; WANT: %s", c.Schema, codec.TypeName(), *expected)
+		}
+	}
+}
+
 func TestSingleObjectEncoding(t *testing.T) {
 	t.Run("int", func(*testing.T) {
 		schema := `"int"`

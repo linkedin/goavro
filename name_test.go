@@ -12,6 +12,7 @@ package goavro
 // NOTE: part of goavro package because it tests private functionality
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -96,5 +97,28 @@ func TestNewNameFromSchemaMap(t *testing.T) {
 	}
 	if got, want := n.namespace, ""; got != want {
 		t.Errorf("GOT: %q; WANT: %q", got, want)
+	}
+}
+
+func TestShortName(t *testing.T) {
+	cases := []struct {
+		name      string
+		namespace string
+		want      string
+	}{
+		{"bar", "", "bar"},
+		{"foo", "org.bar", "foo"},
+		{"bar.foo", "org", "foo"},
+	}
+
+	for _, c := range cases {
+		n, err := newName(c.name, c.namespace, nullNamespace)
+		if err != nil {
+			t.Fatal(err)
+		}
+		fmt.Printf("n: %#v fullName: %v shortName: %v\n", n, n.String(), n.ShortName())
+		if actual, expected := n.ShortName(), c.want; actual != expected {
+			t.Errorf("GOT: %#v; WANT: %#v", actual, expected)
+		}
 	}
 }
