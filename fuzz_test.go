@@ -408,7 +408,7 @@ func TestCrashers_OCF_e2e(t *testing.T) {
 			if err != nil {
 				t.Fatalf("GOT: %v; WANT: %v", err, nil)
 			}
-			if err := ocfw.Append(datums); err != nil {
+			if _, err := ocfw.Append(datums); err != nil {
 				t.Fatalf("GOT: %v; WANT: %v", err, nil)
 			}
 		})

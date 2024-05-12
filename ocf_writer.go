@@ -156,30 +156,30 @@ func (ocfw *OCFWriter) quickScanToTail(ior io.Reader) error {
 // more data items in the slice than MaxBlockCount allows, the data slice will
 // be chunked into multiple blocks, each not having more than MaxBlockCount
 // items.
-func (ocfw *OCFWriter) Append(data interface{}) error {
+func (ocfw *OCFWriter) Append(data interface{}) (int, error) {
 	arrayValues, err := convertArray(data)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	// Chunk data so no block has more than MaxBlockCount items.
 	for int64(len(arrayValues)) > MaxBlockCount {
-		if err := ocfw.appendDataIntoBlock(arrayValues[:MaxBlockCount]); err != nil {
-			return err
+		if _, err := ocfw.appendDataIntoBlock(arrayValues[:MaxBlockCount]); err != nil {
+			return 0, err
 		}
 		arrayValues = arrayValues[MaxBlockCount:]
 	}
 	return ocfw.appendDataIntoBlock(arrayValues)
 }
 
-func (ocfw *OCFWriter) appendDataIntoBlock(data []interface{}) error {
+func (ocfw *OCFWriter) appendDataIntoBlock(data []interface{}) (int, error) {
 	var block []byte // working buffer for encoding data values
 	var err error
 
 	// Encode and concatenate each data item into the block
 	for _, datum := range data {
 		if block, err = ocfw.header.codec.BinaryFromNative(block, datum); err != nil {
-			return fmt.Errorf("cannot translate datum to binary: %v; %s", datum, err)
+			return 0, fmt.Errorf("cannot translate datum to binary: %v; %s", datum, err)
 		}
 	}
 
@@ -194,10 +194,10 @@ func (ocfw *OCFWriter) appendDataIntoBlock(data []interface{}) error {
 		cw, _ := flate.NewWriter(bb, flate.DefaultCompression)
 		// writing bytes to cw will compress bytes and send to bb.
 		if _, err := cw.Write(block); err != nil {
-			return err
+			return 0, err
 		}
 		if err := cw.Close(); err != nil {
-			return err
+			return 0, err
 		}
 		block = bb.Bytes()
 
@@ -211,7 +211,7 @@ func (ocfw *OCFWriter) appendDataIntoBlock(data []interface{}) error {
 		block = compressed
 
 	default:
-		return fmt.Errorf("should not get here: cannot compress block using unrecognized compression: %d", ocfw.header.compressionID)
+		return 0, fmt.Errorf("should not get here: cannot compress block using unrecognized compression: %d", ocfw.header.compressionID)
 
 	}
 
@@ -222,8 +222,8 @@ func (ocfw *OCFWriter) appendDataIntoBlock(data []interface{}) error {
 	buf = append(buf, block...)                      // serialized objects
 	buf = append(buf, ocfw.header.syncMarker[:]...)  // sync marker
 
-	_, err = ocfw.iow.Write(buf)
-	return err
+	n, err := ocfw.iow.Write(buf)
+	return n, err
 }
 
 // Codec returns the codec used by OCFWriter. This function provided because
