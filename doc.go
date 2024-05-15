@@ -29,7 +29,7 @@ Usage Example:
 	              ]
 	            }`)
 	        if err != nil {
-	            fmt.Println(err)
+	            log.Fatal(err)
 	        }
 
 	        // NOTE: May omit fields when using default value
@@ -38,25 +38,25 @@ Usage Example:
 	        // Convert textual Avro data (in Avro JSON format) to native Go form
 	        native, _, err := codec.NativeFromTextual(textual)
 	        if err != nil {
-	            fmt.Println(err)
+	            log.Fatal(err)
 	        }
 
 	        // Convert native Go form to binary Avro data
 	        binary, err := codec.BinaryFromNative(nil, native)
 	        if err != nil {
-	            fmt.Println(err)
+	            log.Fatal(err)
 	        }
 
 	        // Convert binary Avro data back to native Go form
 	        native, _, err = codec.NativeFromBinary(binary)
 	        if err != nil {
-	            fmt.Println(err)
+	            log.Fatal(err)
 	        }
 
 	        // Convert native Go form to textual Avro data
 	        textual, err = codec.TextualFromNative(nil, native)
 	        if err != nil {
-	            fmt.Println(err)
+	            log.Fatal(err)
 	        }
 
 	        // NOTE: Textual encoding will show all fields, even those with values that

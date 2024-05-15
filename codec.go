@@ -93,7 +93,7 @@ type codecBuilder struct {
 //	      ]
 //	    }`)
 //	if err != nil {
-//	        fmt.Println(err)
+//	        log.Fatal(err)
 //	}
 func NewCodec(schemaSpecification string) (*Codec, error) {
 	return NewCodecFrom(schemaSpecification, &codecBuilder{
@@ -133,7 +133,7 @@ func NewCodec(schemaSpecification string) (*Codec, error) {
 //	      ]
 //	    }`)
 //	if err != nil {
-//	        fmt.Println(err)
+//	        log.Fatal(err)
 //	}
 //
 // The above will take json of this sort:
@@ -367,7 +367,7 @@ func newSymbolTable() map[string]*Codec {
 //	          ]
 //	        }`)
 //	    if err != nil {
-//	        fmt.Println(err)
+//	        log.Fatal(err)
 //	    }
 //
 //	    // Convert native Go form to binary Avro data
@@ -383,7 +383,7 @@ func newSymbolTable() map[string]*Codec {
 //	        },
 //	    })
 //	    if err != nil {
-//	        fmt.Println(err)
+//	        log.Fatal(err)
 //	    }
 //
 //	    fmt.Printf("%#v", binary)
@@ -413,7 +413,7 @@ func (c *Codec) BinaryFromNative(buf []byte, datum interface{}) ([]byte, error) 
 //	          ]
 //	        }`)
 //	    if err != nil {
-//	        fmt.Println(err)
+//	        log.Fatal(err)
 //	    }
 //
 //	    // Convert native Go form to binary Avro data
@@ -421,7 +421,7 @@ func (c *Codec) BinaryFromNative(buf []byte, datum interface{}) ([]byte, error) 
 //
 //	    native, _, err := codec.NativeFromBinary(binary)
 //	    if err != nil {
-//	        fmt.Println(err)
+//	        log.Fatal(err)
 //	    }
 //
 //	    fmt.Printf("%v", native)
@@ -482,7 +482,7 @@ func (c *Codec) NativeFromSingle(buf []byte) (interface{}, []byte, error) {
 //	          ]
 //	        }`)
 //	    if err != nil {
-//	        fmt.Println(err)
+//	        log.Fatal(err)
 //	    }
 //
 //	    // Convert native Go form to text Avro data
@@ -490,7 +490,7 @@ func (c *Codec) NativeFromSingle(buf []byte) (interface{}, []byte, error) {
 //
 //	    native, _, err := codec.NativeFromTextual(text)
 //	    if err != nil {
-//	        fmt.Println(err)
+//	        log.Fatal(err)
 //	    }
 //
 //	    fmt.Printf("%v", native)
@@ -553,7 +553,7 @@ func (c *Codec) SingleFromNative(buf []byte, datum interface{}) ([]byte, error) 
 //	          ]
 //	        }`)
 //	    if err != nil {
-//	        fmt.Println(err)
+//	        log.Fatal(err)
 //	    }
 //
 //	    // Convert native Go form to text Avro data
@@ -569,7 +569,7 @@ func (c *Codec) SingleFromNative(buf []byte, datum interface{}) ([]byte, error) 
 //	        },
 //	    })
 //	    if err != nil {
-//	        fmt.Println(err)
+//	        log.Fatal(err)
 //	    }
 //
 //	    fmt.Printf("%s", text)
