@@ -10,7 +10,9 @@
 package goavro
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -198,4 +200,50 @@ func TestStringCodecAcceptsBytes(t *testing.T) {
 	t.Run("text", func(t *testing.T) {
 		testTextEncodePass(t, schema, []byte("abcd"), []byte(`"abcd"`))
 	})
+}
+
+func TestBytesUnderlyingArray(t *testing.T) {
+	ensureMap := func(expectedMap, actualMap map[string]interface{}) {
+		if actual, expected := len(actualMap), len(expectedMap); actual != expected {
+			t.Errorf("GOT: %#v; WANT: %#v", actual, expected)
+		}
+		for k, v := range actualMap {
+			if actual, expected := fmt.Sprintf("%s", expectedMap[k]), fmt.Sprintf("%s", v); actual != expected {
+				t.Errorf("GOT: %#v; WANT: %#v", actual, expected)
+			}
+		}
+	}
+
+	c, err := NewCodec(`{"name":"r1","type":"record","fields":[{"name":"foo","type":"bytes"},{"name":"bar","type":"bytes"}]}`)
+	ensureError(t, err)
+
+	datumIn := map[string]interface{}{
+		"foo": []byte("abc"),
+		"bar": []byte("def"),
+	}
+
+	buf, err := c.BinaryFromNative(nil, datumIn)
+	ensureError(t, err)
+	if expected := []byte("\x06abc\x06def"); !bytes.Equal(buf, expected) {
+		t.Errorf("GOT: %#v; WANT: %#v", buf, expected)
+	}
+
+	// round trip
+	datumOut, buf, err := c.NativeFromBinary(buf)
+	ensureError(t, err)
+	if actual, expected := len(buf), 0; actual != expected {
+		t.Errorf("GOT: %#v; WANT: %#v", actual, expected)
+	}
+
+	datumOutMap, ok := datumOut.(map[string]interface{})
+	if !ok {
+		t.Errorf("GOT: %#v; WANT: %#v", ok, true)
+	}
+	ensureMap(datumIn, datumOutMap)
+
+	// manipulate foo
+	_ = append(datumOutMap["foo"].([]byte), 0, 0)
+
+	// datumOutMap should stay unchanged
+	ensureMap(datumIn, datumOutMap)
 }
