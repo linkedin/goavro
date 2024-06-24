@@ -15,6 +15,7 @@ import (
 	"io"
 	"math"
 	"reflect"
+	"sort"
 )
 
 func makeMapCodec(st map[string]*Codec, namespace string, schemaMap map[string]interface{}, cb *codecBuilder) (*Codec, error) {
@@ -243,8 +244,10 @@ func genericMapTextEncoder(buf []byte, datum interface{}, defaultCodec *Codec, c
 	var atLeastOne bool
 
 	buf = append(buf, '{')
+	sortedKeys := sortKeys(mapValues)
 
-	for key, value := range mapValues {
+	for _, key := range sortedKeys {
+		value := mapValues[key]
 		atLeastOne = true
 
 		// Find a codec for the key
@@ -304,4 +307,13 @@ func convertMap(datum interface{}) (map[string]interface{}, error) {
 		mapValues[k] = v.MapIndex(key).Interface()
 	}
 	return mapValues, nil
+}
+
+func sortKeys(m map[string]interface{}) (keys []string) {
+	for key, _ := range m {
+		keys = append(keys, key)
+	}
+
+	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	return keys
 }
