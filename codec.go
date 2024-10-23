@@ -668,11 +668,13 @@ func buildCodecForTypeDescribedByString(st map[string]*Codec, enclosingNamespace
 		// For "bytes.decimal" types verify that the scale and precision in this schema map match a cached codec before
 		// using the cached codec in favor of creating a new codec.
 		if searchType == "bytes.decimal" {
+			precision, ok1 := schemaMap["precision"].(float64)
+			scale, ok2 := schemaMap["scale"].(float64)
 
 			// Search the cached codecs for a "bytes.decimal" codec  with a "precision" and "scale" specified in the key,
 			// only if that matches return the cached codec. Otherwise, create a new codec for this "bytes.decimal".
-			decimalSearchType := fmt.Sprintf("bytes.decimal.%d.%d", int(schemaMap["precision"].(float64)), int(schemaMap["scale"].(float64)))
-			if cd2, ok := st[decimalSearchType]; ok {
+			decimalSearchType := fmt.Sprintf("bytes.decimal.%d.%d", int(precision), int(scale))
+			if cd2, ok := st[decimalSearchType]; ok && ok1 && ok2 {
 				return cd2, nil
 			}
 
