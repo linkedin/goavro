@@ -151,7 +151,6 @@ func TestDecimalBytesLogicalTypeEncode(t *testing.T) {
 	d, _ := new(big.Int).SetString("100000000000000000000000000000000000000", 10)
 	largeRat := new(big.Rat).SetFrac(n, d)
 	testBinaryCodecPass(t, largeDecimalSchema, largeRat, []byte("\x40\x1b\x4b\x68\x19\x26\x11\xfa\xea\x20\x8f\xca\x21\x62\x7b\xe9\xda\xee\x32\x19\x83\x83\x95\x5d\xe8\x13\x1f\x4b\xf1\xc7\x1c\x71\xc7"))
-
 }
 
 func TestDecimalFixedLogicalTypeEncode(t *testing.T) {
@@ -175,6 +174,12 @@ func TestDecimalFixedLogicalTypeEncode(t *testing.T) {
 func TestDecimalBytesLogicalTypeInRecordEncode(t *testing.T) {
 	schema := `{"type": "record", "name": "myrecord", "fields" : [
 	       {"name": "mydecimal", "type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2}]}`
+	testBinaryCodecPass(t, schema, map[string]interface{}{"mydecimal": big.NewRat(617, 50)}, []byte("\x04\x04\xd2"))
+}
+
+func TestDecimalBytesLogicalTypeInRecordDecodeWithDefault(t *testing.T) {
+	schema := `{"type": "record", "name": "myrecord", "fields" : [
+    {"name": "mydecimal", "type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2, "default":"\u0000"}]}`
 	testBinaryCodecPass(t, schema, map[string]interface{}{"mydecimal": big.NewRat(617, 50)}, []byte("\x04\x04\xd2"))
 }
 

@@ -88,7 +88,7 @@ func testBinaryDecodePass(t *testing.T, schema string, datum interface{}, encode
 	t.Helper()
 	codec, err := NewCodec(schema)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("unable to create codec: %s", err)
 	}
 
 	value, remaining, err := codec.NativeFromBinary(encoded)
