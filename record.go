@@ -66,43 +66,43 @@ func makeRecordCodec(st map[string]*Codec, enclosingNamespace string, schemaMap 
 			case "boolean":
 				v, ok := defaultValue.(bool)
 				if !ok {
-					return nil, fmt.Errorf("Record %q field %q: default value ought to encode using field schema: %s", c.typeName, fieldName, err)
+					return nil, fmt.Errorf("Record %q field %q: default value ought to have a bool type, got: %T", c.typeName, fieldName, defaultValue)
 				}
 				defaultValue = v
 			case "bytes":
 				v, ok := defaultValue.(string)
 				if !ok {
-					return nil, fmt.Errorf("Record %q field %q: default value ought to encode using field schema: %s", c.typeName, fieldName, err)
+					return nil, fmt.Errorf("Record %q field %q: default value ought to have a string type got: %T", c.typeName, fieldName, defaultValue)
 				}
 				defaultValue = []byte(v)
 			case "double":
 				v, ok := defaultValue.(float64)
 				if !ok {
-					return nil, fmt.Errorf("Record %q field %q: default value ought to encode using field schema: %s", c.typeName, fieldName, err)
+					return nil, fmt.Errorf("Record %q field %q: default value ought to have a double type got: %T", c.typeName, fieldName, defaultValue)
 				}
 				defaultValue = v
 			case "float":
 				v, ok := defaultValue.(float64)
 				if !ok {
-					return nil, fmt.Errorf("Record %q field %q: default value ought to encode using field schema: %s", c.typeName, fieldName, err)
+					return nil, fmt.Errorf("Record %q field %q: default value ought to have a float type got: %T", c.typeName, fieldName, defaultValue)
 				}
 				defaultValue = float32(v)
 			case "int":
 				v, ok := defaultValue.(float64)
 				if !ok {
-					return nil, fmt.Errorf("Record %q field %q: default value ought to encode using field schema: %s", c.typeName, fieldName, err)
+					return nil, fmt.Errorf("Record %q field %q: default value ought to have a number type got: %T", c.typeName, fieldName, defaultValue)
 				}
 				defaultValue = int32(v)
 			case "long":
 				v, ok := defaultValue.(float64)
 				if !ok {
-					return nil, fmt.Errorf("Record %q field %q: default value ought to encode using field schema: %s", c.typeName, fieldName, err)
+					return nil, fmt.Errorf("Record %q field %q: default value ought to have a number type got: %T", c.typeName, fieldName, defaultValue)
 				}
 				defaultValue = int64(v)
 			case "string":
 				v, ok := defaultValue.(string)
 				if !ok {
-					return nil, fmt.Errorf("Record %q field %q: default value ought to encode using field schema: %s", c.typeName, fieldName, err)
+					return nil, fmt.Errorf("Record %q field %q: default value ought to have a string type got: %T", c.typeName, fieldName, defaultValue)
 				}
 				defaultValue = v
 			case "union":
@@ -118,6 +118,20 @@ func makeRecordCodec(st map[string]*Codec, enclosingNamespace string, schemaMap 
 				defaultValue = Union(fieldCodec.schemaOriginal, defaultValue)
 			default:
 				debug("fieldName: %q; type: %q; defaultValue: %T(%#v)\n", fieldName, c.typeName, defaultValue, defaultValue)
+
+				// Support defaults for logical types
+				if logicalType, ok := fieldSchemaMap["logicalType"]; ok {
+					if logicalType == "decimal" {
+						v, ok := defaultValue.(string)
+						if !ok {
+							return nil, fmt.Errorf("Record %q field %q: default value ought to have a string type got: %T", c.typeName, fieldName, defaultValue)
+						}
+						defaultValue, _, err = fieldCodec.nativeFromBinary([]byte(v))
+						if err != nil {
+							return nil, fmt.Errorf("Record %q field %q: default value ought to decode from textual: %w", c.typeName, fieldName, err)
+						}
+					}
+				}
 			}
 
 			// attempt to encode default value using codec
