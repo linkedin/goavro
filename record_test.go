@@ -617,6 +617,10 @@ func TestRecordFieldFixedDefaultValue(t *testing.T) {
 	testSchemaValid(t, `{"type": "record", "name": "r1", "fields":[{"name": "f1", "type": {"type": "fixed", "name": "someFixed", "size": 1}, "default": "\u0000"}]}`)
 }
 
+func TestRecordFieldDecimalDefaultValue(t *testing.T) {
+	testSchemaValid(t, `{"type": "record", "name": "r1", "fields":[{"name": "f1", "type": {"type": "bytes", "scale": 2, "precision":10, "logicalType":"deicmal"}, "default": "d"}]}`)
+}
+
 func TestRecordFieldDefaultValueTypes(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		codec, err := NewCodec(`{"type": "record", "name": "r1", "fields":[{"name": "someBoolean", "type": "boolean", "default": true},{"name": "someBytes", "type": "bytes", "default": "0"},{"name": "someDouble", "type": "double", "default": 0},{"name": "someFloat", "type": "float", "default": 0},{"name": "someInt", "type": "int", "default": 0},{"name": "someLong", "type": "long", "default": 0},{"name": "someString", "type": "string", "default": "0"}, {"name":"someTimestamp", "type":"long", "logicalType":"timestamp-millis","default":0}, {"name": "someDecimal", "type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2, "default":"\u0000"}]}`)
