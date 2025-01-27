@@ -1,7 +1,7 @@
 {
 		"namespace": "my.namespace.com",
 		"type":	"record",
-		"name": "indentity",
+		"name": "identity",
 		"fields": [
 			{ "name": "FirstName", "type": "string"},
 			{ "name": "LastName", "type": "string"},
