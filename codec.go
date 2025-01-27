@@ -301,6 +301,15 @@ func newSymbolTable() map[string]*Codec {
 		},
 		// Start of compiled logical types using format typeName.logicalType where there is
 		// no dependence on schema.
+		"string.uuid": {
+			typeName:          &name{"string.uuid", nullNamespace},
+			schemaOriginal:    "string",
+			schemaCanonical:   "string",
+			binaryFromNative:  uuidFromNative(stringBinaryFromNative),
+			nativeFromBinary:  nativeFromUUID(stringNativeFromBinary),
+			textualFromNative: uuidFromNative(stringTextualFromNative),
+			nativeFromTextual: nativeFromUUID(stringNativeFromTextual),
+		},
 		"long.timestamp-millis": {
 			typeName:          &name{"long.timestamp-millis", nullNamespace},
 			schemaOriginal:    "long",
