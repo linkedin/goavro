@@ -39,7 +39,12 @@ func bytesNativeFromBinary(buf []byte) (interface{}, []byte, error) {
 	if size > int64(len(buf)) {
 		return nil, nil, fmt.Errorf("cannot decode binary bytes: %s", io.ErrShortBuffer)
 	}
-	return buf[:size], buf[size:], nil
+
+	// allocate new byte slice to avoid referencing the same underlying array
+	out := make([]byte, size)
+	copy(out, buf[:size])
+
+	return out, buf[size:], nil
 }
 
 func stringNativeFromBinary(buf []byte) (interface{}, []byte, error) {
