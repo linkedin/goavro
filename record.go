@@ -252,17 +252,18 @@ func makeRecordCodec(st map[string]*Codec, enclosingNamespace string, schemaMap 
 	return c, nil
 }
 
-// DisableStringNull convert stringNull to false
+// DisableStringNull convert `stringNull` to false. if `stringNull` is true, the string literal "null" will be coerced to a `nil`.
+// if `stringNull` is true, the string literal "null" will be coerced to a `nil`
 func DisableStringNull() {
 	atomic.StoreInt32(&stringNull, 0)
 }
 
-// EnableStringNull convert stringNull to false
+// DisableStringNull convert `stringNull` to true. if `stringNull` is true, the string literal "null" will be coerced to a `nil`.
 func EnableStringNull() {
 	atomic.StoreInt32(&stringNull, 1)
 }
 
-// GetStringNull returns `stringNull`. if `stringNull` is true, the string literal "null" will be coerced to a `nil`
+// GetStringNull returns `stringNull`. if `stringNull` is true, the string literal "null" will be coerced to a `nil`.
 func GetStringNull() bool {
 	return atomic.LoadInt32(&stringNull) == 1
 }
