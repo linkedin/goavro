@@ -11,7 +11,10 @@ package goavro
 
 import (
 	"fmt"
+	"sync/atomic"
 )
+
+var stringNull int32
 
 func makeRecordCodec(st map[string]*Codec, enclosingNamespace string, schemaMap map[string]interface{}, cb *codecBuilder) (*Codec, error) {
 	// NOTE: To support recursive data types, create the codec and register it
@@ -106,10 +109,10 @@ func makeRecordCodec(st map[string]*Codec, enclosingNamespace string, schemaMap 
 				}
 				defaultValue = v
 			case "union":
-				// When codec is union, then default value ought to encode using
-				// first schema in union.  NOTE: To support a null default
-				// value, the string literal "null" must be coerced to a `nil`
-				if defaultValue == "null" {
+				// When codec is union, then default value ought to encode using first schema in union.
+				// NOTE: To support a null default value, the string literal "null" must be coerced to a `nil` when WithStringNull = `true`
+				// see https://github.com/linkedin/goavro/issues/280
+				if GetStringNull() && defaultValue == "null" {
 					defaultValue = nil
 				}
 				// NOTE: To support record field default values, union schema
@@ -247,4 +250,19 @@ func makeRecordCodec(st map[string]*Codec, enclosingNamespace string, schemaMap 
 	}
 
 	return c, nil
+}
+
+// DisableStringNull convert stringNull to false
+func DisableStringNull() {
+	atomic.StoreInt32(&stringNull, 0)
+}
+
+// EnableStringNull convert stringNull to false
+func EnableStringNull() {
+	atomic.StoreInt32(&stringNull, 1)
+}
+
+// GetStringNull returns `stringNull`. if `stringNull` is true, the string literal "null" will be coerced to a `nil`
+func GetStringNull() bool {
+	return atomic.LoadInt32(&stringNull) == 1
 }
