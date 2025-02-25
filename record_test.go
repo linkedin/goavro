@@ -396,6 +396,12 @@ func TestRecordFieldDefaultValue(t *testing.T) {
 func TestRecordFieldUnionDefaultValue(t *testing.T) {
 	testSchemaValid(t, `{"type":"record","name":"r1","fields":[{"name":"f1","type":["int","null"],"default":13}]}`)
 	testSchemaValid(t, `{"type":"record","name":"r1","fields":[{"name":"f1","type":["null","int"],"default":null}]}`)
+	testSchemaValid(t, `{"type":"record","name":"r1","fields":[{"name":"f1","type":["null","int"],"default":"null"}]}`)
+	DisableStringNull()
+	testSchemaInvalid(t, `{"type":"record","name":"r1","fields":[{"name":"f1","type":["null","int"],"default":"null"}]}`,
+		"default value ought to encode using field schema")
+	EnableStringNull()
+	testSchemaValid(t, `{"type":"record","name":"r1","fields":[{"name":"f1","type":["null","int"],"default":"null"}]}`)
 }
 
 func TestRecordFieldUnionInvalidDefaultValue(t *testing.T) {

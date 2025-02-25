@@ -14,7 +14,7 @@ import (
 	"sync/atomic"
 )
 
-var stringNull int32
+var stringNull int32 = 1
 
 func makeRecordCodec(st map[string]*Codec, enclosingNamespace string, schemaMap map[string]interface{}, cb *codecBuilder) (*Codec, error) {
 	// NOTE: To support recursive data types, create the codec and register it
