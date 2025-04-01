@@ -42,9 +42,12 @@ var (
 	MaxBlockSize = int64(math.MaxInt32)
 )
 
-// CodecOption return a option
+// CodecOption contains options for configuring the codec's behavior.
+// These options control how Avro data is converted to/from Go native types.
 type CodecOption struct {
-	// when `EnableStringNull` is true, the string literal "null" will be coerced to a `nil`
+	// EnableStringNull controls "null" string literal conversion to nil.
+	// When true, the string literal "null" in textual Avro data will be coerced to Go's nil.
+	// Primarily used to handle edge cases where some Avro implementations allow string representations of null.
 	EnableStringNull bool
 }
 
@@ -75,6 +78,7 @@ type codecBuilder struct {
 	sliceBuilder  func(st map[string]*Codec, enclosingNamespace string, schemaArray []interface{}, cb *codecBuilder, o *CodecOption) (*Codec, error)
 }
 
+// DefaultCodecOption returns a CodecOption with recommended default settings.
 func DefaultCodecOption() *CodecOption {
 	return &CodecOption{
 		EnableStringNull: true,
@@ -115,7 +119,12 @@ func NewCodec(schemaSpecification string) (*Codec, error) {
 	}, DefaultCodecOption())
 }
 
-// NewCodecWithOptions returns a Codec with option
+// NewCodecWithOptions creates a Codec instance with specified Avro schema and codec options.
+// Unlike NewCodec, this allows fine-grained control over codec behavior through CodecOption.
+// Example usage:
+//
+//	opt := &goavro.CodecOption{EnableStringNull: false}
+//	codec, err := goavro.NewCodecWithOptions(schema, opt)
 func NewCodecWithOptions(schemaSpecification string, o *CodecOption) (*Codec, error) {
 	return NewCodecFrom(schemaSpecification, &codecBuilder{
 		buildCodecForTypeDescribedByMap,
