@@ -29,6 +29,20 @@ func testSchemaPrimativeCodec(t *testing.T, primitiveTypeName string) {
 	}
 }
 
+func testSchemaInvalidWithOption(t *testing.T, schema, errorMessage string, o *CodecOption) {
+	t.Helper()
+	_, err := NewCodecWithOptions(schema, o)
+	ensureError(t, err, errorMessage)
+}
+
+func testSchemaValidWithOption(t *testing.T, schema string, o *CodecOption) {
+	t.Helper()
+	_, err := NewCodecWithOptions(schema, o)
+	if err != nil {
+		t.Errorf("GOT: %v; WANT: %v", err, nil)
+	}
+}
+
 func testSchemaInvalid(t *testing.T, schema, errorMessage string) {
 	t.Helper()
 	_, err := NewCodec(schema)

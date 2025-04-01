@@ -229,11 +229,12 @@ func ExampleCodec_TextualFromNative_union_json() {
 
 // show how to use the default codec via the NewCodecFrom mechanism
 func ExampleCodec_TextualFromNative() {
+	o := DefaultCodecOption()
 	codec, err := NewCodecFrom(`"string"`, &codecBuilder{
 		buildCodecForTypeDescribedByMap,
 		buildCodecForTypeDescribedByString,
 		buildCodecForTypeDescribedBySlice,
-	})
+	}, o)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -247,11 +248,12 @@ func ExampleCodec_TextualFromNative() {
 
 // Use the standard JSON codec instead
 func ExampleCodec_TextualFromNative_json() {
+	o := DefaultCodecOption()
 	codec, err := NewCodecFrom(`["null","string","int"]`, &codecBuilder{
 		buildCodecForTypeDescribedByMap,
 		buildCodecForTypeDescribedByString,
 		buildCodecForTypeDescribedBySliceOneWayJSON,
-	})
+	}, o)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -264,11 +266,12 @@ func ExampleCodec_TextualFromNative_json() {
 }
 
 func ExampleCodec_NativeFromTextual_json() {
+	o := DefaultCodecOption()
 	codec, err := NewCodecFrom(`["null","string","int"]`, &codecBuilder{
 		buildCodecForTypeDescribedByMap,
 		buildCodecForTypeDescribedByString,
 		buildCodecForTypeDescribedBySliceOneWayJSON,
-	})
+	}, o)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -278,13 +281,13 @@ func ExampleCodec_NativeFromTextual_json() {
 		fmt.Println(err)
 	}
 	// see it parse into a map like the avro encoder does
-	o, ok := t.(map[string]interface{})
+	m, ok := t.(map[string]interface{})
 	if !ok {
 		fmt.Printf("its a %T not a map[string]interface{}", t)
 	}
 
 	// pull out the string to show its all good
-	_v := o["string"]
+	_v := m["string"]
 	v := _v.(string)
 	fmt.Println(v)
 	// Output: some string one
