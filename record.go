@@ -107,7 +107,7 @@ func makeRecordCodec(st map[string]*Codec, enclosingNamespace string, schemaMap 
 				defaultValue = v
 			case "union":
 				// When codec is union, then default value ought to encode using first schema in union.
-				// NOTE: To support a null default value, the string literal "null" must be coerced to a `nil` when WithStringNull = `true`
+				// NOTE: To support a null default value, the string literal "null" must be coerced to a `nil` when `EnableStringNull` = `true`
 				// see https://github.com/linkedin/goavro/issues/280
 				if o.EnableStringNull && defaultValue == "null" {
 					defaultValue = nil

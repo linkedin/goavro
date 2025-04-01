@@ -225,7 +225,7 @@ func NewCodecForStandardJSONFull(schemaSpecification string) (*Codec, error) {
 		buildCodecForTypeDescribedByMap,
 		buildCodecForTypeDescribedByString,
 		buildCodecForTypeDescribedBySliceTwoWayJSON,
-	}, nil)
+	}, DefaultCodecOption())
 }
 
 func NewCodecFrom(schemaSpecification string, cb *codecBuilder, o *CodecOption) (*Codec, error) {
