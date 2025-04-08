@@ -100,13 +100,16 @@ func newOCFHeader(config OCFConfig) (*ocfHeader, error) {
 	}
 
 	header.metadata = config.MetaData
+	header.syncMarker = config.SyncMarker
 
-	//
-	// The 16-byte, randomly-generated sync marker for this file.
-	//
-	_, err = rand.Read(header.syncMarker[:])
-	if err != nil {
-		return nil, err
+	if header.syncMarker == [16]byte{} {
+		//
+		// The 16-byte, randomly-generated sync marker for this file.
+		//
+		_, err = rand.Read(header.syncMarker[:])
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return header, nil
