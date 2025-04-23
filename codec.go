@@ -42,6 +42,15 @@ var (
 	MaxBlockSize = int64(math.MaxInt32)
 )
 
+// CodecOption contains options for configuring the codec's behavior.
+// These options control how Avro data is converted to/from Go native types.
+type CodecOption struct {
+	// EnableStringNull controls "null" string literal conversion to nil.
+	// When true, the string literal "null" in textual Avro data will be coerced to Go's nil.
+	// Primarily used to handle edge cases where some Avro implementations allow string representations of null.
+	EnableStringNull bool
+}
+
 // Codec supports decoding binary and text Avro data to Go native data types,
 // and conversely encoding Go native data types to binary or text Avro data. A
 // Codec is created as a stateless structure that can be safely used in multiple
@@ -67,6 +76,14 @@ type codecBuilder struct {
 	mapBuilder    func(st map[string]*Codec, enclosingNamespace string, schemaMap map[string]interface{}, cb *codecBuilder) (*Codec, error)
 	stringBuilder func(st map[string]*Codec, enclosingNamespace string, typeName string, schemaMap map[string]interface{}, cb *codecBuilder) (*Codec, error)
 	sliceBuilder  func(st map[string]*Codec, enclosingNamespace string, schemaArray []interface{}, cb *codecBuilder) (*Codec, error)
+	option        *CodecOption
+}
+
+// DefaultCodecOption returns a CodecOption with recommended default settings.
+func DefaultCodecOption() *CodecOption {
+	return &CodecOption{
+		EnableStringNull: true,
+	}
 }
 
 // NewCodec returns a Codec used to translate between a byte slice of either
@@ -100,6 +117,25 @@ func NewCodec(schemaSpecification string) (*Codec, error) {
 		buildCodecForTypeDescribedByMap,
 		buildCodecForTypeDescribedByString,
 		buildCodecForTypeDescribedBySlice,
+		DefaultCodecOption(),
+	})
+}
+
+// NewCodecWithOptions creates a Codec instance with specified Avro schema and codec options.
+// Unlike NewCodec, this allows fine-grained control over codec behavior through CodecOption.
+// Example usage:
+//
+//	opt := &goavro.CodecOption{EnableStringNull: false}
+//	codec, err := goavro.NewCodecWithOptions(schema, opt)
+func NewCodecWithOptions(schemaSpecification string, option *CodecOption) (*Codec, error) {
+	if option == nil {
+		return NewCodec(schemaSpecification)
+	}
+	return NewCodecFrom(schemaSpecification, &codecBuilder{
+		buildCodecForTypeDescribedByMap,
+		buildCodecForTypeDescribedByString,
+		buildCodecForTypeDescribedBySlice,
+		option,
 	})
 }
 
@@ -150,6 +186,7 @@ func NewCodecForStandardJSON(schemaSpecification string) (*Codec, error) {
 		buildCodecForTypeDescribedByMap,
 		buildCodecForTypeDescribedByString,
 		buildCodecForTypeDescribedBySliceOneWayJSON,
+		DefaultCodecOption(),
 	})
 }
 
@@ -195,6 +232,7 @@ func NewCodecForStandardJSONFull(schemaSpecification string) (*Codec, error) {
 		buildCodecForTypeDescribedByMap,
 		buildCodecForTypeDescribedByString,
 		buildCodecForTypeDescribedBySliceTwoWayJSON,
+		DefaultCodecOption(),
 	})
 }
 

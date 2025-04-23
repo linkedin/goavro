@@ -393,7 +393,6 @@ func Test_buildCodecForTypeDescribedByString_CacheRespectsPrecisionScale(t *test
 			schemaOriginal: cachedCodecIdentifier, // using field as identifier
 		},
 	}
-
 	// cached bytes.decimal codec with matching precision.scale is returned
 	cacheHit, err := buildCodecForTypeDescribedByString(cache, "", "bytes", schemaMap, nil)
 	ensureError(t, err) // ensure NO error
