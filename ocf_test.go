@@ -94,3 +94,24 @@ func TestOCFWriterCompressionSnappy(t *testing.T) {
 func TestOCFWriterWithApplicationMetaData(t *testing.T) {
 	testOCFRoundTripWithHeaders(t, CompressionNullLabel, map[string][]byte{"foo": []byte("BOING"), "goo": []byte("zoo")})
 }
+
+func TestOCFWriterWithSyncBlock(t *testing.T) {
+	buf := &bytes.Buffer{}
+	config := OCFConfig{
+		W:          buf,
+		Schema:     `{"type":"long"}`,
+		SyncMarker: [16]byte{9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 1, 2, 3, 4, 5, 6},
+	}
+	_, err := NewOCFWriter(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	r, err := NewOCFReader(buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.header.syncMarker != config.SyncMarker {
+		t.Errorf("GOT: %v; WANT: %v", r.header.syncMarker, config.SyncMarker)
+	}
+}

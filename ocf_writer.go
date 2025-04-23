@@ -55,6 +55,10 @@ type OCFConfig struct {
 	// the OCF file.  When appending to an existing OCF, this field
 	// is ignored.
 	MetaData map[string][]byte
+
+	// SyncMarker specifies the sync block (optional). When not set, it will be
+	// randomly generated
+	SyncMarker [16]byte
 }
 
 // OCFWriter is used to create a new or append to an existing Avro Object
