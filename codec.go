@@ -128,6 +128,9 @@ func NewCodec(schemaSpecification string) (*Codec, error) {
 //	opt := &goavro.CodecOption{EnableStringNull: false}
 //	codec, err := goavro.NewCodecWithOptions(schema, opt)
 func NewCodecWithOptions(schemaSpecification string, option *CodecOption) (*Codec, error) {
+	if option == nil {
+		return NewCodec(schemaSpecification)
+	}
 	return NewCodecFrom(schemaSpecification, &codecBuilder{
 		buildCodecForTypeDescribedByMap,
 		buildCodecForTypeDescribedByString,
