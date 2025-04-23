@@ -229,12 +229,12 @@ func ExampleCodec_TextualFromNative_union_json() {
 
 // show how to use the default codec via the NewCodecFrom mechanism
 func ExampleCodec_TextualFromNative() {
-	o := DefaultCodecOption()
 	codec, err := NewCodecFrom(`"string"`, &codecBuilder{
 		buildCodecForTypeDescribedByMap,
 		buildCodecForTypeDescribedByString,
 		buildCodecForTypeDescribedBySlice,
-	}, o)
+		DefaultCodecOption(),
+	})
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -248,12 +248,12 @@ func ExampleCodec_TextualFromNative() {
 
 // Use the standard JSON codec instead
 func ExampleCodec_TextualFromNative_json() {
-	o := DefaultCodecOption()
 	codec, err := NewCodecFrom(`["null","string","int"]`, &codecBuilder{
 		buildCodecForTypeDescribedByMap,
 		buildCodecForTypeDescribedByString,
 		buildCodecForTypeDescribedBySliceOneWayJSON,
-	}, o)
+		DefaultCodecOption(),
+	})
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -266,12 +266,12 @@ func ExampleCodec_TextualFromNative_json() {
 }
 
 func ExampleCodec_NativeFromTextual_json() {
-	o := DefaultCodecOption()
 	codec, err := NewCodecFrom(`["null","string","int"]`, &codecBuilder{
 		buildCodecForTypeDescribedByMap,
 		buildCodecForTypeDescribedByString,
 		buildCodecForTypeDescribedBySliceOneWayJSON,
-	}, o)
+		DefaultCodecOption(),
+	})
 	if err != nil {
 		fmt.Println(err)
 	}

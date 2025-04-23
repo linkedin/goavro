@@ -17,13 +17,13 @@ import (
 	"reflect"
 )
 
-func makeMapCodec(st map[string]*Codec, namespace string, schemaMap map[string]interface{}, cb *codecBuilder, o *CodecOption) (*Codec, error) {
+func makeMapCodec(st map[string]*Codec, namespace string, schemaMap map[string]interface{}, cb *codecBuilder) (*Codec, error) {
 	// map type must have values
 	valueSchema, ok := schemaMap["values"]
 	if !ok {
 		return nil, errors.New("Map ought to have values key")
 	}
-	valueCodec, err := buildCodec(st, namespace, valueSchema, cb, o)
+	valueCodec, err := buildCodec(st, namespace, valueSchema, cb)
 	if err != nil {
 		return nil, fmt.Errorf("Map values ought to be valid Avro type: %s", err)
 	}

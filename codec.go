@@ -73,9 +73,10 @@ type Codec struct {
 // replaced if needed
 // and so they can be passed down the call stack during codec building
 type codecBuilder struct {
-	mapBuilder    func(st map[string]*Codec, enclosingNamespace string, schemaMap map[string]interface{}, cb *codecBuilder, o *CodecOption) (*Codec, error)
-	stringBuilder func(st map[string]*Codec, enclosingNamespace string, typeName string, schemaMap map[string]interface{}, cb *codecBuilder, o *CodecOption) (*Codec, error)
-	sliceBuilder  func(st map[string]*Codec, enclosingNamespace string, schemaArray []interface{}, cb *codecBuilder, o *CodecOption) (*Codec, error)
+	mapBuilder    func(st map[string]*Codec, enclosingNamespace string, schemaMap map[string]interface{}, cb *codecBuilder) (*Codec, error)
+	stringBuilder func(st map[string]*Codec, enclosingNamespace string, typeName string, schemaMap map[string]interface{}, cb *codecBuilder) (*Codec, error)
+	sliceBuilder  func(st map[string]*Codec, enclosingNamespace string, schemaArray []interface{}, cb *codecBuilder) (*Codec, error)
+	option        *CodecOption
 }
 
 // DefaultCodecOption returns a CodecOption with recommended default settings.
@@ -116,7 +117,8 @@ func NewCodec(schemaSpecification string) (*Codec, error) {
 		buildCodecForTypeDescribedByMap,
 		buildCodecForTypeDescribedByString,
 		buildCodecForTypeDescribedBySlice,
-	}, DefaultCodecOption())
+		DefaultCodecOption(),
+	})
 }
 
 // NewCodecWithOptions creates a Codec instance with specified Avro schema and codec options.
@@ -125,12 +127,13 @@ func NewCodec(schemaSpecification string) (*Codec, error) {
 //
 //	opt := &goavro.CodecOption{EnableStringNull: false}
 //	codec, err := goavro.NewCodecWithOptions(schema, opt)
-func NewCodecWithOptions(schemaSpecification string, o *CodecOption) (*Codec, error) {
+func NewCodecWithOptions(schemaSpecification string, option *CodecOption) (*Codec, error) {
 	return NewCodecFrom(schemaSpecification, &codecBuilder{
 		buildCodecForTypeDescribedByMap,
 		buildCodecForTypeDescribedByString,
 		buildCodecForTypeDescribedBySlice,
-	}, o)
+		option,
+	})
 }
 
 // NewCodecForStandardJSON returns a codec that uses a special union
@@ -180,7 +183,8 @@ func NewCodecForStandardJSON(schemaSpecification string) (*Codec, error) {
 		buildCodecForTypeDescribedByMap,
 		buildCodecForTypeDescribedByString,
 		buildCodecForTypeDescribedBySliceOneWayJSON,
-	}, DefaultCodecOption())
+		DefaultCodecOption(),
+	})
 }
 
 // NewCodecForStandardJSONOneWay is an alias for NewCodecForStandardJSON
@@ -225,10 +229,11 @@ func NewCodecForStandardJSONFull(schemaSpecification string) (*Codec, error) {
 		buildCodecForTypeDescribedByMap,
 		buildCodecForTypeDescribedByString,
 		buildCodecForTypeDescribedBySliceTwoWayJSON,
-	}, DefaultCodecOption())
+		DefaultCodecOption(),
+	})
 }
 
-func NewCodecFrom(schemaSpecification string, cb *codecBuilder, o *CodecOption) (*Codec, error) {
+func NewCodecFrom(schemaSpecification string, cb *codecBuilder) (*Codec, error) {
 	var schema interface{}
 
 	if err := json.Unmarshal([]byte(schemaSpecification), &schema); err != nil {
@@ -238,7 +243,7 @@ func NewCodecFrom(schemaSpecification string, cb *codecBuilder, o *CodecOption) 
 	// bootstrap a symbol table with primitive type codecs for the new codec
 	st := newSymbolTable()
 
-	c, err := buildCodec(st, nullNamespace, schema, cb, o)
+	c, err := buildCodec(st, nullNamespace, schema, cb)
 	if err != nil {
 		return nil, err
 	}
@@ -642,21 +647,21 @@ func (c *Codec) TypeName() name {
 
 // convert a schema data structure to a codec, prefixing with specified
 // namespace
-func buildCodec(st map[string]*Codec, enclosingNamespace string, schema interface{}, cb *codecBuilder, o *CodecOption) (*Codec, error) {
+func buildCodec(st map[string]*Codec, enclosingNamespace string, schema interface{}, cb *codecBuilder) (*Codec, error) {
 	switch schemaType := schema.(type) {
 	case map[string]interface{}:
-		return cb.mapBuilder(st, enclosingNamespace, schemaType, cb, o)
+		return cb.mapBuilder(st, enclosingNamespace, schemaType, cb)
 	case string:
-		return cb.stringBuilder(st, enclosingNamespace, schemaType, nil, cb, o)
+		return cb.stringBuilder(st, enclosingNamespace, schemaType, nil, cb)
 	case []interface{}:
-		return cb.sliceBuilder(st, enclosingNamespace, schemaType, cb, o)
+		return cb.sliceBuilder(st, enclosingNamespace, schemaType, cb)
 	default:
 		return nil, fmt.Errorf("unknown schema type: %T", schema)
 	}
 }
 
 // Reach into the map, grabbing its "type". Use that to create the codec.
-func buildCodecForTypeDescribedByMap(st map[string]*Codec, enclosingNamespace string, schemaMap map[string]interface{}, cb *codecBuilder, o *CodecOption) (*Codec, error) {
+func buildCodecForTypeDescribedByMap(st map[string]*Codec, enclosingNamespace string, schemaMap map[string]interface{}, cb *codecBuilder) (*Codec, error) {
 	t, ok := schemaMap["type"]
 	if !ok {
 		return nil, fmt.Errorf("missing type: %v", schemaMap)
@@ -671,17 +676,17 @@ func buildCodecForTypeDescribedByMap(st map[string]*Codec, enclosingNamespace st
 		// EXAMPLE: "type":"int"
 		// EXAMPLE: "type":"record"
 		// EXAMPLE: "type":"somePreviouslyDefinedCustomTypeString"
-		return cb.stringBuilder(st, enclosingNamespace, v, schemaMap, cb, o)
+		return cb.stringBuilder(st, enclosingNamespace, v, schemaMap, cb)
 	case map[string]interface{}:
-		return cb.mapBuilder(st, enclosingNamespace, v, cb, o)
+		return cb.mapBuilder(st, enclosingNamespace, v, cb)
 	case []interface{}:
-		return cb.sliceBuilder(st, enclosingNamespace, v, cb, o)
+		return cb.sliceBuilder(st, enclosingNamespace, v, cb)
 	default:
 		return nil, fmt.Errorf("type ought to be either string, map[string]interface{}, or []interface{}; received: %T", t)
 	}
 }
 
-func buildCodecForTypeDescribedByString(st map[string]*Codec, enclosingNamespace string, typeName string, schemaMap map[string]interface{}, cb *codecBuilder, o *CodecOption) (*Codec, error) {
+func buildCodecForTypeDescribedByString(st map[string]*Codec, enclosingNamespace string, typeName string, schemaMap map[string]interface{}, cb *codecBuilder) (*Codec, error) {
 	isLogicalType := false
 	searchType := typeName
 	// logicalType will be non-nil for those fields without a logicalType property set
@@ -721,15 +726,15 @@ func buildCodecForTypeDescribedByString(st map[string]*Codec, enclosingNamespace
 	// There are only a small handful of complex Avro data types.
 	switch searchType {
 	case "array":
-		return makeArrayCodec(st, enclosingNamespace, schemaMap, cb, o)
+		return makeArrayCodec(st, enclosingNamespace, schemaMap, cb)
 	case "enum":
 		return makeEnumCodec(st, enclosingNamespace, schemaMap)
 	case "fixed":
 		return makeFixedCodec(st, enclosingNamespace, schemaMap)
 	case "map":
-		return makeMapCodec(st, enclosingNamespace, schemaMap, cb, o)
+		return makeMapCodec(st, enclosingNamespace, schemaMap, cb)
 	case "record":
-		return makeRecordCodec(st, enclosingNamespace, schemaMap, cb, o)
+		return makeRecordCodec(st, enclosingNamespace, schemaMap, cb)
 	case "bytes.decimal":
 		return makeDecimalBytesCodec(st, enclosingNamespace, schemaMap)
 	case "fixed.decimal":
@@ -739,7 +744,7 @@ func buildCodecForTypeDescribedByString(st map[string]*Codec, enclosingNamespace
 	default:
 		if isLogicalType {
 			delete(schemaMap, "logicalType")
-			return buildCodecForTypeDescribedByString(st, enclosingNamespace, typeName, schemaMap, cb, o)
+			return buildCodecForTypeDescribedByString(st, enclosingNamespace, typeName, schemaMap, cb)
 		}
 		return nil, fmt.Errorf("unknown type name: %q", searchType)
 	}

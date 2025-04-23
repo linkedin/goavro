@@ -16,13 +16,13 @@ import (
 	"reflect"
 )
 
-func makeArrayCodec(st map[string]*Codec, enclosingNamespace string, schemaMap map[string]interface{}, cb *codecBuilder, o *CodecOption) (*Codec, error) {
+func makeArrayCodec(st map[string]*Codec, enclosingNamespace string, schemaMap map[string]interface{}, cb *codecBuilder) (*Codec, error) {
 	// array type must have items
 	itemSchema, ok := schemaMap["items"]
 	if !ok {
 		return nil, fmt.Errorf("Array ought to have items key")
 	}
-	itemCodec, err := buildCodec(st, enclosingNamespace, itemSchema, cb, o)
+	itemCodec, err := buildCodec(st, enclosingNamespace, itemSchema, cb)
 	if err != nil {
 		return nil, fmt.Errorf("Array items ought to be valid Avro type: %s", err)
 	}

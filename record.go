@@ -13,7 +13,7 @@ import (
 	"fmt"
 )
 
-func makeRecordCodec(st map[string]*Codec, enclosingNamespace string, schemaMap map[string]interface{}, cb *codecBuilder, o *CodecOption) (*Codec, error) {
+func makeRecordCodec(st map[string]*Codec, enclosingNamespace string, schemaMap map[string]interface{}, cb *codecBuilder) (*Codec, error) {
 	// NOTE: To support recursive data types, create the codec and register it
 	// using the specified name, and fill in the codec functions later.
 	c, err := registerNewCodec(st, schemaMap, enclosingNamespace)
@@ -44,7 +44,7 @@ func makeRecordCodec(st map[string]*Codec, enclosingNamespace string, schemaMap 
 		// NOTE: field names are not registered in the symbol table, because
 		// field names are not individually addressable codecs.
 
-		fieldCodec, err := buildCodec(st, c.typeName.namespace, fieldSchemaMap, cb, o)
+		fieldCodec, err := buildCodec(st, c.typeName.namespace, fieldSchemaMap, cb)
 		if err != nil {
 			return nil, fmt.Errorf("Record %q field %d ought to be valid Avro named type: %s", c.typeName, i+1, err)
 		}
@@ -109,7 +109,7 @@ func makeRecordCodec(st map[string]*Codec, enclosingNamespace string, schemaMap 
 				// When codec is union, then default value ought to encode using first schema in union.
 				// NOTE: To support a null default value, the string literal "null" must be coerced to a `nil` when `EnableStringNull` = `true`
 				// see https://github.com/linkedin/goavro/issues/280
-				if o.EnableStringNull && defaultValue == "null" {
+				if cb.option.EnableStringNull && defaultValue == "null" {
 					defaultValue = nil
 				}
 				// NOTE: To support record field default values, union schema
