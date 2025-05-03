@@ -16,12 +16,50 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type toNativeFn func([]byte) (interface{}, []byte, error)
 type fromNativeFn func([]byte, interface{}) ([]byte, error)
 
 var reFromPattern = make(map[string]*regexp.Regexp)
+
+// ///////////////////////////////////////////////////////////////////////////////////////////
+// uuid logical-type - string - to/from string, string
+// ///////////////////////////////////////////////////////////////////////////////////////////
+func nativeFromUUID(fn toNativeFn) toNativeFn {
+	return func(bytes []byte) (interface{}, []byte, error) {
+		l, b, err := fn(bytes)
+		if err != nil {
+			return l, b, err
+		}
+
+		switch val := l.(type) {
+		case string:
+			if _, err := uuid.Parse(val); err != nil {
+				return l, b, fmt.Errorf("cannot transform native uuid, expected valid string uuid, received %q", val)
+			}
+			return val, b, nil
+		default:
+			return l, b, fmt.Errorf("cannot transform native uuid, expected string, received %T", l)
+		}
+	}
+}
+
+func uuidFromNative(fn fromNativeFn) fromNativeFn {
+	return func(b []byte, d interface{}) ([]byte, error) {
+		switch val := d.(type) {
+		case string:
+			if _, err := uuid.Parse(val); err != nil {
+				return nil, fmt.Errorf("cannot transform to binary uuid, expected valid uuid, received %q", val)
+			}
+			return fn(b, val)
+		default:
+			return nil, fmt.Errorf("cannot transform to binary uuid, expected string, received %T", d)
+		}
+	}
+}
 
 // ////////////////////////////////////////////////////////////////////////////////////////////
 // date logical type - to/from time.Time, time.UTC location
