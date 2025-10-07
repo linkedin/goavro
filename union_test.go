@@ -26,6 +26,7 @@ func TestUnion(t *testing.T) {
 	testBinaryCodecPass(t, `["null"]`, Union("null", nil), []byte("\x00"))
 	testBinaryCodecPass(t, `["null","int"]`, Union("null", nil), []byte("\x00"))
 	testBinaryCodecPass(t, `["int","null"]`, Union("null", nil), []byte("\x02"))
+	testBinaryCodecPass(t, `["null","string"]`, Union("string", "Helium"), []byte("\x02\x0cHelium"))
 
 	testBinaryCodecPass(t, `["null","int"]`, Union("int", 3), []byte("\x02\x06"))
 	testBinaryCodecPass(t, `["null","long"]`, Union("long", 3), []byte("\x02\x06"))
