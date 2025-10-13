@@ -390,12 +390,19 @@ func TestRecordFieldDefaultValue(t *testing.T) {
 	testSchemaValid(t, `{"type":"record","name":"r1","fields":[{"name":"f1","type":"string","default":"foo"}]}`)
 	testSchemaInvalid(t,
 		`{"type":"record","name":"r1","fields":[{"name":"f1","type":"int","default":"foo"}]}`,
-		"default value ought to encode using field schema")
+		"default value ought to have a number type")
 }
 
 func TestRecordFieldUnionDefaultValue(t *testing.T) {
-	testSchemaValid(t, `{"type":"record","name":"r1","fields":[{"name":"f1","type":["int","null"],"default":13}]}`)
-	testSchemaValid(t, `{"type":"record","name":"r1","fields":[{"name":"f1","type":["null","int"],"default":null}]}`)
+	o := DefaultCodecOption()
+	testSchemaValidWithOption(t, `{"type":"record","name":"r1","fields":[{"name":"f1","type":["int","null"],"default":13}]}`, o)
+	testSchemaValidWithOption(t, `{"type":"record","name":"r1","fields":[{"name":"f1","type":["null","int"],"default":null}]}`, o)
+	testSchemaValidWithOption(t, `{"type":"record","name":"r1","fields":[{"name":"f1","type":["null","int"],"default":"null"}]}`, o)
+	o.EnableStringNull = false
+	testSchemaInvalidWithOption(t, `{"type":"record","name":"r1","fields":[{"name":"f1","type":["null","int"],"default":"null"}]}`,
+		"default value ought to encode using field schema", o)
+	o.EnableStringNull = true
+	testSchemaValidWithOption(t, `{"type":"record","name":"r1","fields":[{"name":"f1","type":["null","int"],"default":"null"}]}`, o)
 }
 
 func TestRecordFieldUnionInvalidDefaultValue(t *testing.T) {
@@ -648,9 +655,13 @@ func TestRecordFieldFixedDefaultValue(t *testing.T) {
 	testSchemaValid(t, `{"type": "record", "name": "r1", "fields":[{"name": "f1", "type": {"type": "fixed", "name": "someFixed", "size": 1}, "default": "\u0000"}]}`)
 }
 
+func TestRecordFieldDecimalDefaultValue(t *testing.T) {
+	testSchemaValid(t, `{"type": "record", "name": "r1", "fields":[{"name": "f1", "type": {"type": "bytes", "scale": 2, "precision":10, "logicalType":"deicmal"}, "default": "d"}]}`)
+}
+
 func TestRecordFieldDefaultValueTypes(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		codec, err := NewCodec(`{"type": "record", "name": "r1", "fields":[{"name": "someBoolean", "type": "boolean", "default": true},{"name": "someBytes", "type": "bytes", "default": "0"},{"name": "someDouble", "type": "double", "default": 0},{"name": "someFloat", "type": "float", "default": 0},{"name": "someInt", "type": "int", "default": 0},{"name": "someLong", "type": "long", "default": 0},{"name": "someString", "type": "string", "default": "0"}]}`)
+		codec, err := NewCodec(`{"type": "record", "name": "r1", "fields":[{"name": "someBoolean", "type": "boolean", "default": true},{"name": "someBytes", "type": "bytes", "default": "0"},{"name": "someDouble", "type": "double", "default": 0},{"name": "someFloat", "type": "float", "default": 0},{"name": "someInt", "type": "int", "default": 0},{"name": "someLong", "type": "long", "default": 0},{"name": "someString", "type": "string", "default": "0"}, {"name":"someTimestamp", "type":"long", "logicalType":"timestamp-millis","default":0}, {"name": "someDecimal", "type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2, "default":"\u0000"}]}`)
 		ensureError(t, err)
 
 		r1, _, err := codec.NativeFromTextual([]byte("{}"))
@@ -692,24 +703,32 @@ func TestRecordFieldDefaultValueTypes(t *testing.T) {
 		if _, ok := someString.(string); !ok {
 			t.Errorf("GOT: %T; WANT: string", someString)
 		}
+		someTimestamp := r1m["someTimestamp"]
+		if _, ok := someTimestamp.(float64); !ok {
+			t.Errorf("GOT: %T; WANT: float64", someTimestamp)
+		}
+		someDecimal := r1m["someDecimal"]
+		if _, ok := someDecimal.(*big.Rat); !ok {
+			t.Errorf("GOT: %T; WANT: *big.Rat", someDecimal)
+		}
 	})
 
 	t.Run("provided default is wrong type", func(t *testing.T) {
 		t.Run("long", func(t *testing.T) {
 			_, err := NewCodec(`{"type": "record", "name": "r1", "fields":[{"name": "someLong", "type": "long", "default": "0"},{"name": "someInt", "type": "int", "default": 0},{"name": "someFloat", "type": "float", "default": 0},{"name": "someDouble", "type": "double", "default": 0}]}`)
-			ensureError(t, err, "field schema")
+			ensureError(t, err, "default value ought to have a number type")
 		})
 		t.Run("int", func(t *testing.T) {
 			_, err := NewCodec(`{"type": "record", "name": "r1", "fields":[{"name": "someLong", "type": "long", "default": 0},{"name": "someInt", "type": "int", "default": "0"},{"name": "someFloat", "type": "float", "default": 0},{"name": "someDouble", "type": "double", "default": 0}]}`)
-			ensureError(t, err, "field schema")
+			ensureError(t, err, "default value ought to have a number type")
 		})
 		t.Run("float", func(t *testing.T) {
 			_, err := NewCodec(`{"type": "record", "name": "r1", "fields":[{"name": "someLong", "type": "long", "default": 0},{"name": "someInt", "type": "int", "default": 0},{"name": "someFloat", "type": "float", "default": "0"},{"name": "someDouble", "type": "double", "default": 0}]}`)
-			ensureError(t, err, "field schema")
+			ensureError(t, err, "default value ought to have a float type")
 		})
 		t.Run("double", func(t *testing.T) {
 			_, err := NewCodec(`{"type": "record", "name": "r1", "fields":[{"name": "someLong", "type": "long", "default": 0},{"name": "someInt", "type": "int", "default": 0},{"name": "someFloat", "type": "float", "default": 0},{"name": "someDouble", "type": "double", "default": "0"}]}`)
-			ensureError(t, err, "field schema")
+			ensureError(t, err, "default value ought to have a double type")
 		})
 	})
 

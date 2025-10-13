@@ -233,6 +233,7 @@ func ExampleCodec_TextualFromNative() {
 		buildCodecForTypeDescribedByMap,
 		buildCodecForTypeDescribedByString,
 		buildCodecForTypeDescribedBySlice,
+		DefaultCodecOption(),
 	})
 	if err != nil {
 		fmt.Println(err)
@@ -251,6 +252,7 @@ func ExampleCodec_TextualFromNative_json() {
 		buildCodecForTypeDescribedByMap,
 		buildCodecForTypeDescribedByString,
 		buildCodecForTypeDescribedBySliceOneWayJSON,
+		DefaultCodecOption(),
 	})
 	if err != nil {
 		fmt.Println(err)
@@ -268,6 +270,7 @@ func ExampleCodec_NativeFromTextual_json() {
 		buildCodecForTypeDescribedByMap,
 		buildCodecForTypeDescribedByString,
 		buildCodecForTypeDescribedBySliceOneWayJSON,
+		DefaultCodecOption(),
 	})
 	if err != nil {
 		fmt.Println(err)
@@ -278,13 +281,13 @@ func ExampleCodec_NativeFromTextual_json() {
 		fmt.Println(err)
 	}
 	// see it parse into a map like the avro encoder does
-	o, ok := t.(map[string]interface{})
+	m, ok := t.(map[string]interface{})
 	if !ok {
 		fmt.Printf("its a %T not a map[string]interface{}", t)
 	}
 
 	// pull out the string to show its all good
-	_v := o["string"]
+	_v := m["string"]
 	v := _v.(string)
 	fmt.Println(v)
 	// Output: some string one
