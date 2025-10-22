@@ -327,7 +327,7 @@ func buildCodecForTypeDescribedBySliceTwoWayJSON(st map[string]*Codec, enclosing
 }
 
 func checkAll(allowedTypes []string, cr *codecInfo, buf []byte) (interface{}, []byte, error) {
-	for _, name := range cr.allowedTypes {
+	for _, name := range allowedTypes {
 		if name == "null" {
 			// skip null since we know we already got type float64
 			continue
@@ -343,6 +343,14 @@ func checkAll(allowedTypes []string, cr *codecInfo, buf []byte) (interface{}, []
 		return map[string]interface{}{name: rv}, rb, nil
 	}
 	return nil, buf, fmt.Errorf("could not decode any json data in input %v", string(buf))
+}
+
+// sortedCopy returns a new slice that is a sorted copy of the provided types.
+func sortedCopy(allowedTypes []string) []string {
+	local := make([]string, len(allowedTypes))
+	copy(local, allowedTypes)
+	sort.Strings(local)
+	return local
 }
 func nativeAvroFromTextualJSON(cr *codecInfo) func(buf []byte) (interface{}, []byte, error) {
 	return func(buf []byte) (interface{}, []byte, error) {
@@ -398,18 +406,14 @@ func nativeAvroFromTextualJSON(cr *codecInfo) func(buf []byte) (interface{}, []b
 			// longNativeFromTextual
 			// int
 			// intNativeFromTextual
-
-			// sorted so it would be
-			// double, float, int, long
-			// that makes the priorities right by chance
-			sort.Strings(cr.allowedTypes)
+			allowedTypes = sortedCopy(allowedTypes)
 
 		case map[string]interface{}:
 
 			// try to decode it as a map
 			// because a map should fail faster than a record
 			// if that fails assume record and return it
-			sort.Strings(cr.allowedTypes)
+			allowedTypes = sortedCopy(allowedTypes)
 		}
 
 		return checkAll(allowedTypes, cr, buf)

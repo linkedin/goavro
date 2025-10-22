@@ -342,3 +342,38 @@ func TestUnionJson(t *testing.T) {
 	testNativeToTextualJSONPass(t, `{"type":"record","name":"kubeEvents","fields":[{"name":"field1","type":"string","default":""},{"name":"field2","type":"string"}]}`, map[string]interface{}{"field1": "", "field2": "deef"}, []byte(`{"field1":"","field2":"deef"}`))
 
 }
+
+func TestStandardJSONFull_SimpleUnionMutationWouldMislabel(t *testing.T) {
+	// Minimal repro: union ["null","long"]. If allowedTypes were mutated (sorted)
+	// after a textual decode, the subsequent binary decode could label index 1 as "null".
+	codec, err := NewCodecForStandardJSONFull(`["null","long"]`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Trigger textual path that previously sorted cr.allowedTypes.
+	if _, _, err := codec.NativeFromTextual([]byte("1")); err != nil {
+		t.Fatalf("textual decode failed: %v", err)
+	}
+	// Binary for union index 1 (long) with value 3: 0x02 0x06
+	datum, rest, err := codec.NativeFromBinary([]byte{0x02, 0x06})
+	if err != nil {
+		t.Fatalf("binary decode failed: %v", err)
+	}
+	if len(rest) != 0 {
+		t.Fatalf("unexpected trailing bytes: %d", len(rest))
+	}
+	m, ok := datum.(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected union map, got %T", datum)
+	}
+	if _, bad := m["null"]; bad {
+		t.Fatalf("mis-labeled union: got key 'null', want 'long': %v", m)
+	}
+	v, ok := m["long"]
+	if !ok {
+		t.Fatalf("missing 'long' key: %v", m)
+	}
+	if v.(int64) != int64(3) {
+		t.Fatalf("wrong value: got %v want %v", v, int64(3))
+	}
+}
