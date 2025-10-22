@@ -344,6 +344,14 @@ func checkAll(allowedTypes []string, cr *codecInfo, buf []byte) (interface{}, []
 	}
 	return nil, buf, fmt.Errorf("could not decode any json data in input %v", string(buf))
 }
+
+// sortedCopy returns a new slice that is a sorted copy of the provided types.
+func sortedCopy(allowedTypes []string) []string {
+	local := make([]string, len(allowedTypes))
+	copy(local, allowedTypes)
+	sort.Strings(local)
+	return local
+}
 func nativeAvroFromTextualJSON(cr *codecInfo) func(buf []byte) (interface{}, []byte, error) {
 	return func(buf []byte) (interface{}, []byte, error) {
 
@@ -398,23 +406,14 @@ func nativeAvroFromTextualJSON(cr *codecInfo) func(buf []byte) (interface{}, []b
 			// longNativeFromTextual
 			// int
 			// intNativeFromTextual
-
-			// Sort a local copy to avoid mutating cr.allowedTypes shared state
-			local := make([]string, len(allowedTypes))
-			copy(local, allowedTypes)
-			sort.Strings(local)
-			allowedTypes = local
+			allowedTypes = sortedCopy(allowedTypes)
 
 		case map[string]interface{}:
 
 			// try to decode it as a map
 			// because a map should fail faster than a record
 			// if that fails assume record and return it
-			// Sort a local copy to avoid mutating cr.allowedTypes shared state
-			local := make([]string, len(allowedTypes))
-			copy(local, allowedTypes)
-			sort.Strings(local)
-			allowedTypes = local
+			allowedTypes = sortedCopy(allowedTypes)
 		}
 
 		return checkAll(allowedTypes, cr, buf)
