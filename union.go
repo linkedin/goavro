@@ -327,7 +327,7 @@ func buildCodecForTypeDescribedBySliceTwoWayJSON(st map[string]*Codec, enclosing
 }
 
 func checkAll(allowedTypes []string, cr *codecInfo, buf []byte) (interface{}, []byte, error) {
-	for _, name := range cr.allowedTypes {
+	for _, name := range allowedTypes {
 		if name == "null" {
 			// skip null since we know we already got type float64
 			continue
@@ -399,17 +399,22 @@ func nativeAvroFromTextualJSON(cr *codecInfo) func(buf []byte) (interface{}, []b
 			// int
 			// intNativeFromTextual
 
-			// sorted so it would be
-			// double, float, int, long
-			// that makes the priorities right by chance
-			sort.Strings(cr.allowedTypes)
+			// Sort a local copy to avoid mutating cr.allowedTypes shared state
+			local := make([]string, len(allowedTypes))
+			copy(local, allowedTypes)
+			sort.Strings(local)
+			allowedTypes = local
 
 		case map[string]interface{}:
 
 			// try to decode it as a map
 			// because a map should fail faster than a record
 			// if that fails assume record and return it
-			sort.Strings(cr.allowedTypes)
+			// Sort a local copy to avoid mutating cr.allowedTypes shared state
+			local := make([]string, len(allowedTypes))
+			copy(local, allowedTypes)
+			sort.Strings(local)
+			allowedTypes = local
 		}
 
 		return checkAll(allowedTypes, cr, buf)
