@@ -12,6 +12,7 @@ package goavro
 import (
 	"fmt"
 	"log"
+	"reflect"
 	"testing"
 )
 
@@ -147,6 +148,67 @@ func TestMapTextualReceiveSliceInt(t *testing.T) {
 	testTextCodecPass(t, `{"type":"map","values":"int"}`, map[string]int{}, []byte(`{}`))
 	testTextCodecPass(t, `{"type":"map","values":"int"}`, map[string]int{"k1": 13}, []byte(`{"k1":13}`))
 	testTextEncodeFail(t, `{"type":"map","values":"int"}`, map[int]int{42: 13}, "cannot create map[string]interface{}")
+}
+
+// TestMapSkipAdditionalFields tests that when a map is used within a record,
+// additional fields at the record level can be skipped when SkipAdditionalFields is enabled.
+func TestMapSkipAdditionalFields(t *testing.T) {
+	// Note: For a plain map type, all string keys are valid, so we test
+	// the skip functionality in the context of a record containing a map
+	schema := `{
+		"type": "record",
+		"name": "RecordWithMap",
+		"fields": [
+			{
+				"name": "validMap",
+				"type": {"type": "map", "values": "int"}
+			}
+		]
+	}`
+
+	testSkipAdditionalFieldsFail(t, schema, false, []byte(`{"validMap": {}, "additionalField": 1}`))
+	testSkipAdditionalFieldsPass(t, schema, true, []byte(`{"validMap": {"k1": 1}, "additionalField": 1}`), map[string]interface{}{"validMap": map[string]interface{}{"k1": int32(1)}})
+	testSkipAdditionalFieldsPass(t, schema, true, []byte(`{"validMap": {"k1": 1}, "additionalField": 1, "additionalField2": 2}`), map[string]interface{}{"validMap": map[string]interface{}{"k1": int32(1)}})
+	testSkipAdditionalFieldsPass(t, schema, true, []byte(`{"validMap": {"k1": 1}, "additionalField": true}`), map[string]interface{}{"validMap": map[string]interface{}{"k1": int32(1)}})
+	testSkipAdditionalFieldsPass(t, schema, true, []byte(`{"validMap": {"k1": 1}, "additionalField": "1"}`), map[string]interface{}{"validMap": map[string]interface{}{"k1": int32(1)}})
+	testSkipAdditionalFieldsPass(t, schema, true, []byte(`{"validMap": {"k1": 1}, "additionalField": {"nested": 1"}}`), map[string]interface{}{"validMap": map[string]interface{}{"k1": int32(1)}})
+	testSkipAdditionalFieldsPass(t, schema, true, []byte(`{"validMap": {"k1": 1}, "additionalField": [1, 2, 3]}`), map[string]interface{}{"validMap": map[string]interface{}{"k1": int32(1)}})
+}
+
+func testSkipAdditionalFieldsFail(t *testing.T, schema string, skipAdditionalFields bool, input []byte) {
+	t.Helper()
+	option := &CodecOption{
+		SkipAdditionalFields: skipAdditionalFields,
+	}
+	codec, err := NewCodecWithOptions(schema, option)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, err = codec.NativeFromTextual(input)
+	if err == nil {
+		t.Error("Expected error when decoding record with additional field, but got nil")
+	}
+}
+
+func testSkipAdditionalFieldsPass(t *testing.T, schema string, skipAdditionalFields bool, input []byte, expected interface{}) {
+	t.Helper()
+	option := &CodecOption{
+		SkipAdditionalFields: skipAdditionalFields,
+	}
+	codec, err := NewCodecWithOptions(schema, option)
+	if err != nil {
+		t.Fatal(err)
+	}
+	datum, remaining, err := codec.NativeFromTextual(input)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if len(remaining) != 0 {
+		t.Errorf("Expected no remaining bytes, got %d", len(remaining))
+	}
+	if !reflect.DeepEqual(datum, expected) {
+		t.Errorf("Expected %v, got %v", expected, datum)
+	}
 }
 
 func ExampleMap() {
