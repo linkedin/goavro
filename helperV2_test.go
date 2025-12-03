@@ -101,3 +101,25 @@ func nativeFromTextUsingV2(tb testing.TB, codec *Codec, textData [][]byte) []int
 	}
 	return nativeData
 }
+
+type person struct {
+	ID                 int64
+	First, Last, Phone string
+	Age                int
+}
+
+func scanBinaryUsingV2(tb testing.TB, codec *Codec, binaryData [][]byte) []person {
+	tb.Helper()
+	nativeData := make([]person, len(binaryData))
+	for i, binaryDatum := range binaryData {
+		d := nativeData[i]
+		buf, err := codec.ScanBinary(binaryDatum, &d.ID, &d.First, &d.Last, &d.Phone, &d.Age)
+		if err != nil {
+			tb.Fatal(err)
+		}
+		if len(buf) > 0 {
+			tb.Fatalf("BinaryDecode ought to have returned nil buffer: %v", buf)
+		}
+	}
+	return nativeData
+}

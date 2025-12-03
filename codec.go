@@ -66,6 +66,8 @@ type Codec struct {
 	nativeFromBinary  func([]byte) (interface{}, []byte, error)
 	textualFromNative func([]byte, interface{}) ([]byte, error)
 
+	scanBinary func([]byte, ...interface{}) ([]byte, error)
+
 	Rabin uint64
 }
 
@@ -615,6 +617,55 @@ func (c *Codec) SingleFromNative(buf []byte, datum interface{}) ([]byte, error) 
 //	}
 func (c *Codec) TextualFromNative(buf []byte, datum interface{}) ([]byte, error) {
 	newBuf, err := c.textualFromNative(buf, datum)
+	if err != nil {
+		return buf, err // if error, return original byte slice
+	}
+	return newBuf, nil
+}
+
+// ScanBinary copies the values from the binary encoded byte slice into the
+// values pointed to by dest in the order of the fields of the Avro schema
+// supplied when creating the Codec. On success, it returns a byte slice
+// containing the remaining undecoded bytes, and a nil error value. On error, it
+// returns the original byte slice, and the error message.
+//
+//	func ExampleCodec_ScanBinary_avro() {
+//		codec, err := NewCodec(`
+//			{
+//			 "type": "record",
+//			 "name": "r1",
+//			 "fields" : [
+//			   {"name": "f1", "type": "string"},
+//			   {"name": "f2", "type": "int"}
+//			 ]
+//			}
+//		`)
+//
+//		if err != nil {
+//			log.Fatal(err)
+//		}
+//
+//		binary := []byte{
+//			0x10, // field1 size = 8
+//			't', 'h', 'i', 'r', 't', 'e', 'e', 'n',
+//			0x1a, // field2 == 13
+//		}
+//
+//		var f1 string
+//		var f2 int
+//		if _, err = codec.ScanBinary(binary, &f1, &f2); err != nil {
+//			log.Fatal(err)
+//		}
+//
+//		fmt.Printf("f1: %v, f2: %v", f1, f2)
+//		// Output: f1: thirteen, f2: 13
+//	}
+func (c *Codec) ScanBinary(buf []byte, dest ...interface{}) ([]byte, error) {
+	// TODO: implement for every type and remove
+	if c.scanBinary == nil {
+		return buf, fmt.Errorf("ScanBinary not implemented for codec with schema: %s", c.schemaOriginal)
+	}
+	newBuf, err := c.scanBinary(buf, dest...)
 	if err != nil {
 		return buf, err // if error, return original byte slice
 	}
