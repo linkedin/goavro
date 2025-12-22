@@ -219,14 +219,18 @@ func (ocfw *OCFWriter) appendDataIntoBlock(data []interface{}) error {
 
 	}
 
+	return ocfw.AppendBlock(block, len(data))
+}
+
+func (ocfw *OCFWriter) AppendBlock(block []byte, count int) error {
 	// create file data block
 	buf := make([]byte, 0, len(block)+ocfBlockConst) // pre-allocate block bytes
-	buf, _ = longBinaryFromNative(buf, len(data))    // block count (number of data items)
+	buf, _ = longBinaryFromNative(buf, count)        // block count (number of data items)
 	buf, _ = longBinaryFromNative(buf, len(block))   // block size (number of bytes in block)
 	buf = append(buf, block...)                      // serialized objects
 	buf = append(buf, ocfw.header.syncMarker[:]...)  // sync marker
 
-	_, err = ocfw.iow.Write(buf)
+	_, err := ocfw.iow.Write(buf)
 	return err
 }
 
