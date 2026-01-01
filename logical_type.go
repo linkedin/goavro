@@ -311,7 +311,7 @@ func nativeFromDecimalBytes(fn toNativeFn, scale int) toNativeFn {
 	}
 }
 
-func decimalBytesFromNative(fromNativeFn fromNativeFn, toBytesFn toBytesFn, precision, scale int) fromNativeFn {
+func decimalBytesFromNative(fromNativeFn fromNativeFn, toBytesFn toBytesFn, _, scale int) fromNativeFn {
 	return func(b []byte, d interface{}) ([]byte, error) {
 		r, ok := d.(*big.Rat)
 		if !ok {

@@ -392,13 +392,13 @@ func TestLooksLikeASCIIDecimal(t *testing.T) {
 		{[]byte("5."), true},
 		{[]byte(""), false},
 		{[]byte("-"), false},
-		{[]byte("40.20.30"), false},      // multiple dots
-		{[]byte("40-20"), false},         // sign not at start
-		{[]byte("40a20"), false},         // non-decimal char
-		{[]byte("\x0f\xb4"), false},      // binary data (two's complement)
-		{[]byte{0x00}, false},            // null byte
-		{[]byte{0xff, 0xff}, false},      // high bytes (negative two's complement)
-		{[]byte("12.34e5"), false},       // scientific notation not supported
+		{[]byte("40.20.30"), false}, // multiple dots
+		{[]byte("40-20"), false},    // sign not at start
+		{[]byte("40a20"), false},    // non-decimal char
+		{[]byte("\x0f\xb4"), false}, // binary data (two's complement)
+		{[]byte{0x00}, false},       // null byte
+		{[]byte{0xff, 0xff}, false}, // high bytes (negative two's complement)
+		{[]byte("12.34e5"), false},  // scientific notation not supported
 	}
 
 	for _, tc := range testCases {
