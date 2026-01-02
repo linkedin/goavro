@@ -200,7 +200,7 @@ func makeRecordCodec(st map[string]*Codec, enclosingNamespace string, schemaMap 
 		// NOTE: Setting `defaultCodec == nil` instructs genericMapTextDecoder
 		// to return an error when a field name is not found in the
 		// codecFromFieldName map.
-		mapValues, buf, err = genericMapTextDecoder(buf, nil, codecFromFieldName)
+		mapValues, buf, err = genericMapTextDecoder(buf, nil, codecFromFieldName, cb.option.SkipAdditionalFields)
 		if err != nil {
 			return nil, nil, fmt.Errorf("cannot decode textual record %q: %s", c.typeName, err)
 		}

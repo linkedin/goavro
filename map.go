@@ -141,7 +141,7 @@ func makeMapCodec(st map[string]*Codec, namespace string, schemaMap map[string]i
 			return longBinaryFromNative(buf, 0) // append tailing 0 block count to signal end of Map
 		},
 		nativeFromTextual: func(buf []byte) (interface{}, []byte, error) {
-			return genericMapTextDecoder(buf, valueCodec, nil) // codecFromKey == nil
+			return genericMapTextDecoder(buf, valueCodec, nil, cb.option.SkipAdditionalFields) // codecFromKey == nil
 		},
 		textualFromNative: func(buf []byte, datum interface{}) ([]byte, error) {
 			return genericMapTextEncoder(buf, datum, valueCodec, nil)
@@ -155,7 +155,12 @@ func makeMapCodec(st map[string]*Codec, namespace string, schemaMap map[string]i
 // error if it encounters a map key that is not present in codecFromKey. If
 // codecFromKey is nil, every map value will be decoded using defaultCodec, if
 // possible.
-func genericMapTextDecoder(buf []byte, defaultCodec *Codec, codecFromKey map[string]*Codec) (map[string]interface{}, []byte, error) {
+func genericMapTextDecoder(
+	buf []byte,
+	defaultCodec *Codec,
+	codecFromKey map[string]*Codec,
+	skipAdditionalFields bool,
+) (map[string]interface{}, []byte, error) {
 	var value interface{}
 	var err error
 	var b byte
@@ -191,7 +196,7 @@ func genericMapTextDecoder(buf []byte, defaultCodec *Codec, codecFromKey map[str
 		if fieldCodec == nil {
 			fieldCodec = defaultCodec
 		}
-		if fieldCodec == nil {
+		if fieldCodec == nil && !skipAdditionalFields {
 			return nil, nil, fmt.Errorf("cannot decode textual map: cannot determine codec: %q", key)
 		}
 		// decode colon
@@ -202,12 +207,19 @@ func genericMapTextDecoder(buf []byte, defaultCodec *Codec, codecFromKey map[str
 		if buf, _ = advanceToNonWhitespace(buf); len(buf) == 0 {
 			return nil, nil, io.ErrShortBuffer
 		}
-		value, buf, err = fieldCodec.nativeFromTextual(buf)
-		if err != nil {
-			return nil, nil, fmt.Errorf("%s for key: %q", err, key)
+		if fieldCodec != nil {
+			value, buf, err = fieldCodec.nativeFromTextual(buf)
+			if err != nil {
+				return nil, nil, fmt.Errorf("%s for key: %q", err, key)
+			}
+			// set map value for key
+			mapValues[key] = value
+		} else {
+			// skipAdditionalFields is true and we have no codec
+			if buf, _ = advanceToNextValue(buf); len(buf) == 0 {
+				return nil, nil, io.ErrShortBuffer
+			}
 		}
-		// set map value for key
-		mapValues[key] = value
 		// either comma or closing curly brace
 		if buf, _ = advanceToNonWhitespace(buf); len(buf) == 0 {
 			return nil, nil, io.ErrShortBuffer

@@ -49,6 +49,11 @@ type CodecOption struct {
 	// When true, the string literal "null" in textual Avro data will be coerced to Go's nil.
 	// Primarily used to handle edge cases where some Avro implementations allow string representations of null.
 	EnableStringNull bool
+
+	// SkipAdditionalFields controls handling of additional fields during decoding.
+	// When true, any additional input fields not defined in the schema will be skipped during decoding.
+	// When false (default), any additional input fields not defined in the schema will result in an error.
+	SkipAdditionalFields bool
 }
 
 // Codec supports decoding binary and text Avro data to Go native data types,

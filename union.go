@@ -24,6 +24,7 @@ type codecInfo struct {
 	codecFromIndex []*Codec
 	codecFromName  map[string]*Codec
 	indexFromName  map[string]int
+	option         *CodecOption
 }
 
 // Union wraps a datum value in a map for encoding as a Union, as required by
@@ -83,6 +84,7 @@ func makeCodecInfo(st map[string]*Codec, enclosingNamespace string, schemaArray 
 		codecFromIndex: codecFromIndex,
 		codecFromName:  codecFromName,
 		indexFromName:  indexFromName,
+		option:         cb.option,
 	}, nil
 
 }
@@ -151,7 +153,7 @@ func unionNativeFromTextual(cr *codecInfo) func(buf []byte) (interface{}, []byte
 
 		var datum interface{}
 		var err error
-		datum, buf, err = genericMapTextDecoder(buf, nil, cr.codecFromName)
+		datum, buf, err = genericMapTextDecoder(buf, nil, cr.codecFromName, cr.option.SkipAdditionalFields)
 		if err != nil {
 			return nil, nil, fmt.Errorf("cannot decode textual union: %s", err)
 		}

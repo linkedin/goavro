@@ -39,3 +39,34 @@ func advanceToNonWhitespace(buf []byte) ([]byte, error) {
 	}
 	return nil, io.ErrShortBuffer
 }
+
+var (
+	valueBoundaries = map[byte]byte{
+		'"': '"',
+		'{': '}',
+		'[': ']',
+	}
+)
+
+func advanceToNextValue(buf []byte) ([]byte, error) {
+	for openingRune, closingRune := range valueBoundaries {
+		if buf[0] == openingRune {
+			for i := 1; i < len(buf); i++ {
+				if buf[i] == closingRune {
+					return buf[i+1:], nil
+				}
+			}
+			return nil, io.ErrShortBuffer
+		}
+	}
+
+	// If we get here, then we are not in a string, map, or array. most likely a number or boolean
+	// We can just scan ahead to the next comma, closing brace, or closing bracket
+	for i := 1; i < len(buf); i++ {
+		if buf[i] == ',' || buf[i] == '}' || buf[i] == ']' {
+			return buf[i:], nil
+		}
+	}
+
+	return nil, fmt.Errorf("expected: token; actual: %q", buf[0])
+}
