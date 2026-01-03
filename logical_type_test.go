@@ -276,15 +276,18 @@ func TestDecimalFixedTextualRoundTrip(t *testing.T) {
 
 func TestDecimalBytesBackwardsCompatibility(t *testing.T) {
 	// Test that binary data incorrectly encoded as ASCII decimal strings
-	// can still be decoded correctly (backwards compatibility)
+	// can still be decoded correctly when backwards compatibility is enabled
 	schema := `{"type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2}`
-	codec, err := NewCodec(schema)
+
+	// Create codec with backwards compatibility enabled
+	opt := &CodecOption{EnableDecimalBinaryToTextualBackwardsCompatASCIIDecoding: true}
+	codec, err := NewCodecWithOptions(schema, opt)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Simulate incorrectly encoded data: "40.20" as ASCII bytes
-	// Length prefix (10 = 0x14 in varint) + ASCII bytes for "40.20"
+	// Length prefix (10 = 0x0a in varint) + ASCII bytes for "40.20"
 	incorrectlyEncodedBytes := append([]byte{0x0a}, []byte("40.20")...)
 
 	native, _, err := codec.NativeFromBinary(incorrectlyEncodedBytes)
@@ -386,12 +389,14 @@ func TestLooksLikeASCIIDecimal(t *testing.T) {
 		{[]byte("40.20"), true},
 		{[]byte("-40.20"), true},
 		{[]byte("+40.20"), true},
-		{[]byte("0"), true},
-		{[]byte("123456"), true},
 		{[]byte(".5"), true},
 		{[]byte("5."), true},
-		{[]byte(""), false},
-		{[]byte("-"), false},
+		{[]byte("0.0"), true},
+		{[]byte("0"), false},        // no decimal point - could be valid two's complement
+		{[]byte("123456"), false},   // no decimal point - could be valid two's complement
+		{[]byte(""), false},         // empty
+		{[]byte("-"), false},        // no digit
+		{[]byte("."), false},        // no digit
 		{[]byte("40.20.30"), false}, // multiple dots
 		{[]byte("40-20"), false},    // sign not at start
 		{[]byte("40a20"), false},    // non-decimal char
@@ -409,10 +414,46 @@ func TestLooksLikeASCIIDecimal(t *testing.T) {
 	}
 }
 
+func TestDecimalDefaultNoBackwardsCompat(t *testing.T) {
+	// Test that by default, ASCII-looking bytes are NOT interpreted as ASCII
+	// but rather as two's-complement (which is the correct spec behavior)
+	schema := `{"type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2}`
+
+	// Create codec with default options (no backwards compat)
+	codec, err := NewCodec(schema)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// "09" as ASCII bytes is [0x30, 0x39] which is 12345 in decimal
+	// This could be misinterpreted as the string "09" if backwards compat were on
+	// But with default settings, it should be decoded as 12345/100 = 123.45
+	asciiLookingBytes := []byte{0x04, 0x30, 0x39} // length=2, bytes="09"
+
+	native, _, err := codec.NativeFromBinary(asciiLookingBytes)
+	if err != nil {
+		t.Fatalf("NativeFromBinary: %v", err)
+	}
+
+	rat, ok := native.(*big.Rat)
+	if !ok {
+		t.Fatalf("NativeFromBinary: expected *big.Rat, got %T", native)
+	}
+
+	// 0x3039 = 12345, with scale 2 = 123.45 = 12345/100
+	expected := big.NewRat(12345, 100)
+	if rat.Cmp(expected) != 0 {
+		t.Errorf("NativeFromBinary (default, no backwards compat): got %v, want %v", rat, expected)
+	}
+}
+
 func TestDecimalNegativeBackwardsCompatibility(t *testing.T) {
 	// Test backwards compatibility with negative numbers encoded as ASCII
 	schema := `{"type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2}`
-	codec, err := NewCodec(schema)
+
+	// Create codec with backwards compatibility enabled
+	opt := &CodecOption{EnableDecimalBinaryToTextualBackwardsCompatASCIIDecoding: true}
+	codec, err := NewCodecWithOptions(schema, opt)
 	if err != nil {
 		t.Fatal(err)
 	}

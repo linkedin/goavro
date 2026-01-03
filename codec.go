@@ -49,6 +49,15 @@ type CodecOption struct {
 	// When true, the string literal "null" in textual Avro data will be coerced to Go's nil.
 	// Primarily used to handle edge cases where some Avro implementations allow string representations of null.
 	EnableStringNull bool
+
+	// EnableDecimalBinaryToTextualBackwardsCompatASCIIDecoding controls backwards compatibility for decimal
+	// binary decoding. When true, the decoder will first check if binary bytes look like an
+	// ASCII decimal string (e.g., "40.20") and parse them as such. This handles legacy data
+	// that was incorrectly encoded as ASCII strings instead of two's-complement bytes.
+	// WARNING: This can cause incorrect decoding if a valid two's-complement value happens
+	// to look like ASCII digits. Only enable this if you have legacy incorrectly-encoded data.
+	// Default: false (use correct two's-complement decoding only)
+	EnableDecimalBinaryToTextualBackwardsCompatASCIIDecoding bool
 }
 
 // Codec supports decoding binary and text Avro data to Go native data types,
@@ -83,6 +92,7 @@ type codecBuilder struct {
 func DefaultCodecOption() *CodecOption {
 	return &CodecOption{
 		EnableStringNull: true,
+		EnableDecimalBinaryToTextualBackwardsCompatASCIIDecoding: false,
 	}
 }
 
@@ -739,9 +749,9 @@ func buildCodecForTypeDescribedByString(st map[string]*Codec, enclosingNamespace
 	case "record":
 		return makeRecordCodec(st, enclosingNamespace, schemaMap, cb)
 	case "bytes.decimal":
-		return makeDecimalBytesCodec(st, enclosingNamespace, schemaMap)
+		return makeDecimalBytesCodec(st, enclosingNamespace, schemaMap, cb)
 	case "fixed.decimal":
-		return makeDecimalFixedCodec(st, enclosingNamespace, schemaMap)
+		return makeDecimalFixedCodec(st, enclosingNamespace, schemaMap, cb)
 	case "string.validated-string":
 		return makeValidatedStringCodec(st, enclosingNamespace, schemaMap)
 	default:

@@ -258,7 +258,7 @@ func precisionAndScaleFromSchemaMap(schemaMap map[string]interface{}) (int, int,
 
 var one = big.NewInt(1)
 
-func makeDecimalBytesCodec(st map[string]*Codec, enclosingNamespace string, schemaMap map[string]interface{}) (*Codec, error) {
+func makeDecimalBytesCodec(st map[string]*Codec, enclosingNamespace string, schemaMap map[string]interface{}, cb *codecBuilder) (*Codec, error) {
 	precision, scale, err := precisionAndScaleFromSchemaMap(schemaMap)
 	if err != nil {
 		return nil, err
@@ -275,16 +275,20 @@ func makeDecimalBytesCodec(st map[string]*Codec, enclosingNamespace string, sche
 	decimalSearchType := fmt.Sprintf("bytes.decimal.%d.%d", precision, scale)
 	st[decimalSearchType] = c
 
+	// Check if backwards compatibility mode is enabled
+	enableBackwardsCompat := cb != nil && cb.option != nil && cb.option.EnableDecimalBinaryToTextualBackwardsCompatASCIIDecoding
+
 	c.binaryFromNative = decimalBytesFromNative(bytesBinaryFromNative, toSignedBytes, precision, scale)
 	c.textualFromNative = decimalTextualFromNative(scale)
-	c.nativeFromBinary = nativeFromDecimalBytes(bytesNativeFromBinary, scale)
+	c.nativeFromBinary = nativeFromDecimalBytes(bytesNativeFromBinary, scale, enableBackwardsCompat)
 	c.nativeFromTextual = nativeFromDecimalTextual()
 	return c, nil
 }
 
-// nativeFromDecimalBytes decodes bytes to *big.Rat with backwards compatibility
-// for incorrectly encoded ASCII decimal strings.
-func nativeFromDecimalBytes(fn toNativeFn, scale int) toNativeFn {
+// nativeFromDecimalBytes decodes bytes to *big.Rat.
+// If enableBackwardsCompat is true, it first checks if bytes look like an ASCII decimal
+// string (for backwards compatibility with incorrectly encoded legacy data).
+func nativeFromDecimalBytes(fn toNativeFn, scale int, enableBackwardsCompat bool) toNativeFn {
 	return func(bytes []byte) (interface{}, []byte, error) {
 		d, b, err := fn(bytes)
 		if err != nil {
@@ -296,7 +300,7 @@ func nativeFromDecimalBytes(fn toNativeFn, scale int) toNativeFn {
 		}
 
 		// Check if bytes look like ASCII decimal string (backwards compat)
-		if looksLikeASCIIDecimal(bs) {
+		if enableBackwardsCompat && looksLikeASCIIDecimal(bs) {
 			r := new(big.Rat)
 			if _, ok := r.SetString(string(bs)); ok {
 				return r, b, nil
@@ -362,7 +366,9 @@ func nativeFromDecimalTextual() toNativeFn {
 
 // looksLikeASCIIDecimal checks if the bytes look like an ASCII decimal string
 // (for backwards compatibility with incorrectly encoded data).
-// Returns true if all bytes are printable ASCII and form a valid decimal pattern.
+// Returns true if all bytes are printable ASCII, form a valid decimal pattern,
+// and contain a decimal point. Requiring a decimal point reduces false positives
+// since 0x2E ('.') is unlikely to appear in valid two's-complement encoded numbers.
 func looksLikeASCIIDecimal(bs []byte) bool {
 	if len(bs) == 0 {
 		return false
@@ -386,10 +392,11 @@ func looksLikeASCIIDecimal(bs []byte) bool {
 			return false // non-decimal character
 		}
 	}
-	return hasDigit
+	// Require both a digit and a decimal point to reduce false positives
+	return hasDigit && hasDot
 }
 
-func makeDecimalFixedCodec(st map[string]*Codec, enclosingNamespace string, schemaMap map[string]interface{}) (*Codec, error) {
+func makeDecimalFixedCodec(st map[string]*Codec, enclosingNamespace string, schemaMap map[string]interface{}, cb *codecBuilder) (*Codec, error) {
 	precision, scale, err := precisionAndScaleFromSchemaMap(schemaMap)
 	if err != nil {
 		return nil, err
@@ -405,9 +412,13 @@ func makeDecimalFixedCodec(st map[string]*Codec, enclosingNamespace string, sche
 	if err != nil {
 		return nil, err
 	}
+
+	// Check if backwards compatibility mode is enabled
+	enableBackwardsCompat := cb != nil && cb.option != nil && cb.option.EnableDecimalBinaryToTextualBackwardsCompatASCIIDecoding
+
 	c.binaryFromNative = decimalBytesFromNative(c.binaryFromNative, toSignedFixedBytes(size), precision, scale)
 	c.textualFromNative = decimalTextualFromNative(scale)
-	c.nativeFromBinary = nativeFromDecimalBytes(c.nativeFromBinary, scale)
+	c.nativeFromBinary = nativeFromDecimalBytes(c.nativeFromBinary, scale, enableBackwardsCompat)
 	c.nativeFromTextual = nativeFromDecimalTextual()
 	return c, nil
 }
