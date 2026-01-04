@@ -141,7 +141,7 @@ func makeMapCodec(st map[string]*Codec, namespace string, schemaMap map[string]i
 			return longBinaryFromNative(buf, 0) // append tailing 0 block count to signal end of Map
 		},
 		nativeFromTextual: func(buf []byte) (interface{}, []byte, error) {
-			return genericMapTextDecoder(buf, valueCodec, nil) // codecFromKey == nil
+			return genericMapTextDecoder(buf, valueCodec, nil, false) // codecFromKey == nil, ignoreExtraFields == false
 		},
 		textualFromNative: func(buf []byte, datum interface{}) ([]byte, error) {
 			return genericMapTextEncoder(buf, datum, valueCodec, nil)
@@ -152,10 +152,11 @@ func makeMapCodec(st map[string]*Codec, namespace string, schemaMap map[string]i
 // genericMapTextDecoder decodes a JSON text blob to a native Go map, using the
 // codecs from codecFromKey, and if a key is not found in that map, from
 // defaultCodec if provided. If defaultCodec is nil, this function returns an
-// error if it encounters a map key that is not present in codecFromKey. If
-// codecFromKey is nil, every map value will be decoded using defaultCodec, if
+// error if it encounters a map key that is not present in codecFromKey, unless
+// ignoreExtraFields is true, in which case the unknown field is skipped.
+// If codecFromKey is nil, every map value will be decoded using defaultCodec, if
 // possible.
-func genericMapTextDecoder(buf []byte, defaultCodec *Codec, codecFromKey map[string]*Codec) (map[string]interface{}, []byte, error) {
+func genericMapTextDecoder(buf []byte, defaultCodec *Codec, codecFromKey map[string]*Codec, ignoreExtraFields bool) (map[string]interface{}, []byte, error) {
 	var value interface{}
 	var err error
 	var b byte
@@ -192,6 +193,31 @@ func genericMapTextDecoder(buf []byte, defaultCodec *Codec, codecFromKey map[str
 			fieldCodec = defaultCodec
 		}
 		if fieldCodec == nil {
+			if ignoreExtraFields {
+				// Skip the colon and value for this unknown field
+				if buf, err = advanceAndConsume(buf, ':'); err != nil {
+					return nil, nil, err
+				}
+				if buf, err = skipJSONValue(buf); err != nil {
+					return nil, nil, fmt.Errorf("cannot skip unknown field %q: %s", key, err)
+				}
+				// Check for comma or closing brace
+				if buf, _ = advanceToNonWhitespace(buf); len(buf) == 0 {
+					return nil, nil, io.ErrShortBuffer
+				}
+				switch b = buf[0]; b {
+				case '}':
+					return mapValues, buf[1:], nil
+				case ',':
+					buf = buf[1:]
+					if buf, _ = advanceToNonWhitespace(buf); len(buf) == 0 {
+						return nil, nil, io.ErrShortBuffer
+					}
+				default:
+					return nil, nil, fmt.Errorf("cannot decode textual map: expected ',' or '}'; received: %q", b)
+				}
+				continue
+			}
 			return nil, nil, fmt.Errorf("cannot decode textual map: cannot determine codec: %q", key)
 		}
 		// decode colon

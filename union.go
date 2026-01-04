@@ -151,7 +151,8 @@ func unionNativeFromTextual(cr *codecInfo) func(buf []byte) (interface{}, []byte
 
 		var datum interface{}
 		var err error
-		datum, buf, err = genericMapTextDecoder(buf, nil, cr.codecFromName)
+		// For unions, we never ignore extra fields - the map keys represent type names
+		datum, buf, err = genericMapTextDecoder(buf, nil, cr.codecFromName, false)
 		if err != nil {
 			return nil, nil, fmt.Errorf("cannot decode textual union: %s", err)
 		}

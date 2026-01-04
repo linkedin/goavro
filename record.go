@@ -194,13 +194,16 @@ func makeRecordCodec(st map[string]*Codec, enclosingNamespace string, schemaMap 
 		return recordMap, buf, nil
 	}
 
+	// Capture the ignoreExtraFields option for use in the closure
+	ignoreExtraFields := cb.option != nil && cb.option.IgnoreExtraFieldsFromTextual
+
 	c.nativeFromTextual = func(buf []byte) (interface{}, []byte, error) {
 		var mapValues map[string]interface{}
 		var err error
 		// NOTE: Setting `defaultCodec == nil` instructs genericMapTextDecoder
 		// to return an error when a field name is not found in the
-		// codecFromFieldName map.
-		mapValues, buf, err = genericMapTextDecoder(buf, nil, codecFromFieldName)
+		// codecFromFieldName map, unless ignoreExtraFields is true.
+		mapValues, buf, err = genericMapTextDecoder(buf, nil, codecFromFieldName, ignoreExtraFields)
 		if err != nil {
 			return nil, nil, fmt.Errorf("cannot decode textual record %q: %s", c.typeName, err)
 		}

@@ -49,6 +49,13 @@ type CodecOption struct {
 	// When true, the string literal "null" in textual Avro data will be coerced to Go's nil.
 	// Primarily used to handle edge cases where some Avro implementations allow string representations of null.
 	EnableStringNull bool
+
+	// IgnoreExtraFieldsFromTextual controls how unknown fields are handled during textual (JSON) decoding.
+	// When true, fields in the JSON input that are not defined in the Avro schema will be
+	// silently skipped. This enables forward-compatible schema evolution where consumers
+	// can process messages from producers using newer schemas with additional fields.
+	// When false (default), unknown fields cause a "cannot determine codec" error.
+	IgnoreExtraFieldsFromTextual bool
 }
 
 // Codec supports decoding binary and text Avro data to Go native data types,
@@ -82,7 +89,8 @@ type codecBuilder struct {
 // DefaultCodecOption returns a CodecOption with recommended default settings.
 func DefaultCodecOption() *CodecOption {
 	return &CodecOption{
-		EnableStringNull: true,
+		EnableStringNull:             true,
+		IgnoreExtraFieldsFromTextual: false,
 	}
 }
 
