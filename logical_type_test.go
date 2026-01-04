@@ -282,6 +282,98 @@ func TestDecimalFixedSpecCompliantTextualRoundTrip(t *testing.T) {
 	}
 }
 
+func TestDecimalBytesLegacyTextualRoundTrip(t *testing.T) {
+	// Test legacy (default) textual encoding with escaped bytes format
+	schema := `{"type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2}`
+
+	// Create codec with default options (legacy encoding)
+	codec, err := NewCodec(schema)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testCases := []struct {
+		native   *big.Rat
+		expected string // escaped bytes format
+	}{
+		{big.NewRat(4020, 100), `"\u000F\u00B4"`}, // 4020 = 0x0FB4
+		{big.NewRat(1234, 100), `"\u0004\u00D2"`}, // 1234 = 0x04D2
+		{big.NewRat(-1234, 100), `"\u00FB."`},     // -1234 in two's complement
+		{big.NewRat(0, 1), `"\u0000"`},            // 0
+		{big.NewRat(9999, 100), `"'\u000F"`},      // 9999 = 0x270F
+	}
+
+	for _, tc := range testCases {
+		// Encode native to textual
+		textual, err := codec.TextualFromNative(nil, tc.native)
+		if err != nil {
+			t.Fatalf("TextualFromNative(%v): %v", tc.native, err)
+		}
+
+		if string(textual) != tc.expected {
+			t.Errorf("TextualFromNative(%v): got %s, want %s", tc.native, textual, tc.expected)
+		}
+
+		// Decode textual back to native
+		native, _, err := codec.NativeFromTextual(textual)
+		if err != nil {
+			t.Fatalf("NativeFromTextual(%s): %v", textual, err)
+		}
+
+		rat, ok := native.(*big.Rat)
+		if !ok {
+			t.Fatalf("NativeFromTextual(%s): expected *big.Rat, got %T", textual, native)
+		}
+
+		if rat.Cmp(tc.native) != 0 {
+			t.Errorf("NativeFromTextual(%s): got %v, want %v", textual, rat, tc.native)
+		}
+	}
+}
+
+func TestDecimalFixedLegacyTextualRoundTrip(t *testing.T) {
+	// Test legacy (default) textual encoding with escaped bytes format for fixed type
+	schema := `{"type": "fixed", "size": 12, "logicalType": "decimal", "precision": 4, "scale": 2}`
+
+	// Create codec with default options (legacy encoding)
+	codec, err := NewCodec(schema)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testCases := []struct {
+		native *big.Rat
+	}{
+		{big.NewRat(4020, 100)},
+		{big.NewRat(1234, 100)},
+		{big.NewRat(-1234, 100)},
+		// Note: 0 is not tested here due to fixed size constraints
+	}
+
+	for _, tc := range testCases {
+		// Encode native to textual
+		textual, err := codec.TextualFromNative(nil, tc.native)
+		if err != nil {
+			t.Fatalf("TextualFromNative(%v): %v", tc.native, err)
+		}
+
+		// Decode textual back to native - should round-trip correctly
+		native, _, err := codec.NativeFromTextual(textual)
+		if err != nil {
+			t.Fatalf("NativeFromTextual(%s): %v", textual, err)
+		}
+
+		rat, ok := native.(*big.Rat)
+		if !ok {
+			t.Fatalf("NativeFromTextual(%s): expected *big.Rat, got %T", textual, native)
+		}
+
+		if rat.Cmp(tc.native) != 0 {
+			t.Errorf("Round-trip failed for %v: got %v", tc.native, rat)
+		}
+	}
+}
+
 func TestDecimalBytesCorrectBinaryEncoding(t *testing.T) {
 	// Test that binary encoding uses two's complement (same for both legacy and spec-compliant)
 	schema := `{"type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2}`
