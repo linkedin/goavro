@@ -191,13 +191,14 @@ func skipJSONNumber(buf []byte) ([]byte, error) {
 	}
 
 	// Integer part
-	if buf[i] == '0' {
+	switch {
+	case buf[i] == '0':
 		i++
-	} else if buf[i] >= '1' && buf[i] <= '9' {
+	case buf[i] >= '1' && buf[i] <= '9':
 		for i < len(buf) && buf[i] >= '0' && buf[i] <= '9' {
 			i++
 		}
-	} else {
+	default:
 		return nil, fmt.Errorf("cannot skip JSON number: invalid character: %q", buf[i])
 	}
 
