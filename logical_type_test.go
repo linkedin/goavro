@@ -183,9 +183,13 @@ func TestDecimalBytesLogicalTypeInRecordDecodeWithDefault(t *testing.T) {
 	testBinaryCodecPass(t, schema, map[string]interface{}{"mydecimal": big.NewRat(617, 50)}, []byte("\x04\x04\xd2"))
 }
 
-func TestDecimalBytesTextualRoundTrip(t *testing.T) {
+func TestDecimalBytesSpecCompliantTextualRoundTrip(t *testing.T) {
+	// Test spec-compliant textual encoding with human-readable decimal strings
 	schema := `{"type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2}`
-	codec, err := NewCodec(schema)
+
+	// Create codec with spec-compliant encoding enabled
+	opt := &CodecOption{EnableDecimalBinarySpecCompliantEncoding: true}
+	codec, err := NewCodecWithOptions(schema, opt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -229,9 +233,13 @@ func TestDecimalBytesTextualRoundTrip(t *testing.T) {
 	}
 }
 
-func TestDecimalFixedTextualRoundTrip(t *testing.T) {
+func TestDecimalFixedSpecCompliantTextualRoundTrip(t *testing.T) {
+	// Test spec-compliant textual encoding with human-readable decimal strings
 	schema := `{"type": "fixed", "size": 12, "logicalType": "decimal", "precision": 4, "scale": 2}`
-	codec, err := NewCodec(schema)
+
+	// Create codec with spec-compliant encoding enabled
+	opt := &CodecOption{EnableDecimalBinarySpecCompliantEncoding: true}
+	codec, err := NewCodecWithOptions(schema, opt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -274,40 +282,8 @@ func TestDecimalFixedTextualRoundTrip(t *testing.T) {
 	}
 }
 
-func TestDecimalBytesBackwardsCompatibility(t *testing.T) {
-	// Test that binary data incorrectly encoded as ASCII decimal strings
-	// can still be decoded correctly when backwards compatibility is enabled
-	schema := `{"type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2}`
-
-	// Create codec with backwards compatibility enabled
-	opt := &CodecOption{EnableDecimalBinaryToTextualBackwardsCompatASCIIDecoding: true}
-	codec, err := NewCodecWithOptions(schema, opt)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Simulate incorrectly encoded data: "40.20" as ASCII bytes
-	// Length prefix (10 = 0x0a in varint) + ASCII bytes for "40.20"
-	incorrectlyEncodedBytes := append([]byte{0x0a}, []byte("40.20")...)
-
-	native, _, err := codec.NativeFromBinary(incorrectlyEncodedBytes)
-	if err != nil {
-		t.Fatalf("NativeFromBinary (backwards compat): %v", err)
-	}
-
-	rat, ok := native.(*big.Rat)
-	if !ok {
-		t.Fatalf("NativeFromBinary: expected *big.Rat, got %T", native)
-	}
-
-	expected := big.NewRat(4020, 100)
-	if rat.Cmp(expected) != 0 {
-		t.Errorf("NativeFromBinary (backwards compat): got %v, want %v", rat, expected)
-	}
-}
-
 func TestDecimalBytesCorrectBinaryEncoding(t *testing.T) {
-	// Test that correctly encoded binary data (two's complement) still works
+	// Test that binary encoding uses two's complement (same for both legacy and spec-compliant)
 	schema := `{"type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2}`
 	codec, err := NewCodec(schema)
 	if err != nil {
@@ -335,10 +311,13 @@ func TestDecimalBytesCorrectBinaryEncoding(t *testing.T) {
 	}
 }
 
-func TestDecimalTextualToBinaryRoundTrip(t *testing.T) {
-	// Test the full flow: textual -> native -> binary -> native -> textual
+func TestDecimalSpecCompliantTextualToBinaryRoundTrip(t *testing.T) {
+	// Test the full flow with spec-compliant encoding: textual -> native -> binary -> native -> textual
 	schema := `{"type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2}`
-	codec, err := NewCodec(schema)
+
+	// Create codec with spec-compliant encoding enabled
+	opt := &CodecOption{EnableDecimalBinarySpecCompliantEncoding: true}
+	codec, err := NewCodecWithOptions(schema, opt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -357,7 +336,7 @@ func TestDecimalTextualToBinaryRoundTrip(t *testing.T) {
 		t.Fatalf("BinaryFromNative: %v", err)
 	}
 
-	// Verify binary is two's complement, not ASCII string
+	// Verify binary is two's complement
 	// 4020 = 0x0FB4 in hex
 	expectedBinary := []byte{0x04, 0x0f, 0xb4}
 	if string(binary) != string(expectedBinary) {
@@ -378,102 +357,6 @@ func TestDecimalTextualToBinaryRoundTrip(t *testing.T) {
 
 	if string(textual) != string(originalTextual) {
 		t.Errorf("Round-trip failed: got %s, want %s", textual, originalTextual)
-	}
-}
-
-func TestLooksLikeASCIIDecimal(t *testing.T) {
-	testCases := []struct {
-		input    []byte
-		expected bool
-	}{
-		{[]byte("40.20"), true},
-		{[]byte("-40.20"), true},
-		{[]byte("+40.20"), true},
-		{[]byte(".5"), true},
-		{[]byte("5."), true},
-		{[]byte("0.0"), true},
-		{[]byte("0"), false},        // no decimal point - could be valid two's complement
-		{[]byte("123456"), false},   // no decimal point - could be valid two's complement
-		{[]byte(""), false},         // empty
-		{[]byte("-"), false},        // no digit
-		{[]byte("."), false},        // no digit
-		{[]byte("40.20.30"), false}, // multiple dots
-		{[]byte("40-20"), false},    // sign not at start
-		{[]byte("40a20"), false},    // non-decimal char
-		{[]byte("\x0f\xb4"), false}, // binary data (two's complement)
-		{[]byte{0x00}, false},       // null byte
-		{[]byte{0xff, 0xff}, false}, // high bytes (negative two's complement)
-		{[]byte("12.34e5"), false},  // scientific notation not supported
-	}
-
-	for _, tc := range testCases {
-		result := looksLikeASCIIDecimal(tc.input)
-		if result != tc.expected {
-			t.Errorf("looksLikeASCIIDecimal(%q): got %v, want %v", tc.input, result, tc.expected)
-		}
-	}
-}
-
-func TestDecimalDefaultNoBackwardsCompat(t *testing.T) {
-	// Test that by default, ASCII-looking bytes are NOT interpreted as ASCII
-	// but rather as two's-complement (which is the correct spec behavior)
-	schema := `{"type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2}`
-
-	// Create codec with default options (no backwards compat)
-	codec, err := NewCodec(schema)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// "09" as ASCII bytes is [0x30, 0x39] which is 12345 in decimal
-	// This could be misinterpreted as the string "09" if backwards compat were on
-	// But with default settings, it should be decoded as 12345/100 = 123.45
-	asciiLookingBytes := []byte{0x04, 0x30, 0x39} // length=2, bytes="09"
-
-	native, _, err := codec.NativeFromBinary(asciiLookingBytes)
-	if err != nil {
-		t.Fatalf("NativeFromBinary: %v", err)
-	}
-
-	rat, ok := native.(*big.Rat)
-	if !ok {
-		t.Fatalf("NativeFromBinary: expected *big.Rat, got %T", native)
-	}
-
-	// 0x3039 = 12345, with scale 2 = 123.45 = 12345/100
-	expected := big.NewRat(12345, 100)
-	if rat.Cmp(expected) != 0 {
-		t.Errorf("NativeFromBinary (default, no backwards compat): got %v, want %v", rat, expected)
-	}
-}
-
-func TestDecimalNegativeBackwardsCompatibility(t *testing.T) {
-	// Test backwards compatibility with negative numbers encoded as ASCII
-	schema := `{"type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2}`
-
-	// Create codec with backwards compatibility enabled
-	opt := &CodecOption{EnableDecimalBinaryToTextualBackwardsCompatASCIIDecoding: true}
-	codec, err := NewCodecWithOptions(schema, opt)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Simulate incorrectly encoded data: "-40.20" as ASCII bytes
-	incorrectlyEncodedBytes := append([]byte{0x0c}, []byte("-40.20")...)
-
-	native, _, err := codec.NativeFromBinary(incorrectlyEncodedBytes)
-	if err != nil {
-		t.Fatalf("NativeFromBinary (backwards compat): %v", err)
-	}
-
-	rat, ok := native.(*big.Rat)
-	if !ok {
-		t.Fatalf("NativeFromBinary: expected *big.Rat, got %T", native)
-	}
-
-	expected := big.NewRat(-4020, 100)
-	if rat.Cmp(expected) != 0 {
-		t.Errorf("NativeFromBinary (backwards compat): got %v, want %v", rat, expected)
 	}
 }
 

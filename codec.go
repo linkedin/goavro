@@ -50,14 +50,13 @@ type CodecOption struct {
 	// Primarily used to handle edge cases where some Avro implementations allow string representations of null.
 	EnableStringNull bool
 
-	// EnableDecimalBinaryToTextualBackwardsCompatASCIIDecoding controls backwards compatibility for decimal
-	// binary decoding. When true, the decoder will first check if binary bytes look like an
-	// ASCII decimal string (e.g., "40.20") and parse them as such. This handles legacy data
-	// that was incorrectly encoded as ASCII strings instead of two's-complement bytes.
-	// WARNING: This can cause incorrect decoding if a valid two's-complement value happens
-	// to look like ASCII digits. Only enable this if you have legacy incorrectly-encoded data.
-	// Default: false (use correct two's-complement decoding only)
-	EnableDecimalBinaryToTextualBackwardsCompatASCIIDecoding bool
+	// EnableDecimalBinarySpecCompliantEncoding controls whether decimal values use
+	// Avro 1.10.2 spec-compliant encoding. When true:
+	// - Binary encoding uses two's-complement representation of the unscaled integer
+	// - JSON textual encoding uses human-readable decimal strings like "40.20"
+	// When false (default), legacy encoding is used for backwards compatibility.
+	// Default: false (legacy encoding for backwards compatibility)
+	EnableDecimalBinarySpecCompliantEncoding bool
 }
 
 // Codec supports decoding binary and text Avro data to Go native data types,
@@ -91,8 +90,8 @@ type codecBuilder struct {
 // DefaultCodecOption returns a CodecOption with recommended default settings.
 func DefaultCodecOption() *CodecOption {
 	return &CodecOption{
-		EnableStringNull: true,
-		EnableDecimalBinaryToTextualBackwardsCompatASCIIDecoding: false,
+		EnableStringNull:                         true,
+		EnableDecimalBinarySpecCompliantEncoding: false,
 	}
 }
 
