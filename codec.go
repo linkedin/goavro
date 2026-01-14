@@ -56,6 +56,13 @@ type CodecOption struct {
 	// can process messages from producers using newer schemas with additional fields.
 	// When false (default), unknown fields cause a "cannot determine codec" error.
 	IgnoreExtraFieldsFromTextual bool
+	// EnableDecimalBinarySpecCompliantEncoding controls whether decimal values use
+	// Avro 1.10.2 spec-compliant encoding. When true:
+	// - Binary encoding uses two's-complement representation of the unscaled integer
+	// - JSON textual encoding uses human-readable decimal strings like "40.20"
+	// When false (default), legacy encoding is used for backwards compatibility.
+	// Default: false (legacy encoding for backwards compatibility)
+	EnableDecimalBinarySpecCompliantEncoding bool
 }
 
 // Codec supports decoding binary and text Avro data to Go native data types,
@@ -89,8 +96,9 @@ type codecBuilder struct {
 // DefaultCodecOption returns a CodecOption with recommended default settings.
 func DefaultCodecOption() *CodecOption {
 	return &CodecOption{
-		EnableStringNull:             true,
-		IgnoreExtraFieldsFromTextual: false,
+		EnableStringNull:                         true,
+		IgnoreExtraFieldsFromTextual:             false,
+		EnableDecimalBinarySpecCompliantEncoding: false,
 	}
 }
 
@@ -747,9 +755,9 @@ func buildCodecForTypeDescribedByString(st map[string]*Codec, enclosingNamespace
 	case "record":
 		return makeRecordCodec(st, enclosingNamespace, schemaMap, cb)
 	case "bytes.decimal":
-		return makeDecimalBytesCodec(st, enclosingNamespace, schemaMap)
+		return makeDecimalBytesCodec(st, enclosingNamespace, schemaMap, cb)
 	case "fixed.decimal":
-		return makeDecimalFixedCodec(st, enclosingNamespace, schemaMap)
+		return makeDecimalFixedCodec(st, enclosingNamespace, schemaMap, cb)
 	case "string.validated-string":
 		return makeValidatedStringCodec(st, enclosingNamespace, schemaMap)
 	default:
