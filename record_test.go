@@ -385,6 +385,142 @@ func TestRecordTextCodecPass(t *testing.T) {
 	testTextDecodePass(t, `{"name":"r1","type":"record","fields":[{"name":"string","type":"string"},{"name":"bytes","type":"bytes"}]}`, map[string]interface{}{"string": silly, "bytes": []byte(silly)}, []byte(` { "string" : "\u0001\u2318 " , "bytes" : "\u0001\u00E2\u008C\u0098 " }`))
 }
 
+func TestRecordIgnoreExtraFieldsFromTextual(t *testing.T) {
+	schema := `{"name":"r1","type":"record","fields":[{"name":"name","type":"string"},{"name":"age","type":"int"}]}`
+
+	// Test that extra fields cause error by default
+	t.Run("default behavior rejects extra fields", func(t *testing.T) {
+		codec, err := NewCodec(schema)
+		if err != nil {
+			t.Fatal(err)
+		}
+		jsonWithExtraField := []byte(`{"name":"Alice","age":30,"extraField":"ignored"}`)
+		_, _, err = codec.NativeFromTextual(jsonWithExtraField)
+		if err == nil {
+			t.Fatal("expected error for extra field, got nil")
+		}
+		if !bytes.Contains([]byte(err.Error()), []byte("cannot determine codec")) {
+			t.Fatalf("expected 'cannot determine codec' error, got: %s", err)
+		}
+	})
+
+	// Test that extra fields are ignored when IgnoreExtraFieldsFromTextual is true
+	t.Run("ignores extra fields when option enabled", func(t *testing.T) {
+		opt := &CodecOption{IgnoreExtraFieldsFromTextual: true}
+		codec, err := NewCodecWithOptions(schema, opt)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		jsonWithExtraField := []byte(`{"name":"Alice","age":30,"extraField":"ignored"}`)
+		native, remaining, err := codec.NativeFromTextual(jsonWithExtraField)
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+		if len(remaining) != 0 {
+			t.Fatalf("expected empty remaining buffer, got: %v", remaining)
+		}
+
+		m, ok := native.(map[string]interface{})
+		if !ok {
+			t.Fatalf("expected map[string]interface{}, got: %T", native)
+		}
+		if m["name"] != "Alice" {
+			t.Errorf("expected name='Alice', got: %v", m["name"])
+		}
+		if m["age"] != int32(30) {
+			t.Errorf("expected age=30, got: %v (type %T)", m["age"], m["age"])
+		}
+		// extraField should NOT be in the result
+		if _, exists := m["extraField"]; exists {
+			t.Error("extraField should not be present in decoded result")
+		}
+	})
+
+	// Test with multiple extra fields of various types
+	t.Run("ignores multiple extra fields of various types", func(t *testing.T) {
+		opt := &CodecOption{IgnoreExtraFieldsFromTextual: true}
+		codec, err := NewCodecWithOptions(schema, opt)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Extra fields: string, number, boolean, null, array, object
+		jsonWithManyExtras := []byte(`{
+			"name": "Bob",
+			"extraString": "hello",
+			"age": 25,
+			"extraNumber": 123.45,
+			"extraBool": true,
+			"extraNull": null,
+			"extraArray": [1, 2, 3],
+			"extraObject": {"nested": "value"}
+		}`)
+		native, remaining, err := codec.NativeFromTextual(jsonWithManyExtras)
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+		if len(remaining) != 0 {
+			t.Fatalf("expected empty remaining buffer, got: %v", remaining)
+		}
+
+		m, ok := native.(map[string]interface{})
+		if !ok {
+			t.Fatalf("expected map[string]interface{}, got: %T", native)
+		}
+		if m["name"] != "Bob" {
+			t.Errorf("expected name='Bob', got: %v", m["name"])
+		}
+		if m["age"] != int32(25) {
+			t.Errorf("expected age=25, got: %v", m["age"])
+		}
+		// Only schema fields should be present
+		if len(m) != 2 {
+			t.Errorf("expected 2 fields, got %d: %v", len(m), m)
+		}
+	})
+
+	// Test with extra field at the end (after last schema field)
+	t.Run("ignores extra field at end", func(t *testing.T) {
+		opt := &CodecOption{IgnoreExtraFieldsFromTextual: true}
+		codec, err := NewCodecWithOptions(schema, opt)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		json := []byte(`{"name":"Charlie","age":35,"trailing":"field"}`)
+		native, _, err := codec.NativeFromTextual(json)
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+
+		m := native.(map[string]interface{})
+		if m["name"] != "Charlie" || m["age"] != int32(35) {
+			t.Errorf("unexpected values: %v", m)
+		}
+	})
+
+	// Test with extra field at the beginning (before first schema field)
+	t.Run("ignores extra field at beginning", func(t *testing.T) {
+		opt := &CodecOption{IgnoreExtraFieldsFromTextual: true}
+		codec, err := NewCodecWithOptions(schema, opt)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		json := []byte(`{"leading":"field","name":"Diana","age":40}`)
+		native, _, err := codec.NativeFromTextual(json)
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+
+		m := native.(map[string]interface{})
+		if m["name"] != "Diana" || m["age"] != int32(40) {
+			t.Errorf("unexpected values: %v", m)
+		}
+	})
+}
+
 func TestRecordFieldDefaultValue(t *testing.T) {
 	testSchemaValid(t, `{"type":"record","name":"r1","fields":[{"name":"f1","type":"int","default":13}]}`)
 	testSchemaValid(t, `{"type":"record","name":"r1","fields":[{"name":"f1","type":"string","default":"foo"}]}`)

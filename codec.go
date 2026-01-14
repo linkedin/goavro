@@ -50,6 +50,12 @@ type CodecOption struct {
 	// Primarily used to handle edge cases where some Avro implementations allow string representations of null.
 	EnableStringNull bool
 
+	// IgnoreExtraFieldsFromTextual controls how unknown fields are handled during textual (JSON) decoding.
+	// When true, fields in the JSON input that are not defined in the Avro schema will be
+	// silently skipped. This enables forward-compatible schema evolution where consumers
+	// can process messages from producers using newer schemas with additional fields.
+	// When false (default), unknown fields cause a "cannot determine codec" error.
+	IgnoreExtraFieldsFromTextual bool
 	// EnableDecimalBinarySpecCompliantEncoding controls whether decimal values use
 	// Avro 1.10.2 spec-compliant encoding. When true:
 	// - Binary encoding uses two's-complement representation of the unscaled integer
@@ -91,6 +97,7 @@ type codecBuilder struct {
 func DefaultCodecOption() *CodecOption {
 	return &CodecOption{
 		EnableStringNull:                         true,
+		IgnoreExtraFieldsFromTextual:             false,
 		EnableDecimalBinarySpecCompliantEncoding: false,
 	}
 }
