@@ -163,9 +163,6 @@ func skipJSONString(buf []byte) ([]byte, error) {
 		case '\\':
 			// Skip the next character (escaped)
 			i++
-			if i >= len(buf) {
-				return nil, io.ErrShortBuffer
-			}
 		case '"':
 			// Found closing quote
 			return buf[i+1:], nil
