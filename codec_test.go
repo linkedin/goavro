@@ -407,4 +407,12 @@ func Test_buildCodecForTypeDescribedByString_CacheRespectsPrecisionScale(t *test
 	if cacheMiss.schemaOriginal == cachedCodecIdentifier {
 		t.Errorf("GOT: %v; WANT: %v", cacheMiss.schemaOriginal, "!= "+cachedCodecIdentifier)
 	}
+
+	// Scale does not exist in schema, so cache miss
+	delete(schemaMap, "scale")
+	cacheMiss, err = buildCodecForTypeDescribedByString(cache, "", "bytes", schemaMap, nil)
+	ensureError(t, err)
+	if cacheMiss.schemaOriginal == cachedCodecIdentifier {
+		t.Errorf("GOT: %v; WANT: %v", cacheMiss.schemaOriginal, "!= "+cachedCodecIdentifier)
+	}
 }
