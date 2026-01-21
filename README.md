@@ -1,5 +1,5 @@
 > [!IMPORTANT]
-> Internally, most of LinkedIn has moved over to use https://github.com/hamba/avro for Avro serialization/deserialization needs as we found it to be significantly more performant in large-scale scenarios. goavro is not actively in development.
+> Internally, most of LinkedIn has moved over to use https://github.com/hamba/avro for Avro serialization/deserialization needs as we found it to be significantly more performant in large-scale scenarios. goavro is in maintenance mode.
 
 # goavro
 
