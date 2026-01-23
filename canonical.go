@@ -120,6 +120,22 @@ func pcfObject(jsonMap map[string]interface{}, parentNamespace string, typeLooku
 			}
 		}
 
+		// This fixes a fairly subtle bug that can occur during schema canonicalization,
+		// which can randomly namespace a name that should not be, depending on the
+		// order of map traversal.
+		if theType, ok := jsonMap["type"]; ok {
+			// Check it's not a type that should be namespaced in canonical form, i.e.
+			// this should be map[string]interface{} and not "record".
+			if _, ook := theType.(string); !ook {
+				if valStr, oook := v.(string); oook {
+					// if we're an interface{} type which has an entry in typeLookup,
+					// remove it before we recurse into parsingCanonicalForm, as
+					// the wrong namespace will be applied.
+					delete(typeLookup, valStr)
+				}
+			}
+		}
+
 		pk, err := parsingCanonicalForm(k, parentNamespace, typeLookup)
 		if err != nil {
 			return "", err
