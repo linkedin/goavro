@@ -10,6 +10,7 @@
 package goavro
 
 import (
+	"bytes"
 	"testing"
 )
 
@@ -83,4 +84,56 @@ func TestFixedCodecAcceptsString(t *testing.T) {
 	t.Run("text", func(t *testing.T) {
 		testTextEncodePass(t, schema, "abcd", []byte(`"abcd"`))
 	})
+}
+
+// TestFixedSlicesUseIndependentBackingArrays ensures that decoded fixed values
+// do not share the same underlying array as the input buffer or other decoded
+// fixed values. This prevents unexpected behavior when appending to decoded
+// slices.
+func TestFixedSlicesUseIndependentBackingArrays(t *testing.T) {
+	schema := `{
+  "name":"example",
+  "type":"record",
+  "fields":[
+    {"name":"foo","type":{"type":"fixed","name":"fixed2","size":2}},
+    {"name":"bar","type":"fixed2"}
+  ]
+}`
+
+	codec, err := NewCodec(schema)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// binary data contains {foo:[1,2],bar:[3,4]}
+	binary := []byte{1, 2, 3, 4}
+	gotNative, _, err := codec.NativeFromBinary(binary)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got := gotNative.(map[string]interface{})
+	foo := got["foo"].([]byte)
+	bar := got["bar"].([]byte)
+
+	if want := []byte{1, 2}; !bytes.Equal(foo, want) {
+		t.Fatalf("expected foo to be %v, actually got %v", want, foo)
+	}
+	if want := []byte{3, 4}; !bytes.Equal(bar, want) {
+		t.Fatalf("expected bar to be %v, actually got %v", want, bar)
+	}
+
+	// Appending to foo should not affect bar or binary because they should
+	// use independent backing arrays
+	foo = append(foo, 0, 0)
+
+	if want := []byte{1, 2, 0, 0}; !bytes.Equal(foo, want) {
+		t.Fatalf("expected foo to be %v, actually got %v", want, foo)
+	}
+	if want := []byte{3, 4}; !bytes.Equal(bar, want) {
+		t.Errorf("expected bar to be %v, actually got %v", want, bar)
+	}
+	if want := []byte{1, 2, 3, 4}; !bytes.Equal(binary, want) {
+		t.Errorf("expected binary to be %v, actually got %v", want, binary)
+	}
 }
