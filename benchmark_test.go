@@ -85,3 +85,16 @@ func BenchmarkNativeFromTextualUsingV2(b *testing.B) {
 		_ = nativeFromTextUsingV2(b, codec, textData)
 	}
 }
+
+func BenchmarkScanBinaryUsingV2(b *testing.B) {
+	avroBlob, err := os.ReadFile("fixtures/quickstop-null.avro")
+	if err != nil {
+		b.Fatal(err)
+	}
+	nativeData, codec := nativeFromAvroUsingV2(b, avroBlob)
+	binaryData := binaryFromNativeUsingV2(b, codec, nativeData)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = scanBinaryUsingV2(b, codec, binaryData)
+	}
+}
