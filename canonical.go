@@ -124,7 +124,14 @@ func pcfObject(jsonMap map[string]interface{}, parentNamespace string, typeLooku
 		if err != nil {
 			return "", err
 		}
-		pv, err := parsingCanonicalForm(v, parentNamespace, typeLookup)
+		// "name" values are identifiers (a type's own name, or a field/symbol
+		// name), not type references. Pass nil so pcfString never substitutes
+		// them with a fully-qualified type name from typeLookup.
+		lookup := typeLookup
+		if k == "name" {
+			lookup = nil
+		}
+		pv, err := parsingCanonicalForm(v, parentNamespace, lookup)
 		if err != nil {
 			return "", err
 		}
