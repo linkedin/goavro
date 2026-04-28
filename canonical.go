@@ -124,9 +124,28 @@ func pcfObject(jsonMap map[string]interface{}, parentNamespace string, typeLooku
 		if err != nil {
 			return "", err
 		}
-		pv, err := parsingCanonicalForm(v, parentNamespace, typeLookup)
-		if err != nil {
-			return "", err
+		// "name" values must never be resolved through typeLookup. When k ==
+		// "name" the value is either a type's own name (already namespace-
+		// qualified by the block above) or a field/symbol name that must be
+		// emitted verbatim. Routing it through pcfString would incorrectly
+		// replace a field name with a same-named record type's full name,
+		// producing a non-deterministic canonical form depending on Go map
+		// iteration order.
+		var pv string
+		if k == "name" {
+			if s, ok := v.(string); ok {
+				pv = `"` + s + `"`
+			} else {
+				pv, err = parsingCanonicalForm(v, parentNamespace, typeLookup)
+				if err != nil {
+					return "", err
+				}
+			}
+		} else {
+			pv, err = parsingCanonicalForm(v, parentNamespace, typeLookup)
+			if err != nil {
+				return "", err
+			}
 		}
 
 		pairs = append(pairs, stringPair{k, pk + ":" + pv})

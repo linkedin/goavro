@@ -285,3 +285,40 @@ func TestCanonicalSchema(t *testing.T) {
 		}
 	}
 }
+
+func TestCanonicalSchemaDeterministic(t *testing.T) {
+	// When a field name and a record type name share the same local name within
+	// the same inherited namespace, CanonicalSchema() must not namespace-qualify
+	// the field name. Previously, non-deterministic Go map iteration caused
+	// pcfString to look up the field name in typeLookup and substitute it with
+	// the fully-qualified type name ~14% of the time.
+	schema := `{
+		"type": "record",
+		"name": "Parent",
+		"namespace": "com.example",
+		"fields": [{
+			"name": "items",
+			"type": ["null", {
+				"type": "array",
+				"items": {
+					"type": "record",
+					"name": "items",
+					"fields": [{"name": "id", "type": "int"}]
+				}
+			}],
+			"default": null
+		}]
+	}`
+
+	want := `{"name":"com.example.Parent","type":"record","fields":[{"name":"items","type":["null",{"type":"array","items":{"name":"com.example.items","type":"record","fields":[{"name":"id","type":"int"}]}}]}]}`
+
+	for i := 0; i < 1000; i++ {
+		codec, err := NewCodec(schema)
+		if err != nil {
+			t.Fatalf("Unable to create codec: %s", err)
+		}
+		if got := codec.CanonicalSchema(); got != want {
+			t.Fatalf("CanonicalSchema() non-deterministic on iteration %d:\n\tgot:  %s\n\twant: %s", i, got, want)
+		}
+	}
+}
