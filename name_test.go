@@ -45,6 +45,29 @@ func TestNamespaceContainsInvalidCharacter(t *testing.T) {
 	}
 }
 
+func TestRelaxedNameValidationAllowsDollarSign(t *testing.T) {
+	defer func() { RelaxedNameValidation = false }()
+
+	// A nested Java class name is rejected by default.
+	if _, err := newName("CreateEvent", "org.apache.hadoop.hdfs.inotify.Event$", nullNamespace); err == nil {
+		t.Fatal("GOT: nil; WANT: error for '$' without RelaxedNameValidation")
+	}
+
+	RelaxedNameValidation = true
+	n, err := newName("CreateEvent", "org.apache.hadoop.hdfs.inotify.Event$", nullNamespace)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if actual, expected := n.fullName, "org.apache.hadoop.hdfs.inotify.Event$.CreateEvent"; actual != expected {
+		t.Errorf("GOT: %#v; WANT: %#v", actual, expected)
+	}
+
+	// '$' is still not valid as the first character of a component.
+	if _, err := newName("$Event", "org.foo", nullNamespace); err == nil {
+		t.Error("GOT: nil; WANT: error for '$' as first character")
+	}
+}
+
 func TestNameAndNamespaceProvided(t *testing.T) {
 	n, err := newName("X", "org.foo", nullNamespace)
 	if err != nil {

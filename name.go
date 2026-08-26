@@ -34,6 +34,11 @@ func isRuneInvalidForFirstCharacter(r rune) bool {
 }
 
 func isRuneInvalidForOtherCharacters(r rune) bool {
+	// Nested Java class names use '$' as a separator (for example Outer$Inner),
+	// so allow it in trailing positions when relaxed validation is enabled.
+	if RelaxedNameValidation && r == '$' {
+		return false
+	}
 	return isRuneInvalidForFirstCharacter(r) && (r < '0' || r > '9')
 }
 
@@ -105,7 +110,9 @@ func newName(n, ns, ens string) (*name, error) {
 
 var (
 	// RelaxedNameValidation causes name validation to allow the first component
-	// of an Avro namespace to be the empty string.
+	// of an Avro namespace to be the empty string, and to allow '$' in the
+	// trailing characters of a name component so nested Java class names such as
+	// Event$ are accepted.
 	RelaxedNameValidation bool
 )
 
