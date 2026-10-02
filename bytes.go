@@ -118,9 +118,12 @@ func bytesNativeFromTextual(buf []byte) (interface{}, []byte, error) {
 				// necessarily represent text. Therefore, Avro bytes are not
 				// encoded in UTF-16. Each \u is followed by 4 hexadecimal
 				// digits, the first and second of which must be 0.
-				v, err := parseUint64FromHexSlice(buf[i+3 : i+5])
+				v, err := parseUint64FromHexSlice(buf[i+1 : i+5])
 				if err != nil {
 					return nil, nil, fmt.Errorf("cannot decode textual bytes: %s", err)
+				}
+				if v > 255 {
+					return nil, nil, fmt.Errorf("cannot decode textual bytes: code point out of range: U+%04X", v)
 				}
 				i += 4 // absorb 4 characters: one 'u' and three of the digits
 				newBytes = append(newBytes, byte(v))
@@ -135,6 +138,15 @@ func bytesNativeFromTextual(buf []byte) (interface{}, []byte, error) {
 		}
 		if b == '"' {
 			return newBytes, buf[i+1:], nil
+		}
+		if b >= utf8.RuneSelf {
+			r, width := utf8.DecodeRune(buf[i:])
+			if r == utf8.RuneError || r > 255 {
+				return nil, nil, fmt.Errorf("cannot decode textual bytes: invalid byte code point: %U", r)
+			}
+			newBytes = append(newBytes, byte(r))
+			i += width - 1
+			continue
 		}
 		newBytes = append(newBytes, b)
 	}

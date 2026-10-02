@@ -199,3 +199,50 @@ func TestStringCodecAcceptsBytes(t *testing.T) {
 		testTextEncodePass(t, schema, []byte("abcd"), []byte(`"abcd"`))
 	})
 }
+
+func TestBytesTextUnicodeCodePoints(t *testing.T) {
+	codec, err := NewCodec(`"bytes"`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for value := 0; value <= 255; value++ {
+		text, err := json.Marshal(string(rune(value)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		decoded, remaining, err := codec.NativeFromTextual(append(text, ' '))
+		if err != nil {
+			t.Fatalf("code point %d: %v", value, err)
+		}
+		got := decoded.([]byte)
+		if len(got) != 1 || got[0] != byte(value) || string(remaining) != " " {
+			t.Errorf("code point %d: got %v with remaining %q", value, got, remaining)
+		}
+	}
+}
+
+func TestBytesTextRejectsOutOfRangeCodePoints(t *testing.T) {
+	for _, text := range []string{`"\u0100"`, `"\uffff"`, `"\uGGff"`, `"Ā"`, `"😂"`, "\"\xff\""} {
+		_, _, err := bytesNativeFromTextual([]byte(text))
+		if err == nil {
+			t.Errorf("expected error for %q", text)
+		}
+	}
+}
+
+func TestFixedTextUnicodeCodePoint(t *testing.T) {
+	codec, err := NewCodec(`{"type":"fixed","name":"single","size":1}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, text := range []string{`"ÿ"`, `"\u00ff"`} {
+		decoded, rest, err := codec.NativeFromTextual([]byte(text))
+		if err != nil {
+			t.Fatal(err)
+		}
+		value := decoded.([]byte)
+		if len(value) != 1 || value[0] != 255 || len(rest) != 0 {
+			t.Fatalf("%s decoded to %v, remaining %q", text, value, rest)
+		}
+	}
+}
