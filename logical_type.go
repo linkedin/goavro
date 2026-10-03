@@ -55,7 +55,13 @@ func dateFromNative(fn fromNativeFn) fromNativeFn {
 			// reviewing the source code, both functions are based on the internal function unixSec()
 			// unixSec() returns the seconds since unix epoch as int64, whereby Unix() provides the greater range and UnixNano() the higher precision
 			// As a date requires a precision of days Unix() provides more then enough precision and a greater range, including the go zero time
-			numDays := val.Unix() / 86400
+			seconds := val.Unix()
+			numDays := seconds / 86400
+			// Integer division truncates toward zero; dates before the epoch
+			// must instead round down to the beginning of their UTC day.
+			if seconds%86400 < 0 {
+				numDays--
+			}
 			return fn(b, numDays)
 
 		default:

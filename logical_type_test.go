@@ -98,6 +98,46 @@ func TestDateLogicalTypeEncode(t *testing.T) {
 	testBinaryCodecPass(t, schema, time.Date(2006, 1, 2, 0, 0, 0, 0, time.UTC), []byte("\xbc\xcd\x01"))
 }
 
+func TestDateLogicalTypeTruncatesToDay(t *testing.T) {
+	codec, err := NewCodec(`{"type":"int","logicalType":"date"}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		input  string
+		days   int
+		binary byte
+	}{
+		{"1969-12-30T12:00:00Z", -2, 3},
+		{"1969-12-31T00:00:00Z", -1, 1},
+		{"1969-12-31T12:00:00Z", -1, 1},
+		{"1969-12-31T23:59:59.999999999Z", -1, 1},
+		{"1970-01-01T00:00:00Z", 0, 0},
+		{"1970-01-01T12:00:00Z", 0, 0},
+		{"1970-01-02T12:00:00Z", 1, 2},
+	} {
+		t.Run(tc.input, func(t *testing.T) {
+			value, err := time.Parse(time.RFC3339Nano, tc.input)
+			if err != nil {
+				t.Fatal(err)
+			}
+			encoded, err := codec.BinaryFromNative(nil, value)
+			if err != nil || len(encoded) != 1 || encoded[0] != tc.binary {
+				t.Fatalf("expected binary %v, got %v (error %v)", tc.binary, encoded, err)
+			}
+			text, err := codec.TextualFromNative(nil, value)
+			if err != nil || string(text) != fmt.Sprint(tc.days) {
+				t.Fatalf("expected day count %d, got %s (error %v)", tc.days, text, err)
+			}
+			decoded, _, err := codec.NativeFromBinary(encoded)
+			want := time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC).AddDate(0, 0, tc.days)
+			if err != nil || decoded != want {
+				t.Fatalf("expected %v, got %v (error %v)", want, decoded, err)
+			}
+		})
+	}
+}
+
 func testGoZeroTime(t *testing.T, schema string, expected []byte) {
 	t.Helper()
 	testBinaryEncodePass(t, schema, time.Time{}, expected)
