@@ -272,6 +272,11 @@ func TestCanonicalSchema(t *testing.T) {
 			Schema:    `{"type":"record","name":"foo","namespace":"bar","fields":[{"type":"record","name":"baz","fields":[{"name":"hi","type":"int"}]},{"name":"bye", "type":["null","baz"]}]}`,
 			Canonical: `{"name":"bar.foo","type":"record","fields":[{"name":"bar.baz","type":"record","fields":[{"name":"hi","type":"int"}]},{"name":"bye","type":["null","bar.baz"]}]}`,
 		},
+		{
+			// field name and record type name sharing the same local name
+			Schema:    `{"type":"record","name":"Parent","namespace":"com.example","fields":[{"name":"items","type":["null",{"type":"array","items":{"type":"record","name":"items","fields":[{"name":"id","type":"int"}]}}],"default":null}]}`,
+			Canonical: `{"name":"com.example.Parent","type":"record","fields":[{"name":"items","type":["null",{"type":"array","items":{"name":"com.example.items","type":"record","fields":[{"name":"id","type":"int"}]}}]}]}`,
+		},
 	}
 
 	for _, c := range cases {

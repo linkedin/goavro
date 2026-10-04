@@ -70,6 +70,7 @@ func pcfObject(jsonMap map[string]interface{}, parentNamespace string, typeLooku
 
 	// Remember the namespace to fully qualify names later
 	var namespace string
+	isNamedType := false
 	if namespaceJSON, ok := jsonMap["namespace"]; ok {
 		if namespaceStr, ok := namespaceJSON.(string); ok {
 			// and it's value is string (otherwise invalid schema)
@@ -80,8 +81,12 @@ func pcfObject(jsonMap map[string]interface{}, parentNamespace string, typeLooku
 			}
 			parentNamespace = namespace
 		}
-	} else if objectType, ok := jsonMap["type"]; ok && (objectType == "record" || objectType == "enum" || objectType == "fixed") {
-		namespace = parentNamespace
+	}
+	if objectType, ok := jsonMap["type"]; ok && (objectType == "record" || objectType == "enum" || objectType == "fixed") {
+		if _, ok := jsonMap["namespace"]; !ok {
+			namespace = parentNamespace
+		}
+		isNamedType = true
 	}
 
 	for k, v := range jsonMap {
@@ -98,8 +103,8 @@ func pcfObject(jsonMap map[string]interface{}, parentNamespace string, typeLooku
 			continue
 		}
 
-		// Add namespace to a non-qualified name.
-		if k == "name" && namespace != "" {
+		// Add namespace to a non-qualified name for named types.
+		if k == "name" && isNamedType && namespace != "" {
 			// Check if the name isn't already qualified.
 			if t, ok := v.(string); ok && !strings.ContainsRune(t, '.') {
 				v = namespace + "." + t
@@ -118,6 +123,13 @@ func pcfObject(jsonMap map[string]interface{}, parentNamespace string, typeLooku
 				}
 				v = float64(s)
 			}
+		}
+
+		if k == "name" {
+			pk := `"name"`
+			pv := `"` + fmt.Sprintf("%v", v) + `"`
+			pairs = append(pairs, stringPair{k, pk + ":" + pv})
+			continue
 		}
 
 		pk, err := parsingCanonicalForm(k, parentNamespace, typeLookup)
