@@ -244,11 +244,24 @@ func NewCodecForStandardJSONOneWay(schemaSpecification string) (*Codec, error) {
 //
 // "Follow your bliss."
 func NewCodecForStandardJSONFull(schemaSpecification string) (*Codec, error) {
+	return NewCodecForStandardJSONFullWithOptions(schemaSpecification, DefaultCodecOption())
+}
+
+// NewCodecForStandardJSONFullWithOptions is like NewCodecForStandardJSONFull
+// but allows fine-grained control over codec behavior through CodecOption.
+// Example usage:
+//
+//	opt := &goavro.CodecOption{EnableDecimalBinarySpecCompliantEncoding: true}
+//	codec, err := goavro.NewCodecForStandardJSONFullWithOptions(schema, opt)
+func NewCodecForStandardJSONFullWithOptions(schemaSpecification string, option *CodecOption) (*Codec, error) {
+	if option == nil {
+		return NewCodecForStandardJSONFull(schemaSpecification)
+	}
 	return NewCodecFrom(schemaSpecification, &codecBuilder{
 		buildCodecForTypeDescribedByMap,
 		buildCodecForTypeDescribedByString,
 		buildCodecForTypeDescribedBySliceTwoWayJSON,
-		DefaultCodecOption(),
+		option,
 	})
 }
 
