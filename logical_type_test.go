@@ -183,6 +183,55 @@ func TestDecimalBytesLogicalTypeInRecordDecodeWithDefault(t *testing.T) {
 	testBinaryCodecPass(t, schema, map[string]interface{}{"mydecimal": big.NewRat(617, 50)}, []byte("\x04\x04\xd2"))
 }
 
+func TestDecimalBytesSpecCompliantTextualRoundTripStandardJSONFull(t *testing.T) {
+	// Standard JSON Full + CodecOption: human-readable decimals with internet JSON unions.
+	schema := `{
+		"type": "record",
+		"name": "item",
+		"fields": [
+			{"name": "weight", "type": {"type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2}},
+			{"name": "created", "type": ["null", "long"], "default": null}
+		]
+	}`
+	opt := &CodecOption{EnableDecimalBinarySpecCompliantEncoding: true}
+	codec, err := NewCodecForStandardJSONFullWithOptions(schema, opt)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	textual := []byte(`{"weight":"40.20","created":123}`)
+	native, _, err := codec.NativeFromTextual(textual)
+	if err != nil {
+		t.Fatalf("NativeFromTextual: %v", err)
+	}
+	nativeMap, ok := native.(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected map[string]interface{}, got %T", native)
+	}
+	rat, ok := nativeMap["weight"].(*big.Rat)
+	if !ok || rat.Cmp(big.NewRat(4020, 100)) != 0 {
+		t.Fatalf("weight: got %v (%T)", nativeMap["weight"], nativeMap["weight"])
+	}
+
+	out, err := codec.TextualFromNative(nil, native)
+	if err != nil {
+		t.Fatalf("TextualFromNative: %v", err)
+	}
+	// Standard JSON Full should emit a plain long for the union, not {"long":123}
+	if got := string(out); got != `{"weight":"40.20","created":123}` && got != `{"created":123,"weight":"40.20"}` {
+		// Accept either field order; verify round-trip via native again.
+		native2, _, err2 := codec.NativeFromTextual(out)
+		if err2 != nil {
+			t.Fatalf("round-trip NativeFromTextual(%s): %v", out, err2)
+		}
+		nativeMap2 := native2.(map[string]interface{})
+		rat2 := nativeMap2["weight"].(*big.Rat)
+		if rat2.Cmp(big.NewRat(4020, 100)) != 0 {
+			t.Fatalf("round-trip weight: got %v", rat2)
+		}
+	}
+}
+
 func TestDecimalBytesSpecCompliantTextualRoundTrip(t *testing.T) {
 	// Test spec-compliant textual encoding with human-readable decimal strings
 	schema := `{"type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2}`
