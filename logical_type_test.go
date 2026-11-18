@@ -168,7 +168,57 @@ func TestDecimalFixedLogicalTypeEncode(t *testing.T) {
 	testBinaryCodecPass(t, schemaPrecision1, big.NewRat(163, 10), []byte("\x00\x00\x00\xa3"))
 	testBinaryCodecPass(t, schemaPrecision1, big.NewRat(-130, 4), []byte("\xff\xff\xfe\xbb"))
 	testBinaryCodecPass(t, schemaPrecision1, big.NewRat(25, 2), []byte("\x00\x00\x00\x7d"))
-	testBinaryEncodeFail(t, schemaPrecision1, big.NewRat(math.MaxInt32, -1), "datum size ought to equal schema size")
+	testBinaryEncodeFail(t, schemaPrecision1, big.NewRat(math.MaxInt32, -1), "does not fit in 4 signed bytes")
+}
+
+func TestFixedDecimalSignedWidth(t *testing.T) {
+	const schema = `{"type":"fixed","name":"amount","size":2,"logicalType":"decimal","precision":4,"scale":2}`
+	for _, compliant := range []bool{false, true} {
+		t.Run(fmt.Sprintf("compliant=%t", compliant), func(t *testing.T) {
+			codec, err := NewCodecWithOptions(schema, &CodecOption{EnableDecimalBinarySpecCompliantEncoding: compliant})
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, tc := range []struct {
+				unscaled int64
+				wire     string
+			}{
+				{0, "\x00\x00"}, {128, "\x00\x80"}, {-129, "\xff\x7f"},
+				{9999, "\x27\x0f"}, {-9999, "\xd8\xf1"},
+			} {
+				value := big.NewRat(tc.unscaled, 100)
+				wire, err := codec.BinaryFromNative(nil, value)
+				if err != nil || string(wire) != tc.wire {
+					t.Errorf("encode %s: got %x, %v; want %x", value, wire, err, tc.wire)
+				}
+			}
+			for _, unscaled := range []int64{32768, -32769, 1 << 20, -(1 << 20)} {
+				value := big.NewRat(unscaled, 100)
+				if wire, err := codec.BinaryFromNative(nil, value); err == nil {
+					t.Errorf("encoded out-of-range %s as %x", value, wire)
+				}
+				if !compliant {
+					if text, err := codec.TextualFromNative(nil, value); err == nil {
+						t.Errorf("encoded out-of-range %s as %s", value, text)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestSignedFixedByteLimits(t *testing.T) {
+	for _, tc := range []struct {
+		n    int64
+		wire byte
+	}{
+		{127, 0x7f}, {-128, 0x80},
+	} {
+		got, err := toSignedFixedBytes(1)(big.NewInt(tc.n))
+		if err != nil || len(got) != 1 || got[0] != tc.wire {
+			t.Errorf("encode %d: got %x, %v; want %02x", tc.n, got, err, tc.wire)
+		}
+	}
 }
 
 func TestDecimalBytesLogicalTypeInRecordEncode(t *testing.T) {
@@ -347,7 +397,7 @@ func TestDecimalFixedLegacyTextualRoundTrip(t *testing.T) {
 		{big.NewRat(4020, 100)},
 		{big.NewRat(1234, 100)},
 		{big.NewRat(-1234, 100)},
-		// Note: 0 is not tested here due to fixed size constraints
+		{big.NewRat(0, 1)},
 	}
 
 	for _, tc := range testCases {
