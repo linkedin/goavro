@@ -474,15 +474,6 @@ func validatedStringNativeFromTextual(fn toNativeFn, pattern string) toNativeFn 
 	}
 }
 
-func padBytes(bytes []byte, fixedSize uint) []byte {
-	s := int(fixedSize)
-	padded := make([]byte, s)
-	if s >= len(bytes) {
-		copy(padded[s-len(bytes):], bytes)
-	}
-	return padded
-}
-
 type toBytesFn func(n *big.Int) ([]byte, error)
 
 // fromSignedBytes sets the value of n to the big-endian two's complement
@@ -525,21 +516,25 @@ func toSignedBytes(n *big.Int) ([]byte, error) {
 // form of n for a given length of bytes.
 func toSignedFixedBytes(size uint) func(*big.Int) ([]byte, error) {
 	return func(n *big.Int) ([]byte, error) {
-		switch n.Sign() {
-		case 0:
-			return []byte{0}, nil
-		case 1:
-			b := n.Bytes()
-			if b[0]&0x80 > 0 {
-				b = append([]byte{0}, b...)
-			}
-			return padBytes(b, size), nil
-		case -1:
-			length := size * 8
-			b := new(big.Int).Add(n, new(big.Int).Lsh(one, length)).Bytes()
-			// Unlike a variable length byte length we need the extra bits to meet byte length
+		b, err := toSignedBytes(n)
+		if err != nil {
+			return nil, err
+		}
+		if uint(len(b)) > size {
+			return nil, fmt.Errorf("unscaled decimal does not fit in %d signed bytes", size)
+		}
+		if uint(len(b)) == size {
 			return b, nil
 		}
-		return nil, fmt.Errorf("toSignedBytes: error big.Int.Sign() returned unexpected value")
+
+		padded := make([]byte, size)
+		start := len(padded) - len(b)
+		if n.Sign() < 0 {
+			for i := 0; i < start; i++ {
+				padded[i] = 0xff
+			}
+		}
+		copy(padded[start:], b)
+		return padded, nil
 	}
 }
